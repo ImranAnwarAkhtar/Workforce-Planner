@@ -1,0 +1,481 @@
+import axios, { AxiosError } from 'axios';
+import toast from 'react-hot-toast';
+
+// ---------------------------------------------------------------------------
+// HTTP client
+// ---------------------------------------------------------------------------
+
+const client = axios.create({
+  baseURL: (process.env.REACT_APP_API_URL ?? 'http://localhost:3001') + '/api',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+client.interceptors.response.use(
+  (res) => res,
+  (err: AxiosError<{ error?: string }>) => {
+    const message = err.response?.data?.error ?? err.message ?? 'An unexpected error occurred';
+    if (err.response?.status === 403) {
+      toast.error(`Forbidden: ${message}`);
+    } else if (err.response?.status !== 404) {
+      toast.error(message);
+    }
+    return Promise.reject(new ApiError(message, err.response?.status));
+  }
+);
+
+export class ApiError extends Error {
+  constructor(message: string, public status?: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared types
+// ---------------------------------------------------------------------------
+
+export interface ListResponse<T> {
+  data: T[];
+}
+
+export interface ItemResponse<T> {
+  data: T;
+}
+
+// ---------------------------------------------------------------------------
+// People
+// ---------------------------------------------------------------------------
+
+export interface Person {
+  id: number;
+  name: string;
+  contracted_fte: number;
+  is_active: boolean;
+  workday_jr_id: string | null;
+  created_at: string;
+  updated_at: string;
+  contract_type_code: string | null;
+  contract_type_description: string | null;
+  colour_hex: string | null;
+  level_name: string | null;
+  level_code: string | null;
+  discipline_name: string | null;
+  tbh_id: string | null;
+}
+
+export interface PersonDetail extends Person {
+  regions: { region_id: number; name: string; code: string }[];
+  countries: { country_id: number; name: string; code: string }[];
+}
+
+export interface PeopleQuery {
+  discipline_id?: number;
+  contract_type_id?: number;
+  region_id?: number;
+  is_active?: 'true' | 'false' | 'all';
+  limit?: number;
+  offset?: number;
+}
+
+export interface CreatePersonBody {
+  name: string;
+  contract_type_id?: number | null;
+  level_id?: number | null;
+  discipline_id?: number | null;
+  contracted_fte?: number;
+  tbh_code_id?: number | null;
+  workday_jr_id?: string | null;
+  region_ids?: number[];
+  country_ids?: number[];
+}
+
+export type UpdatePersonBody = Partial<CreatePersonBody> & { is_active?: boolean };
+
+export const peopleApi = {
+  list: (params?: PeopleQuery) =>
+    client.get<ListResponse<Person>>('/people', { params }).then((r) => r.data.data),
+
+  get: (id: number) =>
+    client.get<ItemResponse<PersonDetail>>(`/people/${id}`).then((r) => r.data.data),
+
+  create: (body: CreatePersonBody) =>
+    client.post<ItemResponse<Person>>('/people', body).then((r) => r.data.data),
+
+  update: (id: number, body: UpdatePersonBody) =>
+    client.put<ItemResponse<Person>>(`/people/${id}`, body).then((r) => r.data.data),
+
+  deactivate: (id: number) =>
+    client.delete(`/people/${id}`),
+};
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+export interface Project {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  weight: number;
+  region_id: number | null;
+  country_id: number | null;
+  metro: string | null;
+  phase_code: string | null;
+  year: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  region_name: string | null;
+  country_name: string | null;
+}
+
+export interface ProjectsQuery {
+  region_id?: number;
+  year?: number;
+  status?: string;
+  type?: string;
+  is_active?: 'true' | 'false' | 'all';
+  limit?: number;
+  offset?: number;
+}
+
+export interface CreateProjectBody {
+  name: string;
+  type: string;
+  status: string;
+  weight?: number;
+  region_id?: number | null;
+  country_id?: number | null;
+  metro?: string | null;
+  phase_code?: string | null;
+  year?: number | null;
+}
+
+export type UpdateProjectBody = Partial<CreateProjectBody> & { is_active?: boolean };
+
+export const projectsApi = {
+  list: (params?: ProjectsQuery) =>
+    client.get<ListResponse<Project>>('/projects', { params }).then((r) => r.data.data),
+
+  get: (id: number) =>
+    client.get<ItemResponse<Project>>(`/projects/${id}`).then((r) => r.data.data),
+
+  create: (body: CreateProjectBody) =>
+    client.post<ItemResponse<Project>>('/projects', body).then((r) => r.data.data),
+
+  update: (id: number, body: UpdateProjectBody) =>
+    client.put<ItemResponse<Project>>(`/projects/${id}`, body).then((r) => r.data.data),
+
+  deactivate: (id: number) =>
+    client.delete(`/projects/${id}`),
+};
+
+// ---------------------------------------------------------------------------
+// Allocations
+// ---------------------------------------------------------------------------
+
+export interface Allocation {
+  id: number;
+  person_id: number;
+  project_id: number;
+  month: string;
+  fte_value: number;
+  is_billable: boolean;
+  flagged_for_review: boolean;
+  flag_reason: string | null;
+  updated_at: string;
+  person_name: string;
+  project_name: string;
+  project_type: string;
+  contract_type_code: string | null;
+  colour_hex: string | null;
+}
+
+export interface AllocationsQuery {
+  person_id?: number;
+  project_id?: number;
+  month_from?: string;
+  month_to?: string;
+  flagged?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface UpsertAllocationBody {
+  person_id: number;
+  project_id: number;
+  month: string;
+  fte_value?: number;
+  is_billable?: boolean;
+}
+
+export interface UpdateAllocationBody {
+  fte_value?: number;
+  is_billable?: boolean;
+  flagged_for_review?: boolean;
+  flag_reason?: string | null;
+}
+
+export const allocationsApi = {
+  list: (params?: AllocationsQuery) =>
+    client.get<ListResponse<Allocation>>('/allocations', { params }).then((r) => r.data.data),
+
+  get: (id: number) =>
+    client.get<ItemResponse<Allocation>>(`/allocations/${id}`).then((r) => r.data.data),
+
+  upsert: (body: UpsertAllocationBody) =>
+    client.post<ItemResponse<Allocation>>('/allocations', body).then((r) => r.data.data),
+
+  update: (id: number, body: UpdateAllocationBody) =>
+    client.put<ItemResponse<Allocation>>(`/allocations/${id}`, body).then((r) => r.data.data),
+
+  delete: (id: number) =>
+    client.delete(`/allocations/${id}`),
+};
+
+// ---------------------------------------------------------------------------
+// Hire Requests
+// ---------------------------------------------------------------------------
+
+export interface HireRequest {
+  id: number;
+  request_type: string;
+  status: string;
+  stage: number;
+  justification: string | null;
+  created_at: string;
+  discipline_name: string | null;
+  level_name: string | null;
+  contract_type_code: string | null;
+  region_name: string | null;
+  country_name: string | null;
+  project_name: string | null;
+  submitted_by_name: string | null;
+}
+
+export interface HireRequestDetail extends HireRequest {
+  discipline_id: number | null;
+  level_id: number | null;
+  contract_type_id: number | null;
+  region_id: number | null;
+  country_id: number | null;
+  project_id: number | null;
+  submitted_by: number;
+  stage2_user_id: number | null;
+  stage3_user_id: number | null;
+  stage4_user_id: number | null;
+  stage2_user_name: string | null;
+  stage3_user_name: string | null;
+  stage4_user_name: string | null;
+  rejected_by: number | null;
+  rejected_by_name: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+}
+
+export interface HireRequestsQuery {
+  status?: string;
+  stage?: number;
+  submitted_by?: number;
+  region_id?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CreateHireRequestBody {
+  request_type: string;
+  discipline_id?: number | null;
+  level_id?: number | null;
+  contract_type_id?: number | null;
+  region_id?: number | null;
+  country_id?: number | null;
+  project_id?: number | null;
+  justification?: string | null;
+}
+
+export const hireRequestsApi = {
+  list: (params?: HireRequestsQuery) =>
+    client.get<ListResponse<HireRequest>>('/hire-requests', { params }).then((r) => r.data.data),
+
+  get: (id: number) =>
+    client.get<ItemResponse<HireRequestDetail>>(`/hire-requests/${id}`).then((r) => r.data.data),
+
+  create: (body: CreateHireRequestBody) =>
+    client.post<ItemResponse<HireRequestDetail>>('/hire-requests', body).then((r) => r.data.data),
+
+  approve: (id: number) =>
+    client.post<ItemResponse<HireRequestDetail>>(`/hire-requests/${id}/approve`).then((r) => r.data.data),
+
+  reject: (id: number, rejection_reason?: string) =>
+    client.post<ItemResponse<HireRequestDetail>>(`/hire-requests/${id}/reject`, { rejection_reason }).then((r) => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
+// Change Requests
+// ---------------------------------------------------------------------------
+
+export interface ChangeRequest {
+  id: number;
+  change_type: string;
+  status: string;
+  auto_approved: boolean;
+  justification: string | null;
+  current_manager: string | null;
+  new_manager: string | null;
+  created_at: string;
+  tbh_id: string | null;
+  new_region_name: string | null;
+  new_country_name: string | null;
+  new_level_name: string | null;
+  submitted_by_name: string | null;
+  approved_by_name: string | null;
+}
+
+export interface ChangeRequestsQuery {
+  status?: string;
+  change_type?: string;
+  submitted_by?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface CreateChangeRequestBody {
+  tbh_code_id?: number | null;
+  change_type: string;
+  current_manager?: string | null;
+  new_manager?: string | null;
+  new_region_id?: number | null;
+  new_country_id?: number | null;
+  new_level_id?: number | null;
+  is_borrowed_or_repurposed?: boolean | null;
+  justification?: string | null;
+}
+
+export const changeRequestsApi = {
+  list: (params?: ChangeRequestsQuery) =>
+    client.get<ListResponse<ChangeRequest>>('/change-requests', { params }).then((r) => r.data.data),
+
+  get: (id: number) =>
+    client.get<ItemResponse<ChangeRequest>>(`/change-requests/${id}`).then((r) => r.data.data),
+
+  create: (body: CreateChangeRequestBody) =>
+    client.post<ItemResponse<ChangeRequest>>('/change-requests', body).then((r) => r.data.data),
+
+  approve: (id: number) =>
+    client.post<ItemResponse<ChangeRequest>>(`/change-requests/${id}/approve`).then((r) => r.data.data),
+
+  reject: (id: number, rejection_reason?: string) =>
+    client.post<ItemResponse<ChangeRequest>>(`/change-requests/${id}/reject`, { rejection_reason }).then((r) => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
+// TBH Codes (Recruitment)
+// ---------------------------------------------------------------------------
+
+export interface TbhCode {
+  id: number;
+  tbh_id: string;
+  old_tbh: string | null;
+  funding_year: number | null;
+  hire_type: string | null;
+  region_id: number | null;
+  project_type: string | null;
+  legal_entity: string | null;
+  location_code: string | null;
+  cost_centre: string | null;
+  job_profile: string | null;
+  replaced_emp_name: string | null;
+  manager_name: string | null;
+  target_hire_date: string | null;
+  jr_id: string | null;
+  req_status: string | null;
+  ta_contact: string | null;
+  candidate_name: string | null;
+  estimated_hire_date: string | null;
+  ta_status_comments: string | null;
+  tbh_description: string | null;
+  fp_and_a_notes: string | null;
+  region_name: string | null;
+}
+
+export interface TbhCodesQuery {
+  region_id?: number;
+  funding_year?: number;
+  req_status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export type CreateTbhCodeBody = Pick<TbhCode, 'tbh_id'> & Partial<Omit<TbhCode, 'id' | 'tbh_id' | 'region_name'>>;
+export type UpdateTbhCodeBody = Partial<Omit<TbhCode, 'id' | 'tbh_id' | 'region_name'>>;
+
+export const tbhCodesApi = {
+  list: (params?: TbhCodesQuery) =>
+    client.get<ListResponse<TbhCode>>('/tbh-codes', { params }).then((r) => r.data.data),
+
+  get: (id: number) =>
+    client.get<ItemResponse<TbhCode>>(`/tbh-codes/${id}`).then((r) => r.data.data),
+
+  create: (body: CreateTbhCodeBody) =>
+    client.post<ItemResponse<TbhCode>>('/tbh-codes', body).then((r) => r.data.data),
+
+  update: (id: number, body: UpdateTbhCodeBody) =>
+    client.put<ItemResponse<TbhCode>>(`/tbh-codes/${id}`, body).then((r) => r.data.data),
+
+  delete: (id: number) =>
+    client.delete(`/tbh-codes/${id}`),
+};
+
+// ---------------------------------------------------------------------------
+// Reference data  (admin endpoints, read-only for all roles)
+// ---------------------------------------------------------------------------
+
+export interface Discipline { id: number; name: string }
+export interface Level { id: number; level_name: string; short_code: string; level_number: number | null }
+export interface ContractType { id: number; code: string; description: string; colour_hex: string | null; category: string | null }
+export interface Region  { id: number; name: string; code: string }
+export interface Country { id: number; name: string; code: string; region_id: number; region_name: string }
+
+export const refDataApi = {
+  disciplines:   () => client.get<ListResponse<Discipline>>('/admin/disciplines').then((r) => r.data.data),
+  levels:        () => client.get<ListResponse<Level>>('/admin/levels').then((r) => r.data.data),
+  contractTypes: () => client.get<ListResponse<ContractType>>('/admin/contract-types').then((r) => r.data.data),
+  regions:       () => client.get<ListResponse<Region>>('/admin/regions').then((r) => r.data.data),
+  countries:     (region_id?: number) =>
+    client.get<ListResponse<Country>>('/admin/countries', { params: region_id ? { region_id } : undefined })
+      .then((r) => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
+// Dashboard
+// ---------------------------------------------------------------------------
+
+export interface DashboardSummary {
+  total_people: number;
+  total_projects: number;
+  total_allocations: number;
+  pending_hire_requests: number;
+  pending_change_requests: number;
+  open_tbh_codes: number;
+}
+
+export interface CapacityItem {
+  id: number;
+  name: string;
+  contracted_fte: number;
+  allocated_fte: number;
+  utilisation_ratio: number | null;
+  discipline_name: string | null;
+  contract_type_code: string | null;
+  colour_hex: string | null;
+}
+
+export const dashboardApi = {
+  summary: () =>
+    client.get<{ data: DashboardSummary }>('/dashboard/summary').then((r) => r.data.data),
+
+  capacity: (month: string) =>
+    client.get<ListResponse<CapacityItem>>('/dashboard/capacity', { params: { month } })
+      .then((r) => r.data.data),
+};
