@@ -58,6 +58,12 @@ app.use(auditMiddleware);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+app.get('/dbcheck', (req, res) => {
+  const url = process.env.DATABASE_URL || 'NOT SET';
+  const masked = url.replace(/:([^:@]+)@/, ':****@');
+  res.json({ DATABASE_URL: masked });
+});
+
 app.post('/migrate', async (req, res) => {
   const fs   = require('fs');
   const path = require('path');
