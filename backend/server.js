@@ -58,33 +58,6 @@ app.use(auditMiddleware);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-app.get('/dbcheck', (req, res) => {
-  const mask = (v) => v ? v.replace(/:([^:@]+)@/, ':****@') : 'NOT SET';
-  res.json({
-    DATABASE_URL:     mask(process.env.DATABASE_URL),
-    PG_URL:           mask(process.env.PG_URL),
-    PGHOST:           process.env.PGHOST    || 'NOT SET',
-    PGPORT:           process.env.PGPORT    || 'NOT SET',
-    PGUSER:           process.env.PGUSER    || 'NOT SET',
-    PGDATABASE:       process.env.PGDATABASE|| 'NOT SET',
-    PGPASSWORD_SET:   process.env.PGPASSWORD ? 'YES' : 'NO',
-  });
-});
-
-app.post('/migrate', async (req, res) => {
-  const fs   = require('fs');
-  const path = require('path');
-  const pool = require('./db/pool');
-  try {
-    const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-    const seed   = fs.readFileSync(path.join(__dirname, 'seed.sql'),   'utf8');
-    await pool.query(schema);
-    await pool.query(seed);
-    res.json({ ok: true, message: 'Schema and seed applied successfully.' });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
 
 app.use('/api/projects',        wrapAsync(projectsRouter));
 app.use('/api/people',          wrapAsync(peopleRouter));
