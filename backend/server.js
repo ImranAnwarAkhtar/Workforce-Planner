@@ -27,6 +27,24 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
+function wrapAsync(router) {
+  router.stack.forEach(layer => {
+    if (layer.route) {
+      layer.route.stack.forEach(routeLayer => {
+        const originalHandle = routeLayer.handle;
+        routeLayer.handle = async (req, res, next) => {
+          try {
+            await originalHandle(req, res, next);
+          } catch (err) {
+            next(err);
+          }
+        };
+      });
+    }
+  });
+  return router;
+}
+
 const app = express();
 
 app.set('trust proxy', 1);
@@ -40,17 +58,17 @@ app.use(auditMiddleware);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-app.use('/api/projects',       projectsRouter);
-app.use('/api/people',         peopleRouter);
-app.use('/api/allocations',    allocationsRouter);
-app.use('/api/tbh-codes',      tbhCodesRouter);
-app.use('/api/gearing',        gearingRouter);
-app.use('/api/hire-requests',  hireRequestsRouter);
-app.use('/api/change-requests',changeRequestsRouter);
-app.use('/api/dashboard',      dashboardRouter);
-app.use('/api/admin',          adminRouter);
-app.use('/api/comments',       commentsRouter);
-app.use('/api/imports',        importsRouter);
+app.use('/api/projects',        wrapAsync(projectsRouter));
+app.use('/api/people',          wrapAsync(peopleRouter));
+app.use('/api/allocations',     wrapAsync(allocationsRouter));
+app.use('/api/tbh-codes',       wrapAsync(tbhCodesRouter));
+app.use('/api/gearing',         wrapAsync(gearingRouter));
+app.use('/api/hire-requests',   wrapAsync(hireRequestsRouter));
+app.use('/api/change-requests', wrapAsync(changeRequestsRouter));
+app.use('/api/dashboard',       wrapAsync(dashboardRouter));
+app.use('/api/admin',           wrapAsync(adminRouter));
+app.use('/api/comments',        wrapAsync(commentsRouter));
+app.use('/api/imports',         wrapAsync(importsRouter));
 
 app.use(notFound);
 app.use(errorHandler);

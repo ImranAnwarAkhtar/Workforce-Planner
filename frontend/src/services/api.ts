@@ -13,13 +13,19 @@ const client = axios.create({
 client.interceptors.response.use(
   (res) => res,
   (err: AxiosError<{ error?: string }>) => {
+    const status = err.response?.status;
     const message = err.response?.data?.error ?? err.message ?? 'An unexpected error occurred';
-    if (err.response?.status === 403) {
-      toast.error(`Forbidden: ${message}`);
-    } else if (err.response?.status !== 404) {
-      toast.error(message);
+    const method = err.config?.method?.toLowerCase();
+    const isMutation = method && ['post', 'put', 'patch', 'delete'].includes(method);
+    // Only show toasts for user-triggered write operations, not background reads
+    if (status === 403) {
+      toast.error('You do not have permission to do that.');
+    } else if (status === 429) {
+      toast.error('Too many requests — please wait a moment and try again.');
+    } else if (status && status >= 500 && isMutation) {
+      toast.error(`Server error: ${message}`);
     }
-    return Promise.reject(new ApiError(message, err.response?.status));
+    return Promise.reject(new ApiError(message, status));
   }
 );
 

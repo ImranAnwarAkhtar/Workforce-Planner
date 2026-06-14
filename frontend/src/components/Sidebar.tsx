@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { logout } from '../hooks/useAuth';
+import { logout, getUser } from '../hooks/useAuth';
 
 const ICONS: Record<string, string> = {
   dashboard:  'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
@@ -23,8 +23,15 @@ const NAV = [
   { to: '/admin',           label: 'Admin',           icon: 'admin' },
 ];
 
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? '?';
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export default function Sidebar() {
   const navigate = useNavigate();
+  const user = getUser();
 
   function handleLogout() {
     logout();
@@ -41,6 +48,7 @@ export default function Sidebar() {
       borderRight: '1px solid #222222',
       height: '100vh',
     }}>
+      {/* Logo */}
       <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid #222222' }}>
         <div style={{ color: '#E31837', fontSize: 13, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
           Equinix
@@ -50,6 +58,7 @@ export default function Sidebar() {
         </div>
       </div>
 
+      {/* Nav */}
       <nav style={{ flex: 1, paddingTop: 8, overflowY: 'auto' }}>
         {NAV.map(({ to, label, icon }) => (
           <NavLink
@@ -76,10 +85,52 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* User footer */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid #222222' }}>
-        <div style={{ fontSize: 13, color: '#CCCCCC', marginBottom: 10 }}>
-          Demo User
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          {/* Avatar */}
+          <div style={{
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            background: '#E31837',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 13,
+            fontWeight: 700,
+            color: '#FFFFFF',
+            flexShrink: 0,
+            letterSpacing: '0.03em',
+          }}>
+            {user ? initials(user.name) : '?'}
+          </div>
+
+          {/* Name + role */}
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#FFFFFF',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {user?.name ?? 'Demo User'}
+            </div>
+            <div style={{
+              fontSize: 11,
+              color: '#888888',
+              marginTop: 1,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}>
+              {user?.role ?? ''}
+            </div>
+          </div>
         </div>
+
         <button
           onClick={handleLogout}
           style={{
