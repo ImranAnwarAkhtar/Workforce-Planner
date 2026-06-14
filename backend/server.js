@@ -58,6 +58,21 @@ app.use(auditMiddleware);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+app.post('/migrate', async (req, res) => {
+  const fs   = require('fs');
+  const path = require('path');
+  const pool = require('./db/pool');
+  try {
+    const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    const seed   = fs.readFileSync(path.join(__dirname, 'seed.sql'),   'utf8');
+    await pool.query(schema);
+    await pool.query(seed);
+    res.json({ ok: true, message: 'Schema and seed applied successfully.' });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.use('/api/projects',        wrapAsync(projectsRouter));
 app.use('/api/people',          wrapAsync(peopleRouter));
 app.use('/api/allocations',     wrapAsync(allocationsRouter));
