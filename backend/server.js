@@ -59,9 +59,16 @@ app.use(auditMiddleware);
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 app.get('/dbcheck', (req, res) => {
-  const url = process.env.DATABASE_URL || 'NOT SET';
-  const masked = url.replace(/:([^:@]+)@/, ':****@');
-  res.json({ DATABASE_URL: masked });
+  const mask = (v) => v ? v.replace(/:([^:@]+)@/, ':****@') : 'NOT SET';
+  res.json({
+    DATABASE_URL:     mask(process.env.DATABASE_URL),
+    PG_URL:           mask(process.env.PG_URL),
+    PGHOST:           process.env.PGHOST    || 'NOT SET',
+    PGPORT:           process.env.PGPORT    || 'NOT SET',
+    PGUSER:           process.env.PGUSER    || 'NOT SET',
+    PGDATABASE:       process.env.PGDATABASE|| 'NOT SET',
+    PGPASSWORD_SET:   process.env.PGPASSWORD ? 'YES' : 'NO',
+  });
 });
 
 app.post('/migrate', async (req, res) => {
