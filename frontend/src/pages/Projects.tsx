@@ -13,6 +13,7 @@ const PROJECT_TYPES    = ['Retail', 'xScale', 'Matrix'] as const;
 const PROJECT_STATUSES = ['Approved', 'Seeded', 'Proposed'] as const;
 const WEIGHT_OPTIONS   = [0.5, 1.0, 1.5, 2.0] as const;
 const STATUS_ORDER     = { Approved: 0, Seeded: 1, Proposed: 2 } as const;
+const COL_W            = 210; // column / card width in px
 
 type ProjectType   = typeof PROJECT_TYPES[number];
 type ProjectStatus = typeof PROJECT_STATUSES[number];
@@ -74,12 +75,12 @@ const S = {
 
   badge: (bg: string, color: string, border: string): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 4,
-    padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600,
+    padding: '2px 7px', borderRadius: 10, fontSize: 10, fontWeight: 600,
     letterSpacing: '0.03em', background: bg, color, border: `1px solid ${border}`,
     whiteSpace: 'nowrap' as const,
   }),
   actionBtn: (danger?: boolean): React.CSSProperties => ({
-    padding: '4px 10px', fontSize: 12, fontWeight: 500, background: 'transparent',
+    padding: '3px 9px', fontSize: 11, fontWeight: 500, background: 'transparent',
     border: `1px solid ${danger ? '#F5C0BB' : '#D5D5D5'}`,
     color: danger ? '#C0392B' : '#666666', borderRadius: 4, cursor: 'pointer',
   }),
@@ -150,8 +151,6 @@ export default function Projects() {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting,     setDeleting]     = useState(false);
 
-  // ── Reference data ────────────────────────────────────────────────────────
-
   useEffect(() => {
     Promise.all([
       refDataApi.regions().catch(() => [] as Region[]),
@@ -167,8 +166,6 @@ export default function Projects() {
     );
   }, [form.region_id, countries]);
 
-  // ── Load projects ─────────────────────────────────────────────────────────
-
   const loadProjects = useCallback(async () => {
     setLoading(true); setError(null);
     try {
@@ -181,8 +178,6 @@ export default function Projects() {
   }, [isActiveFilter]);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
-
-  // ── Filtering ─────────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     let list = projects;
@@ -201,9 +196,37 @@ export default function Projects() {
     return list;
   }, [projects, search, statusFilter, typeFilter]);
 
+  // Country groups and derived matrix for the aligned-row layout
   const countryGroups = useMemo(() => groupByCountry(filtered), [filtered]);
+  const countriesList = useMemo(() => countryGroups.map(([c]) => c), [countryGroups]);
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
+  // projectMatrix[country][status] = sorted Project[]
+  const projectMatrix = useMemo(() => {
+    const m: Record<string, Record<string, Project[]>> = {};
+    for (const [country, projs] of countryGroups) {
+      m[country] = {
+        Approved: projs.filter(p => p.status === 'Approved'),
+        Seeded:   projs.filter(p => p.status === 'Seeded'),
+        Proposed: projs.filter(p => p.status === 'Proposed'),
+      };
+    }
+    return m;
+  }, [countryGroups]);
+
+  // Per-country summary stats
+  const countryStats = useMemo(() => {
+    const s: Record<string, { total: number; retail: number; xscale: number; matrix: number; weight: number }> = {};
+    for (const [country, projs] of countryGroups) {
+      s[country] = {
+        total:  projs.length,
+        retail: projs.filter(p => p.type === 'Retail').length,
+        xscale: projs.filter(p => p.type === 'xScale').length,
+        matrix: projs.filter(p => p.type === 'Matrix').length,
+        weight: projs.reduce((sum, p) => sum + (Number(p.weight) || 1), 0),
+      };
+    }
+    return s;
+  }, [countryGroups]);
 
   const stats = useMemo(() => {
     const all = projects;
@@ -217,8 +240,6 @@ export default function Projects() {
       totalWeight: all.reduce((s, p) => s + (Number(p.weight) || 1), 0),
     };
   }, [projects]);
-
-  // ── Form helpers ──────────────────────────────────────────────────────────
 
   function openAdd() {
     setEditTarget(null); setForm(emptyForm); setNameError(''); setModalOpen(true);
@@ -284,13 +305,13 @@ export default function Projects() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const statItems = [
-    { label: 'Total',        value: stats.total,                    color: '#555555' },
-    { label: 'Approved',     value: stats.approved,                 color: '#1E8A4A' },
-    { label: 'Seeded',       value: stats.seeded,                   color: '#D4870A' },
-    { label: 'Proposed',     value: stats.proposed,                 color: '#4477EE' },
-    { label: 'Retail',       value: stats.retail,                   color: '#1565C0' },
-    { label: 'xScale',       value: stats.xscale,                   color: '#6A1B9A' },
-    { label: 'Total Weight', value: stats.totalWeight.toFixed(1),   color: '#E31837' },
+    { label: 'Total',        value: stats.total,                  color: '#555555' },
+    { label: 'Approved',     value: stats.approved,               color: '#1E8A4A' },
+    { label: 'Seeded',       value: stats.seeded,                 color: '#D4870A' },
+    { label: 'Proposed',     value: stats.proposed,               color: '#4477EE' },
+    { label: 'Retail',       value: stats.retail,                 color: '#1565C0' },
+    { label: 'xScale',       value: stats.xscale,                 color: '#6A1B9A' },
+    { label: 'Total Weight', value: stats.totalWeight.toFixed(1), color: '#E31837' },
   ];
 
   return (
@@ -349,7 +370,7 @@ export default function Projects() {
 
         {!loading && (
           <span style={{ color: '#666666', fontSize: 13 }}>
-            {filtered.length} {filtered.length === 1 ? 'project' : 'projects'} · {countryGroups.length} {countryGroups.length === 1 ? 'country' : 'countries'}
+            {filtered.length} {filtered.length === 1 ? 'project' : 'projects'} · {countriesList.length} {countriesList.length === 1 ? 'country' : 'countries'}
           </span>
         )}
       </div>
@@ -376,23 +397,117 @@ export default function Projects() {
           )}
         </div>
       ) : (
-        /* Country columns — horizontal scroll */
-        <div style={{
-          display: 'flex',
-          gap: 16,
-          overflowX: 'auto',
-          alignItems: 'flex-start',
-          paddingBottom: 20,
-        }}>
-          {countryGroups.map(([country, projs]) => (
-            <CountryColumn
-              key={country}
-              country={country}
-              projects={projs}
-              onEdit={openEdit}
-              onDelete={setDeleteTarget}
-            />
-          ))}
+        /* ── Row-aligned grid: rows = status, columns = country ── */
+        <div style={{ overflowX: 'auto', paddingBottom: 20 }}>
+          <div style={{ minWidth: 'max-content' }}>
+
+            {/* Country header row */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {countriesList.map(country => {
+                const cs = countryStats[country];
+                return (
+                  <div key={country} style={{ width: COL_W, flexShrink: 0 }}>
+                    <div style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #E0E0E0',
+                      borderTop: '3px solid #E31837',
+                      borderRadius: 8,
+                      padding: '11px 13px 10px',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {country}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666666', marginBottom: 6 }}>
+                        <span><strong style={{ color: '#111111' }}>{cs.total}</strong> projects</span>
+                        <span>Wt: <strong style={{ color: '#E31837' }}>{cs.weight.toFixed(1)}</strong></span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {cs.retail > 0 && (
+                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
+                            {cs.retail} Retail
+                          </span>
+                        )}
+                        {cs.xscale > 0 && (
+                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
+                            {cs.xscale} xScale
+                          </span>
+                        )}
+                        {cs.matrix > 0 && (
+                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
+                            {cs.matrix} Matrix
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Status rows — Approved, then Seeded, then Proposed */}
+            {PROJECT_STATUSES.map(status => {
+              const sm           = statusMeta(status);
+              const statusTotal  = filtered.filter(p => p.status === status).length;
+              if (statusTotal === 0) return null;
+
+              return (
+                <div key={status} style={{ marginBottom: 20 }}>
+
+                  {/* Status row label */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    marginBottom: 8, padding: '6px 12px',
+                    background: sm.bg, border: `1px solid ${sm.border}`,
+                    borderRadius: 6,
+                  }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: sm.dot, display: 'inline-block', flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: sm.color, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                      {status}
+                    </span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, color: '#FFFFFF',
+                      background: sm.color, padding: '0px 6px', borderRadius: 8,
+                      lineHeight: '18px',
+                    }}>
+                      {statusTotal}
+                    </span>
+                  </div>
+
+                  {/* One cell per country, aligned in columns */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    {countriesList.map(country => {
+                      const cards = projectMatrix[country]?.[status] ?? [];
+                      return (
+                        <div
+                          key={country}
+                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 7 }}
+                        >
+                          {cards.map(p => (
+                            <ProjectCard
+                              key={p.id}
+                              project={p}
+                              onEdit={() => openEdit(p)}
+                              onDelete={() => setDeleteTarget(p)}
+                            />
+                          ))}
+                          {/* Empty placeholder preserves column width alignment */}
+                          {cards.length === 0 && (
+                            <div style={{
+                              height: 36,
+                              border: '1px dashed #E4E4E4',
+                              borderRadius: 6,
+                              background: '#FAFAFA',
+                            }} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -519,146 +634,14 @@ export default function Projects() {
 }
 
 // ---------------------------------------------------------------------------
-// Country column
-// ---------------------------------------------------------------------------
-
-function CountryColumn({
-  country, projects, onEdit, onDelete,
-}: {
-  country: string;
-  projects: Project[];
-  onEdit: (p: Project) => void;
-  onDelete: (p: Project) => void;
-}) {
-  const retail      = projects.filter(p => p.type === 'Retail').length;
-  const xscale      = projects.filter(p => p.type === 'xScale').length;
-  const matrix      = projects.filter(p => p.type === 'Matrix').length;
-  const totalWeight = projects.reduce((s, p) => s + (Number(p.weight) || 1), 0);
-
-  const byStatus = {
-    Approved: projects.filter(p => p.status === 'Approved'),
-    Seeded:   projects.filter(p => p.status === 'Seeded'),
-    Proposed: projects.filter(p => p.status === 'Proposed'),
-  };
-
-  return (
-    <div style={{ width: 272, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-
-      {/* Column header */}
-      <div style={{
-        background: '#FFFFFF',
-        border: '1px solid #E0E0E0',
-        borderBottom: '2px solid #E31837',
-        borderRadius: '8px 8px 0 0',
-        padding: '14px 16px 12px',
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#111111', marginBottom: 10 }}>
-          {country}
-        </div>
-
-        {/* Summary row 1: total + weight */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ fontSize: 12, color: '#666666' }}>
-            <strong style={{ color: '#111111', fontSize: 14 }}>{projects.length}</strong>
-            {' '}project{projects.length !== 1 ? 's' : ''}
-          </span>
-          <span style={{ fontSize: 12, color: '#666666' }}>
-            Wt: <strong style={{ color: '#E31837' }}>{totalWeight.toFixed(1)}</strong>
-          </span>
-        </div>
-
-        {/* Summary row 2: type breakdown */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {retail > 0 && (
-            <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 10, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
-              {retail} Retail
-            </span>
-          )}
-          {xscale > 0 && (
-            <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 10, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
-              {xscale} xScale
-            </span>
-          )}
-          {matrix > 0 && (
-            <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 10, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
-              {matrix} Matrix
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Column body */}
-      <div style={{
-        background: '#EAEDF2',
-        border: '1px solid #E0E0E0',
-        borderTop: 'none',
-        borderRadius: '0 0 8px 8px',
-        padding: '8px 10px 12px',
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 0,
-        minHeight: 80,
-      }}>
-        {(['Approved', 'Seeded', 'Proposed'] as const).map(status => {
-          const group = byStatus[status];
-          if (group.length === 0) return null;
-          const sm = statusMeta(status);
-          return (
-            <div key={status}>
-              {/* Status section header */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                margin: '8px 2px 6px',
-              }}>
-                <span style={{
-                  width: 7, height: 7, borderRadius: '50%',
-                  background: sm.dot, flexShrink: 0, display: 'inline-block',
-                }} />
-                <span style={{
-                  fontSize: 10, fontWeight: 700, color: sm.color,
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                }}>
-                  {status}
-                </span>
-                <span style={{
-                  marginLeft: 'auto', fontSize: 10, fontWeight: 600,
-                  color: '#FFFFFF', background: sm.color,
-                  padding: '0px 5px', borderRadius: 8,
-                }}>
-                  {group.length}
-                </span>
-              </div>
-
-              {/* Cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {group.map(p => (
-                  <ProjectCard
-                    key={p.id}
-                    project={p}
-                    onEdit={() => onEdit(p)}
-                    onDelete={() => onDelete(p)}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Project card
+// Project card  (210px column width)
 // ---------------------------------------------------------------------------
 
 function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdit: () => void; onDelete: () => void }) {
   const [hover, setHover] = useState(false);
-
-  const tm      = typeMeta(p.type);
-  const weight  = Number(p.weight) || 1;
-  const metaParts = [p.metro, p.phase_code].filter(Boolean);
+  const tm     = typeMeta(p.type);
+  const weight = Number(p.weight) || 1;
+  const meta   = [p.metro, p.phase_code].filter(Boolean).join(' · ');
 
   return (
     <div
@@ -669,41 +652,41 @@ function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdi
         border: `1px solid ${hover ? '#C8C8C8' : '#E4E4E4'}`,
         borderLeft: `3px solid ${tm.color}`,
         borderRadius: 6,
-        padding: '12px 13px 10px',
-        boxShadow: hover ? '0 2px 10px rgba(0,0,0,0.09)' : '0 1px 3px rgba(0,0,0,0.04)',
+        padding: '10px 11px 9px',
+        boxShadow: hover ? '0 2px 8px rgba(0,0,0,0.09)' : '0 1px 2px rgba(0,0,0,0.04)',
         transition: 'box-shadow 0.15s, border-color 0.15s',
         cursor: 'default',
+        width: '100%',
+        boxSizing: 'border-box',
       }}
     >
-      {/* Top row: type badge + weight */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+      {/* Type badge + weight */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={S.badge(tm.bg, tm.color, tm.border)}>{p.type}</span>
-        <span style={{
-          fontSize: 17, fontWeight: 800, color: tm.color, lineHeight: 1,
-        }}>
+        <span style={{ fontSize: 15, fontWeight: 800, color: tm.color, lineHeight: 1 }}>
           {weight.toFixed(1)}
         </span>
       </div>
 
       {/* Project name */}
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', lineHeight: 1.4, marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#111111', lineHeight: 1.4, marginBottom: 7 }}>
         {p.name}
       </div>
 
-      {/* Meta: metro / phase code / year */}
-      {(metaParts.length > 0 || p.year) && (
-        <div style={{ fontSize: 11, color: '#888888', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {metaParts.length > 0 && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="#AAAAAA">
+      {/* Meta */}
+      {(meta || p.year) && (
+        <div style={{ fontSize: 10, color: '#999999', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {meta && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="#BBBBBB" style={{ flexShrink: 0 }}>
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
               </svg>
-              {metaParts.join(' · ')}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</span>
             </span>
           )}
           {p.year && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="#AAAAAA">
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="#BBBBBB" style={{ flexShrink: 0 }}>
                 <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
               </svg>
               FY{p.year}
@@ -712,8 +695,8 @@ function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdi
         </div>
       )}
 
-      {/* Divider + actions */}
-      <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+      {/* Actions */}
+      <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 7, display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
         <button style={S.actionBtn()} onClick={onEdit}>Edit</button>
         {p.is_active && (
           <button style={S.actionBtn(true)} onClick={onDelete}>Archive</button>
