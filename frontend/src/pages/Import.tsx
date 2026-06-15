@@ -324,6 +324,75 @@ const PREVIEW_COLS: Record<Tab, { key: string; label: string }[]> = {
   ],
 };
 
+// ─── Template download ────────────────────────────────────────────────────────
+
+const TEMPLATES: Record<Tab, { filename: string; headers: string[]; sample: (string | number)[] }> = {
+  people: {
+    filename: 'people_import_template.xlsx',
+    headers: ['Name', 'Contract Type', 'Level Code', 'Discipline', 'Region Code', 'Contracted FTE'],
+    sample:  ['Jane Smith', 'FTE', 'M', 'Design', 'APAC', 1.0],
+  },
+  projects: {
+    filename: 'projects_import_template.xlsx',
+    headers: ['Project Name', 'Status', 'Type', 'Weight', 'Region Code', 'Country Code', 'Metro', 'Phase Code', 'Year'],
+    sample:  ['SYD Campus 1', 'Approved', 'Retail', 1.0, 'APAC', 'AU', 'Sydney', 'CD', 2026],
+  },
+  tbhcodes: {
+    filename: 'tbh_codes_import_template.xlsx',
+    headers: [
+      'TBH ID', 'Old TBH', 'Funding Year', 'Hire Type', 'Region Code', 'Project Type',
+      'Legal Entity', 'Location Code', 'Cost Centre', 'Job Profile', 'Replaced Employee',
+      'Manager Name', 'Target Hire Date', 'JR ID', 'Req Status', 'TA Contact',
+      'Candidate Name', 'Est Hire Date', 'TA Comments', 'TBH Description', 'FP&A Notes',
+    ],
+    sample: [
+      'TBH-001', '', 2026, 'New HC', 'APAC', 'Retail',
+      'Equinix Asia Pacific', 'SYD', 'CC-100', 'Senior Manager', '',
+      'John Doe', '2026-07-01', '', 'Open', 'ta@equinix.com',
+      '', '', '', 'Design Manager role for Sydney', '',
+    ],
+  },
+};
+
+const HINT_ROWS: Record<Tab, string[]> = {
+  people: [
+    '↑ Replace sample row above with your data',
+    'Contract Type: FTE | CON | VP | Dr | A FTE | R FTE',
+    'Level Code: VP | S Dr | Dr | S M | M | St | Sc | Ex | Sp | In | En | Ca | Te | Cons',
+    'Discipline: Construction | Design | Commercial | Commissioning | Other',
+    'Region Code: APAC | AMER | AMER_MATRIX | EMEA_N | EMEA_C | EMEA_S | MEA | GLOBAL',
+  ],
+  projects: [
+    '↑ Replace sample row above with your data',
+    'Status: Approved | Seeded | Proposed',
+    'Type: Retail | xScale | Matrix',
+    'Region Code: APAC | AMER | AMER_MATRIX | EMEA_N | EMEA_C | EMEA_S | MEA | GLOBAL',
+    'Country Code: 2-letter ISO code e.g. AU, SG, US, GB',
+  ],
+  tbhcodes: [
+    '↑ Replace sample row above with your data',
+    'Hire Type: New HC | Backfill | Conversion',
+    'Region Code: APAC | AMER | EMEA_N | EMEA_C | EMEA_S | MEA | GLOBAL',
+    'Project Type: Retail | xScale | Matrix',
+    'Req Status: Open | Approved | On Hold | Filled | Cancelled',
+  ],
+};
+
+function downloadTemplate(tab: Tab) {
+  const { filename, headers, sample } = TEMPLATES[tab];
+  const hints = HINT_ROWS[tab];
+
+  const aoa: any[][] = [headers, sample, [], ...hints.map(h => [h])];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Style header row width hints
+  ws['!cols'] = headers.map(() => ({ wch: 20 }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Import Data');
+  XLSX.writeFile(wb, filename);
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Import() {
@@ -423,12 +492,30 @@ export default function Import() {
     <div style={{ color: '#FFF', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ padding: '16px 24px', background: '#111', borderBottom: '1px solid #222', flexShrink: 0 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Data Import</h1>
-        <div style={{ width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 5 }} />
-        <p style={{ fontSize: 13, color: '#666', marginTop: 8, marginBottom: 0 }}>
-          Upload your GDC HUB Summaries Excel file to import workforce planning data
-        </p>
+      <div style={{ padding: '16px 24px', background: '#111', borderBottom: '1px solid #222', flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Data Import</h1>
+          <div style={{ width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 5 }} />
+          <p style={{ fontSize: 13, color: '#666', marginTop: 8, marginBottom: 0 }}>
+            Upload your GDC HUB Summaries Excel file to import workforce planning data
+          </p>
+        </div>
+        <button
+          onClick={() => downloadTemplate(activeTab)}
+          title="Download a blank Excel template for this tab"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', background: 'transparent',
+            border: '1px solid #444', color: '#AAA',
+            borderRadius: 6, fontSize: 13, cursor: 'pointer',
+            whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 16,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+          </svg>
+          Download Template
+        </button>
       </div>
 
       {/* Tabs */}

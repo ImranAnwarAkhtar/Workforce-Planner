@@ -436,7 +436,7 @@ export default function Allocations() {
                     {/* Person rows */}
                     {dPeople.map(person => {
                       const total      = getPersonTotal(person.id);
-                      const contracted = person.contracted_fte ?? 1;
+                      const contracted = parseFloat(String(person.contracted_fte ?? 1)) || 1;
                       const cc         = contractColour(person.contract_type_code);
 
                       return (
