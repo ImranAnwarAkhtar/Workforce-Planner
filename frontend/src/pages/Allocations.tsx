@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
-  peopleApi, projectsApi, allocationsApi, refDataApi,
-  type Person, type Project, type Allocation, type Region,
+  peopleApi, projectsApi, allocationsApi, refDataApi, gearingApi,
+  type Person, type Project, type Allocation, type Region, type GearingConstant,
 } from '../services/api';
 
 interface PendingChange {
@@ -78,22 +78,41 @@ function rowTotalColour(total: number, contracted: number): string {
   return '#F9A825';
 }
 
+// Compact shared styles
+const SEL: React.CSSProperties = {
+  padding: '5px 8px', background: '#FFFFFF', border: '1px solid #D5D5D5',
+  borderRadius: 4, color: '#111111', fontSize: 12,
+};
+const LBL: React.CSSProperties = {
+  fontSize: 11, color: '#666666', textTransform: 'uppercase', letterSpacing: '0.06em',
+};
+
 const STICKY_BG = '#FFFFFF';
-const ROW1_H = 44;
+const ROW1_H    = 44;
+const FOOT_BG   = '#111827';
+const FOOT_BG2  = '#0D1320';
 
 export default function Allocations() {
+  // ── Selectors ────────────────────────────────────────────────────────────
   const [regions, setRegions]               = useState<Region[]>([]);
   const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null);
   const [selectedYear, setSelectedYear]     = useState(2026);
-  const [statusFilter, setStatusFilter]     = useState<string>('All');
-  const [collapsedCountries, setCollapsedCountries]   = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter]     = useState('All');
+  const [countryFilter, setCountryFilter]   = useState('');
+  const [disciplineFilter, setDisciplineFilter] = useState('');
+
+  // ── Collapse state ────────────────────────────────────────────────────────
+  const [collapsedCountries, setCollapsedCountries]     = useState<Set<string>>(new Set());
   const [collapsedDisciplines, setCollapsedDisciplines] = useState<Set<string>>(new Set());
   const [collapsedLevels, setCollapsedLevels]           = useState<Set<string>>(new Set());
 
-  const [people, setPeople]           = useState<Person[]>([]);
-  const [projects, setProjects]       = useState<Project[]>([]);
-  const [allocations, setAllocations] = useState<Allocation[]>([]);
+  // ── Data ─────────────────────────────────────────────────────────────────
+  const [people, setPeople]               = useState<Person[]>([]);
+  const [projects, setProjects]           = useState<Project[]>([]);
+  const [allocations, setAllocations]     = useState<Allocation[]>([]);
+  const [gearingConstants, setGearingConstants] = useState<GearingConstant[]>([]);
 
+  // ── UI state ──────────────────────────────────────────────────────────────
   const [loading, setLoading]               = useState(false);
   const [backendError, setBackendError]     = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
@@ -101,13 +120,22 @@ export default function Allocations() {
 
   const pendingCount = Object.keys(pendingChanges).length;
 
+  // ── Load regions + gearing (once) ────────────────────────────────────────
+
   useEffect(() => {
     refDataApi.regions()
       .then(r => { setRegions(r); if (r.length > 0) setSelectedRegionId(r[0].id); })
       .catch(() => setBackendError(true));
+    gearingApi.list().then(setGearingConstants).catch(() => {});
   }, []);
 
-  useEffect(() => { setCollapsedCountries(new Set()); }, [selectedRegionId]);
+  // Reset country collapse + filter when region changes
+  useEffect(() => {
+    setCollapsedCountries(new Set());
+    setCountryFilter('');
+  }, [selectedRegionId]);
+
+  // ── Load planning data ────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     if (!selectedRegionId) return;
@@ -117,8 +145,11 @@ export default function Allocations() {
       const [peopleData, projectsData, allocData] = await Promise.all([
         peopleApi.list({ is_active: 'true', limit: 500 }).catch(() => [] as Person[]),
         projectsApi.list({ is_active: 'true', limit: 500 }).catch(() => [] as Project[]),
-        allocationsApi.list({ month_from: `${selectedYear}-01-01`, month_to: `${selectedYear}-12-31`, limit: 2000 })
-          .catch(() => [] as Allocation[]),
+        allocationsApi.list({
+          month_from: `${selectedYear}-01-01`,
+          month_to:   `${selectedYear}-12-31`,
+          limit: 2000,
+        }).catch(() => [] as Allocation[]),
       ]);
       setPeople(peopleData);
       setProjects(projectsData);
@@ -129,7 +160,7 @@ export default function Allocations() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Derived data ─────────────────────────────────────────────────────────
+  // ── Derived: projects + countries ─────────────────────────────────────────
 
   const visibleProjects = useMemo(() => {
     let f = projects.filter(p => p.region_id === selectedRegionId);
@@ -149,7 +180,14 @@ export default function Allocations() {
       .map(([country, projs]) => ({ country, projects: projs }));
   }, [visibleProjects]);
 
-  const allCountryNames = useMemo(() => countryGroups.map(g => g.country), [countryGroups]);
+  // Filter to displayed countries
+  const displayedCountryGroups = useMemo(() =>
+    countryFilter ? countryGroups.filter(g => g.country === countryFilter) : countryGroups,
+    [countryGroups, countryFilter]);
+
+  const allCountryNames = useMemo(() => displayedCountryGroups.map(g => g.country), [displayedCountryGroups]);
+
+  // ── Derived: allocation map ───────────────────────────────────────────────
 
   const allocMap = useMemo(() => {
     const m: Record<number, Record<number, { id: number; fte_value: number }>> = {};
@@ -160,7 +198,8 @@ export default function Allocations() {
     return m;
   }, [allocations]);
 
-  // Discipline → Level → People (two-level grouping)
+  // ── Derived: people hierarchy (Discipline → Level → People) ───────────────
+
   const hierarchy = useMemo(() => {
     const discMap: Record<string, Person[]> = {};
     for (const d of DISCIPLINES) discMap[d] = [];
@@ -185,6 +224,21 @@ export default function Allocations() {
     });
   }, [people]);
 
+  const displayedHierarchy = useMemo(() =>
+    disciplineFilter ? hierarchy.filter(h => h.discipline === disciplineFilter) : hierarchy,
+    [hierarchy, disciplineFilter]);
+
+  // ── Derived: gearing map ──────────────────────────────────────────────────
+
+  const gearingMap = useMemo(() => {
+    const map: Record<string, Record<string, { min: number; max: number }>> = {};
+    for (const gc of gearingConstants) {
+      if (!map[gc.discipline_name]) map[gc.discipline_name] = {};
+      map[gc.discipline_name][gc.project_type] = { min: gc.min_divisor, max: gc.max_divisor };
+    }
+    return map;
+  }, [gearingConstants]);
+
   // ── Toggles ───────────────────────────────────────────────────────────────
 
   function toggleCountry(c: string) {
@@ -196,7 +250,6 @@ export default function Allocations() {
   function toggleLevel(k: string) {
     setCollapsedLevels(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
   }
-
   const allCollapsed = allCountryNames.length > 0 && collapsedCountries.size >= allCountryNames.length;
   function collapseAllCountries() { setCollapsedCountries(new Set(allCountryNames)); }
   function expandAllCountries()   { setCollapsedCountries(new Set()); }
@@ -211,8 +264,14 @@ export default function Allocations() {
   function isCellDirty(personId: number, projectId: number): boolean {
     return `${personId}_${projectId}` in pendingChanges;
   }
+
+  // Person total is across DISPLAYED country groups only
+  const displayedProjectIds = useMemo(() =>
+    displayedCountryGroups.flatMap(g => g.projects.map(p => p.id)),
+    [displayedCountryGroups]);
+
   function getPersonTotal(personId: number): number {
-    return visibleProjects.reduce((s, p) => s + getCellValue(personId, p.id), 0);
+    return displayedProjectIds.reduce((s, pid) => s + getCellValue(personId, pid), 0);
   }
   function getPersonCountryTotal(personId: number, projs: Project[]): number {
     return projs.reduce((s, p) => s + getCellValue(personId, p.id), 0);
@@ -225,6 +284,38 @@ export default function Allocations() {
   }
   function getGroupGrandTotal(ppl: Person[]): number {
     return ppl.reduce((s, p) => s + getPersonTotal(p.id), 0);
+  }
+
+  // Gearing calculation for a country's project set
+  function getCountryGearing(projs: Project[]) {
+    // Project counts by type
+    const typeCounts: Record<string, number> = {};
+    for (const p of projs) typeCounts[p.type] = (typeCounts[p.type] ?? 0) + 1;
+
+    // Sum gearing across all disciplines that have constants
+    let gearMin = 0, gearMax = 0;
+    for (const typeMap of Object.values(gearingMap)) {
+      for (const [pType, { min: minDiv, max: maxDiv }] of Object.entries(typeMap)) {
+        const cnt = typeCounts[pType] ?? 0;
+        if (cnt > 0 && minDiv > 0 && maxDiv > 0) {
+          gearMin += cnt / minDiv;
+          gearMax += cnt / maxDiv;
+        }
+      }
+    }
+
+    // Total FTE allocated by all people for these projects
+    const allocated = people.reduce((sum, person) =>
+      sum + projs.reduce((s, proj) => s + getCellValue(person.id, proj.id), 0), 0);
+
+    return { gearMin, gearMax, allocated };
+  }
+
+  function gearingStatusColor(allocated: number, gearMin: number, gearMax: number): string {
+    if (gearMin === 0 && gearMax === 0) return '#777777';
+    if (allocated < gearMin - 0.05) return '#EF5350'; // understaffed
+    if (allocated > gearMax + 0.05)  return '#FFB74D'; // overstaffed
+    return '#66BB6A'; // within range
   }
 
   // ── Cell change + save ────────────────────────────────────────────────────
@@ -245,7 +336,10 @@ export default function Allocations() {
     setSaving(true);
     try {
       await Promise.all(Object.values(pendingChanges).map(ch =>
-        allocationsApi.upsert({ person_id: ch.personId, project_id: ch.projectId, month: ch.month, fte_value: ch.fteValue, is_billable: true })
+        allocationsApi.upsert({
+          person_id: ch.personId, project_id: ch.projectId,
+          month: ch.month, fte_value: ch.fteValue, is_billable: true,
+        })
       ));
       toast.success(`Saved ${pendingCount} allocation${pendingCount !== 1 ? 's' : ''}`);
       setPendingChanges({});
@@ -254,13 +348,15 @@ export default function Allocations() {
     finally   { setSaving(false); }
   }
 
-  // totalColCount: 1 (Name) + country cols + 1 (Total)
-  const totalColCount = 2 + countryGroups.reduce((s, g) =>
+  // ── Column count ──────────────────────────────────────────────────────────
+
+  const totalColCount = 2 + displayedCountryGroups.reduce((s, g) =>
     s + (collapsedCountries.has(g.country) ? 1 : g.projects.length + 1), 0);
 
   const selectedRegionName = regions.find(r => r.id === selectedRegionId)?.name ?? '';
+  const hasGearing = Object.keys(gearingMap).length > 0;
 
-  // ── Subtotal row (shared by both level and discipline totals) ─────────────
+  // ── Subtotal row ──────────────────────────────────────────────────────────
 
   function SubtotalRow({ label, labelColor, bg, ppl }: {
     label: string; labelColor: string; bg: string; ppl: Person[];
@@ -269,15 +365,14 @@ export default function Allocations() {
     return (
       <tr style={{ background: bg }}>
         <td style={{
-          position: 'sticky', left: 0, zIndex: 2,
-          background: bg, padding: '5px 14px',
-          fontSize: 11, color: labelColor, fontWeight: 700,
+          position: 'sticky', left: 0, zIndex: 2, background: bg,
+          padding: '5px 14px', fontSize: 11, color: labelColor, fontWeight: 700,
           borderRight: '2px solid #D0D0D0', borderTop: `1px solid ${labelColor}33`,
           whiteSpace: 'nowrap',
         }}>
           {label}
         </td>
-        {countryGroups.map(g => {
+        {displayedCountryGroups.map(g => {
           const col = countryColor(g.country);
           const ct  = getGroupCountryTotal(ppl, g.projects);
           if (collapsedCountries.has(g.country)) {
@@ -319,9 +414,8 @@ export default function Allocations() {
           );
         })}
         <td style={{
-          position: 'sticky', right: 0, zIndex: 2,
-          background: bg, borderLeft: '2px solid #D5D5D5',
-          padding: '5px 8px', textAlign: 'center',
+          position: 'sticky', right: 0, zIndex: 2, background: bg,
+          borderLeft: '2px solid #D5D5D5', padding: '5px 8px', textAlign: 'center',
           fontSize: 11, color: labelColor, fontWeight: 700,
           borderTop: `1px solid ${labelColor}33`,
         }}>
@@ -336,22 +430,25 @@ export default function Allocations() {
   return (
     <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
-      <div style={{ padding: '16px 24px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      {/* ── Header ── */}
+      <div style={{
+        padding: '14px 20px', background: '#FFFFFF',
+        borderBottom: '1px solid #E5E5E5', flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Allocations Planning</h1>
-            <div style={{ width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 5 }} />
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Allocations Planning</h1>
+            <div style={{ width: 36, height: 3, background: '#E31837', borderRadius: 2, marginTop: 4 }} />
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {pendingCount > 0 && (
-              <span style={{ fontSize: 12, color: '#D4870A', background: '#FFF8E1', padding: '4px 10px', borderRadius: 12, border: '1px solid #F9A825' }}>
-                {pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''}
+              <span style={{ fontSize: 11, color: '#D4870A', background: '#FFF8E1', padding: '3px 9px', borderRadius: 12, border: '1px solid #F9A825' }}>
+                {pendingCount} unsaved
               </span>
             )}
             <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
-              padding: '8px 20px', background: pendingCount > 0 ? '#E31837' : '#CCCCCC',
-              color: '#FFF', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600,
+              padding: '7px 18px', background: pendingCount > 0 ? '#E31837' : '#CCCCCC',
+              color: '#FFF', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600,
               cursor: pendingCount > 0 ? 'pointer' : 'default',
             }}>
               {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
@@ -359,45 +456,66 @@ export default function Allocations() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: '#666666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Region</label>
-            <select value={selectedRegionId ?? ''} onChange={e => setSelectedRegionId(Number(e.target.value))}
-              style={{ padding: '7px 10px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, color: '#111111', fontSize: 13 }}>
+        {/* ── Compact controls ── */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <label style={LBL}>Region</label>
+            <select value={selectedRegionId ?? ''} onChange={e => setSelectedRegionId(Number(e.target.value))} style={SEL}>
               {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: '#666666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Year</label>
-            <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
-              style={{ padding: '7px 10px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, color: '#111111', fontSize: 13 }}>
-              <option value={2026}>2026</option><option value={2027}>2027</option><option value={2028}>2028</option>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <label style={LBL}>Year</label>
+            <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} style={SEL}>
+              <option value={2026}>2026</option>
+              <option value={2027}>2027</option>
+              <option value={2028}>2028</option>
             </select>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: '#666666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              style={{ padding: '7px 10px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, color: '#111111', fontSize: 13 }}>
-              <option>All</option><option>Approved</option><option>Seeded</option><option>Proposed</option>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <label style={LBL}>Status</label>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={SEL}>
+              <option>All</option><option>Approved</option>
+              <option>Seeded</option><option>Proposed</option>
             </select>
           </div>
-          {countryGroups.length > 0 && (
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <label style={LBL}>Country</label>
+            <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)} style={SEL}>
+              <option value="">All</option>
+              {countryGroups.map(g => <option key={g.country} value={g.country}>{g.country}</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <label style={LBL}>Discipline</label>
+            <select value={disciplineFilter} onChange={e => setDisciplineFilter(e.target.value)} style={SEL}>
+              <option value="">All</option>
+              {DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+
+          {displayedCountryGroups.length > 0 && (
             <button onClick={allCollapsed ? expandAllCountries : collapseAllCountries} style={{
-              padding: '6px 12px', background: 'transparent',
-              border: '1px solid #D5D5D5', borderRadius: 5,
-              fontSize: 12, color: '#555555', cursor: 'pointer',
+              padding: '5px 10px', background: 'transparent',
+              border: '1px solid #D5D5D5', borderRadius: 4,
+              fontSize: 11, color: '#555555', cursor: 'pointer',
             }}>
               {allCollapsed ? 'Expand countries' : 'Collapse countries'}
             </button>
           )}
-          <span style={{ fontSize: 12, color: '#999999', marginLeft: 4 }}>
+
+          <span style={{ fontSize: 11, color: '#999999' }}>
             {visibleProjects.length} project{visibleProjects.length !== 1 ? 's' : ''} · {people.length} people
           </span>
         </div>
       </div>
 
       {backendError && (
-        <div style={{ padding: '10px 24px', background: '#FFFBEB', borderBottom: '1px solid #F5DFA0', color: '#996600', fontSize: 13, flexShrink: 0 }}>
+        <div style={{ padding: '10px 20px', background: '#FFFBEB', borderBottom: '1px solid #F5DFA0', color: '#996600', fontSize: 13, flexShrink: 0 }}>
           ⚠ Cannot reach backend.
           <button onClick={loadData} style={{ marginLeft: 12, padding: '3px 10px', background: 'transparent', border: '1px solid #D4870A', color: '#996600', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Retry</button>
         </div>
@@ -422,7 +540,7 @@ export default function Allocations() {
 
             <colgroup>
               <col style={{ width: 220 }} />
-              {countryGroups.map(g =>
+              {displayedCountryGroups.map(g =>
                 collapsedCountries.has(g.country)
                   ? <col key={`cg-${g.country}`} style={{ width: 65 }} />
                   : <React.Fragment key={`cg-${g.country}`}>
@@ -433,6 +551,7 @@ export default function Allocations() {
               <col style={{ width: 65 }} />
             </colgroup>
 
+            {/* ── Two-row sticky header ── */}
             <thead>
               <tr style={{ background: '#F8F9FA' }}>
                 <th rowSpan={2} style={{
@@ -444,8 +563,7 @@ export default function Allocations() {
                 }}>
                   Person
                 </th>
-
-                {countryGroups.map(g => {
+                {displayedCountryGroups.map(g => {
                   const isCollapsed = collapsedCountries.has(g.country);
                   const color = countryColor(g.country);
                   if (isCollapsed) {
@@ -465,8 +583,8 @@ export default function Allocations() {
                     );
                   }
                   return (
-                    <th key={g.country} colSpan={g.projects.length + 1} onClick={() => toggleCountry(g.country)}
-                      title={`Collapse ${g.country}`}
+                    <th key={g.country} colSpan={g.projects.length + 1}
+                      onClick={() => toggleCountry(g.country)} title={`Collapse ${g.country}`}
                       style={{
                         position: 'sticky', top: 0, zIndex: 3,
                         background: '#F8F9FA', borderLeft: `3px solid ${color}`,
@@ -481,7 +599,6 @@ export default function Allocations() {
                     </th>
                   );
                 })}
-
                 <th rowSpan={2} style={{
                   position: 'sticky', top: 0, right: 0, zIndex: 5,
                   background: '#F8F9FA', borderLeft: '2px solid #D5D5D5',
@@ -494,7 +611,7 @@ export default function Allocations() {
               </tr>
 
               <tr style={{ background: '#F8F9FA' }}>
-                {countryGroups.map(g => {
+                {displayedCountryGroups.map(g => {
                   if (collapsedCountries.has(g.country)) return null;
                   const color = countryColor(g.country);
                   return (
@@ -502,31 +619,26 @@ export default function Allocations() {
                       {g.projects.map(p => (
                         <th key={p.id} style={{
                           position: 'sticky', top: ROW1_H, zIndex: 3,
-                          background: '#F8F9FA',
-                          borderLeft: '1px solid #EEEEEE', borderBottom: '1px solid #D0D0D0',
-                          padding: '5px 4px', textAlign: 'center',
+                          background: '#F8F9FA', borderLeft: '1px solid #EEEEEE',
+                          borderBottom: '1px solid #D0D0D0', padding: '5px 4px', textAlign: 'center',
                         }}>
                           <div style={{
-                            fontSize: 10, fontWeight: 600,
-                            color: STATUS_COLOURS[p.status] ?? '#333333',
-                            whiteSpace: 'nowrap', overflow: 'hidden',
-                            textOverflow: 'ellipsis', maxWidth: 64, margin: '0 auto',
+                            fontSize: 10, fontWeight: 600, color: STATUS_COLOURS[p.status] ?? '#333333',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            maxWidth: 64, margin: '0 auto',
                           }} title={p.name}>{p.name}</div>
                           <span style={{
                             fontSize: 9, padding: '1px 3px', borderRadius: 3,
-                            background: '#FFFFFF',
-                            color: STATUS_COLOURS[p.status] ?? '#666666',
+                            background: '#FFFFFF', color: STATUS_COLOURS[p.status] ?? '#666666',
                             border: `1px solid ${STATUS_COLOURS[p.status] ?? '#CCCCCC'}`,
                             display: 'inline-block', marginTop: 2,
                           }}>{p.status}</span>
                         </th>
                       ))}
                       <th style={{
-                        position: 'sticky', top: ROW1_H, zIndex: 3,
-                        background: '#EEF4FF',
+                        position: 'sticky', top: ROW1_H, zIndex: 3, background: '#EEF4FF',
                         borderLeft: '1px solid #C0C8E0', borderRight: '1px solid #C0C8E0',
-                        borderBottom: '1px solid #D0D0D0',
-                        padding: '5px 4px', textAlign: 'center',
+                        borderBottom: '1px solid #D0D0D0', padding: '5px 4px', textAlign: 'center',
                         fontSize: 10, color, fontWeight: 700, whiteSpace: 'nowrap',
                       }}>
                         Σ {g.country.slice(0, 3)}
@@ -537,8 +649,9 @@ export default function Allocations() {
               </tr>
             </thead>
 
+            {/* ── Body ── */}
             <tbody>
-              {hierarchy.map(({ discipline, levels, allPeople }) => {
+              {displayedHierarchy.map(({ discipline, levels, allPeople }) => {
                 const isDiscCollapsed = collapsedDisciplines.has(discipline);
                 const discColor       = DISCIPLINE_COLOURS[discipline] ?? '#888888';
                 const discTotal       = getGroupGrandTotal(allPeople);
@@ -546,15 +659,14 @@ export default function Allocations() {
                 return (
                   <React.Fragment key={discipline}>
 
-                    {/* ── Discipline header ── */}
+                    {/* Discipline header */}
                     <tr onClick={() => toggleDiscipline(discipline)} style={{ cursor: 'pointer' }}>
                       <td colSpan={totalColCount - 1} style={{
-                        position: 'sticky', left: 0,
+                        position: 'sticky', left: 0, zIndex: 2,
                         background: '#F2F4F8',
                         borderLeft: `4px solid ${discColor}`,
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
-                        padding: '8px 14px',
-                        fontWeight: 700, fontSize: 13, color: discColor,
+                        padding: '8px 14px', fontWeight: 700, fontSize: 13, color: discColor,
                         whiteSpace: 'nowrap',
                       }}>
                         <span style={{ marginRight: 8, fontSize: 11, opacity: 0.7 }}>
@@ -567,22 +679,20 @@ export default function Allocations() {
                       </td>
                       <td style={{
                         position: 'sticky', right: 0, zIndex: 2,
-                        background: '#F2F4F8',
-                        borderLeft: '2px solid #D5D5D5',
+                        background: '#F2F4F8', borderLeft: '2px solid #D5D5D5',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
-                        padding: '8px', textAlign: 'center',
-                        fontSize: 12, fontWeight: 700,
+                        padding: '8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
                         color: discTotal > 0 ? discColor : '#CCCCCC',
                       }}>
                         {discTotal > 0 ? discTotal.toFixed(1) : '—'}
                       </td>
                     </tr>
 
-                    {/* ── Level groups (when discipline expanded) ── */}
+                    {/* Level groups */}
                     {!isDiscCollapsed && levels.map(({ code, levelName, people: levelPeople }) => {
-                      const levelKey        = `${discipline}::${code}`;
-                      const isLvlCollapsed  = collapsedLevels.has(levelKey);
-                      const levelTotal      = getGroupGrandTotal(levelPeople);
+                      const levelKey       = `${discipline}::${code}`;
+                      const isLvlCollapsed = collapsedLevels.has(levelKey);
+                      const levelTotal     = getGroupGrandTotal(levelPeople);
 
                       return (
                         <React.Fragment key={levelKey}>
@@ -590,12 +700,11 @@ export default function Allocations() {
                           {/* Level header */}
                           <tr onClick={() => toggleLevel(levelKey)} style={{ cursor: 'pointer' }}>
                             <td colSpan={totalColCount - 1} style={{
-                              position: 'sticky', left: 0,
+                              position: 'sticky', left: 0, zIndex: 2,
                               background: '#EBF0FB',
                               borderLeft: '3px solid #1565C0',
                               borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
-                              padding: '6px 14px 6px 28px',
-                              fontWeight: 600, fontSize: 12, color: '#1565C0',
+                              padding: '6px 14px 6px 28px', fontWeight: 600, fontSize: 12, color: '#1565C0',
                               whiteSpace: 'nowrap',
                             }}>
                               <span style={{ marginRight: 8, fontSize: 10, opacity: 0.7 }}>
@@ -608,8 +717,7 @@ export default function Allocations() {
                             </td>
                             <td style={{
                               position: 'sticky', right: 0, zIndex: 2,
-                              background: '#EBF0FB',
-                              borderLeft: '2px solid #D5D5D5',
+                              background: '#EBF0FB', borderLeft: '2px solid #D5D5D5',
                               borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
                               padding: '6px 8px', textAlign: 'center',
                               fontSize: 11, fontWeight: 700,
@@ -619,7 +727,7 @@ export default function Allocations() {
                             </td>
                           </tr>
 
-                          {/* Person rows (when level expanded) */}
+                          {/* Person rows */}
                           {!isLvlCollapsed && levelPeople.map(person => {
                             const total      = getPersonTotal(person.id);
                             const contracted = parseFloat(String(person.contracted_fte ?? 1)) || 1;
@@ -630,8 +738,7 @@ export default function Allocations() {
                                 <td style={{
                                   position: 'sticky', left: 0, zIndex: 2,
                                   background: STICKY_BG, borderRight: '2px solid #E0E0E0',
-                                  padding: '5px 14px 5px 28px',
-                                  maxWidth: 220, overflow: 'hidden',
+                                  padding: '5px 14px 5px 28px', maxWidth: 220, overflow: 'hidden',
                                 }}>
                                   <div style={{
                                     fontSize: 13, color: '#111111', fontWeight: 500,
@@ -653,7 +760,7 @@ export default function Allocations() {
                                   </div>
                                 </td>
 
-                                {countryGroups.map(g => {
+                                {displayedCountryGroups.map(g => {
                                   const isCollapsed  = collapsedCountries.has(g.country);
                                   const countryTotal = getPersonCountryTotal(person.id, g.projects);
                                   const color        = countryColor(g.country);
@@ -730,32 +837,221 @@ export default function Allocations() {
                             );
                           })}
 
-                          {/* Level subtotal */}
-                          <SubtotalRow
-                            label={`${levelName} · Subtotal`}
-                            labelColor="#1565C0"
-                            bg="#EEF2F8"
-                            ppl={levelPeople}
-                          />
+                          <SubtotalRow label={`${levelName} · Subtotal`} labelColor="#1565C0" bg="#EEF2F8" ppl={levelPeople} />
 
                         </React.Fragment>
                       );
                     })}
 
-                    {/* Discipline total (when expanded) */}
                     {!isDiscCollapsed && (
-                      <SubtotalRow
-                        label={`${discipline} · Total`}
-                        labelColor={discColor}
-                        bg={`${discColor}0D`}
-                        ppl={allPeople}
-                      />
+                      <SubtotalRow label={`${discipline} · Total`} labelColor={discColor} bg={`${discColor}0D`} ppl={allPeople} />
                     )}
 
                   </React.Fragment>
                 );
               })}
             </tbody>
+
+            {/* ── Gearing footer ── */}
+            {hasGearing && (
+              <tfoot>
+                {/* Separator */}
+                <tr>
+                  <td colSpan={totalColCount} style={{ padding: 0, height: 3, background: '#333333' }} />
+                </tr>
+
+                {/* Total Allocated */}
+                <tr style={{ background: FOOT_BG }}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG,
+                    padding: '7px 14px', fontSize: 11, fontWeight: 700, color: '#CCCCCC',
+                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap',
+                  }}>
+                    Total Allocated
+                  </td>
+                  {displayedCountryGroups.map(g => {
+                    const { allocated, gearMin, gearMax } = getCountryGearing(g.projects);
+                    const gc = gearingStatusColor(allocated, gearMin, gearMax);
+                    const isCollapsed = collapsedCountries.has(g.country);
+
+                    if (isCollapsed) {
+                      return (
+                        <td key={g.country} style={{
+                          textAlign: 'center', fontSize: 13, fontWeight: 700, color: gc,
+                          background: FOOT_BG, padding: '7px 6px',
+                          borderLeft: '2px solid #2A3545',
+                        }}>
+                          {allocated > 0 ? allocated.toFixed(1) : '—'}
+                        </td>
+                      );
+                    }
+                    return (
+                      <React.Fragment key={g.country}>
+                        {g.projects.map(proj => {
+                          const pt = people.reduce((s, p) => s + getCellValue(p.id, proj.id), 0);
+                          return (
+                            <td key={proj.id} style={{
+                              textAlign: 'center', fontSize: 11, color: '#888888',
+                              background: FOOT_BG, padding: '7px 4px', borderLeft: '1px solid #2A3545',
+                            }}>
+                              {pt > 0 ? pt.toFixed(1) : ''}
+                            </td>
+                          );
+                        })}
+                        <td style={{
+                          textAlign: 'center', fontSize: 13, fontWeight: 700, color: gc,
+                          background: FOOT_BG, padding: '7px 6px',
+                          borderLeft: '1px solid #3A4555', borderRight: '1px solid #2A3545',
+                        }}>
+                          {allocated > 0 ? allocated.toFixed(1) : '—'}
+                        </td>
+                      </React.Fragment>
+                    );
+                  })}
+                  <td style={{
+                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG,
+                    borderLeft: '2px solid #2A3545', padding: '7px 8px',
+                    textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#CCCCCC',
+                  }}>
+                    {people.reduce((s, p) => s + displayedProjectIds.reduce((ss, pid) => ss + getCellValue(p.id, pid), 0), 0).toFixed(1)}
+                  </td>
+                </tr>
+
+                {/* Gearing Min */}
+                <tr style={{ background: FOOT_BG2 }}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
+                    padding: '5px 14px', fontSize: 10, color: '#66BB6A',
+                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap', fontWeight: 600,
+                  }}>
+                    Gearing Min
+                  </td>
+                  {displayedCountryGroups.map(g => {
+                    const { gearMin } = getCountryGearing(g.projects);
+                    const isCollapsed = collapsedCountries.has(g.country);
+                    if (isCollapsed) {
+                      return (
+                        <td key={g.country} style={{
+                          textAlign: 'center', fontSize: 11, color: '#66BB6A',
+                          background: FOOT_BG2, padding: '5px 6px', borderLeft: '2px solid #2A3545',
+                        }}>
+                          {gearMin > 0 ? gearMin.toFixed(1) : '—'}
+                        </td>
+                      );
+                    }
+                    return (
+                      <React.Fragment key={g.country}>
+                        {g.projects.map(proj => (
+                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: '1px solid #2A3545' }} />
+                        ))}
+                        <td style={{
+                          textAlign: 'center', fontSize: 11, color: '#66BB6A',
+                          background: FOOT_BG2, padding: '5px 6px',
+                          borderLeft: '1px solid #3A4555', borderRight: '1px solid #2A3545',
+                        }}>
+                          {gearMin > 0 ? gearMin.toFixed(1) : '—'}
+                        </td>
+                      </React.Fragment>
+                    );
+                  })}
+                  <td style={{
+                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
+                    borderLeft: '2px solid #2A3545', padding: '5px 8px',
+                    textAlign: 'center', fontSize: 10, color: '#444444',
+                  }}>—</td>
+                </tr>
+
+                {/* Gearing Max */}
+                <tr style={{ background: FOOT_BG2 }}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
+                    padding: '5px 14px', fontSize: 10, color: '#FFB74D',
+                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap', fontWeight: 600,
+                  }}>
+                    Gearing Max
+                  </td>
+                  {displayedCountryGroups.map(g => {
+                    const { gearMax } = getCountryGearing(g.projects);
+                    const isCollapsed = collapsedCountries.has(g.country);
+                    if (isCollapsed) {
+                      return (
+                        <td key={g.country} style={{
+                          textAlign: 'center', fontSize: 11, color: '#FFB74D',
+                          background: FOOT_BG2, padding: '5px 6px', borderLeft: '2px solid #2A3545',
+                        }}>
+                          {gearMax > 0 ? gearMax.toFixed(1) : '—'}
+                        </td>
+                      );
+                    }
+                    return (
+                      <React.Fragment key={g.country}>
+                        {g.projects.map(proj => (
+                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: '1px solid #2A3545' }} />
+                        ))}
+                        <td style={{
+                          textAlign: 'center', fontSize: 11, color: '#FFB74D',
+                          background: FOOT_BG2, padding: '5px 6px',
+                          borderLeft: '1px solid #3A4555', borderRight: '1px solid #2A3545',
+                        }}>
+                          {gearMax > 0 ? gearMax.toFixed(1) : '—'}
+                        </td>
+                      </React.Fragment>
+                    );
+                  })}
+                  <td style={{
+                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
+                    borderLeft: '2px solid #2A3545', padding: '5px 8px',
+                    textAlign: 'center', fontSize: 10, color: '#444444',
+                  }}>—</td>
+                </tr>
+
+                {/* Variance */}
+                <tr style={{ background: FOOT_BG2, borderBottom: '2px solid #333333' }}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
+                    padding: '5px 14px', fontSize: 10, color: '#AAAAAA',
+                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap', fontWeight: 600,
+                    borderBottom: '1px solid #2A3545',
+                  }}>
+                    Variance vs Min
+                  </td>
+                  {displayedCountryGroups.map(g => {
+                    const { allocated, gearMin, gearMax } = getCountryGearing(g.projects);
+                    const variance = allocated - gearMin;
+                    const gc       = gearingStatusColor(allocated, gearMin, gearMax);
+                    const isCollapsed = collapsedCountries.has(g.country);
+
+                    const varCell = (key?: number | string) => (
+                      <td key={key} style={{
+                        textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc,
+                        background: FOOT_BG2, padding: '5px 6px',
+                        borderLeft: isCollapsed ? '2px solid #2A3545' : '1px solid #3A4555',
+                        borderRight: '1px solid #2A3545', borderBottom: '1px solid #2A3545',
+                      }}>
+                        {gearMin > 0 ? (variance >= 0 ? `+${variance.toFixed(1)}` : variance.toFixed(1)) : '—'}
+                      </td>
+                    );
+
+                    if (isCollapsed) return varCell(g.country);
+                    return (
+                      <React.Fragment key={g.country}>
+                        {g.projects.map(proj => (
+                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: '1px solid #2A3545', borderBottom: '1px solid #2A3545' }} />
+                        ))}
+                        {varCell()}
+                      </React.Fragment>
+                    );
+                  })}
+                  <td style={{
+                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
+                    borderLeft: '2px solid #2A3545', padding: '5px 8px',
+                    textAlign: 'center', fontSize: 10, color: '#444444',
+                    borderBottom: '1px solid #2A3545',
+                  }}>—</td>
+                </tr>
+              </tfoot>
+            )}
+
           </table>
         </div>
       )}

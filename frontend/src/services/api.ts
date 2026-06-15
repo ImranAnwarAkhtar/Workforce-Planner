@@ -462,6 +462,24 @@ export const refDataApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Gearing Constants
+// ---------------------------------------------------------------------------
+
+export interface GearingConstant {
+  id: number;
+  discipline_id: number;
+  discipline_name: string;
+  project_type: string;
+  min_divisor: number;
+  max_divisor: number;
+  updated_at: string;
+}
+
+export const gearingApi = {
+  list: () => client.get<ListResponse<GearingConstant>>('/gearing').then(r => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
 
