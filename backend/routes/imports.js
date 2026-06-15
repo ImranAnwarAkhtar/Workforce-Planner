@@ -66,11 +66,11 @@ router.post('/allocations', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_
     for (const r of records) {
       if (!r.person_id || !r.project_id || !r.month) continue;
       await client.query(
-        `INSERT INTO allocations (person_id, project_id, month, fte_value, is_billable, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6)
+        `INSERT INTO allocations (person_id, project_id, month, fte_value, is_billable)
+         VALUES ($1,$2,$3,$4,$5)
          ON CONFLICT (person_id, project_id, month) DO UPDATE
            SET fte_value = EXCLUDED.fte_value, is_billable = EXCLUDED.is_billable, updated_at = NOW()`,
-        [r.person_id, r.project_id, r.month, r.fte_value ?? 0, r.is_billable ?? true, req.user.id]
+        [r.person_id, r.project_id, r.month, r.fte_value ?? 0, r.is_billable ?? true]
       );
       imported++;
     }
@@ -161,11 +161,11 @@ router.post('/projects', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLA
       const status = ['Approved','Seeded','Proposed'].includes(r.status) ? r.status : 'Proposed';
 
       const { rows } = await client.query(
-        `INSERT INTO projects (name, type, status, weight, region_id, country_id, metro, phase_code, year, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        `INSERT INTO projects (name, type, status, weight, region_id, country_id, metro, phase_code, year)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          ON CONFLICT DO NOTHING RETURNING *`,
         [r.name, type, status, r.weight ?? 1.0, regionId, countryId,
-         r.metro ?? null, r.phase_code ?? null, r.year ?? null, req.user.id]
+         r.metro ?? null, r.phase_code ?? null, r.year ?? null]
       );
       if (rows[0]) inserted.push(rows[0]);
     }
