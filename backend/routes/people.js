@@ -105,6 +105,31 @@ router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => 
   }
 });
 
+// Bulk permanent delete — must be before /:id routes
+router.post('/bulk-delete', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'ids array is required' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: found } = await client.query('SELECT id, name FROM people WHERE id = ANY($1)', [ids]);
+    await client.query('DELETE FROM allocations      WHERE person_id = ANY($1)', [ids]);
+    await client.query('DELETE FROM person_regions   WHERE person_id = ANY($1)', [ids]);
+    await client.query('DELETE FROM person_countries WHERE person_id = ANY($1)', [ids]);
+    const { rowCount } = await client.query('DELETE FROM people WHERE id = ANY($1)', [ids]);
+    await client.query('COMMIT');
+    await req.auditLog({ actionType: 'BULK_PERMANENT_DELETE', resourceType: 'person', newValue: { count: rowCount, names: found.map(p => p.name) } });
+    res.json({ data: { deleted: rowCount } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
 router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => {
   const { name, contract_type_id, level_id, discipline_id, contracted_fte,
           tbh_code_id, workday_jr_id, is_active, region_ids, country_ids } = req.body;

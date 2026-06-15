@@ -63,7 +63,6 @@ const S = {
     color: danger ? '#cc6666' : '#AAAAAA',
     borderRadius: 4, cursor: 'pointer',
   }),
-  // Modal
   overlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -140,6 +139,11 @@ export default function People() {
   const [permDeleteTarget, setPermDeleteTarget] = useState<Person | null>(null);
   const [permDeleting, setPermDeleting] = useState(false);
 
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   const user = getUser();
   const canHardDelete = user?.role === 'Workforce Planning' || user?.role === 'PMO';
 
@@ -165,6 +169,7 @@ export default function People() {
     try {
       const data = await peopleApi.list({ is_active: statusFilter, limit: 500 });
       setPeople(data);
+      setSelectedIds(new Set());
     } catch (err: unknown) {
       setError((err as Error).message ?? 'Failed to load people');
     } finally {
@@ -173,6 +178,9 @@ export default function People() {
   }, [statusFilter]);
 
   useEffect(() => { loadPeople(); }, [loadPeople]);
+
+  // Clear selection when search filter changes
+  useEffect(() => { setSelectedIds(new Set()); }, [search]);
 
   // ── Filtered list ─────────────────────────────────────────────────────────
 
@@ -186,6 +194,27 @@ export default function People() {
       (p.contract_type_code ?? '').toLowerCase().includes(q)
     );
   }, [people, search]);
+
+  // ── Selection helpers ─────────────────────────────────────────────────────
+
+  function toggleSelect(id: number) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(p => p.id)));
+    }
+  }
+
+  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+  const someSelected = selectedIds.size > 0 && selectedIds.size < filtered.length;
 
   // ── Modal helpers ─────────────────────────────────────────────────────────
 
@@ -202,7 +231,7 @@ export default function People() {
       name: p.name,
       contracted_fte: String(p.contracted_fte),
       workday_jr_id: p.workday_jr_id ?? '',
-      level_id: '',    // we'd need the raw IDs from the detail endpoint to prefill
+      level_id: '',
       discipline_id: '',
       contract_type_id: '',
     });
@@ -219,7 +248,6 @@ export default function People() {
 
   async function handleSave() {
     if (!form.name.trim()) { setNameError('Name is required'); return; }
-
     setSaving(true);
     try {
       const body: CreatePersonBody = {
@@ -242,7 +270,7 @@ export default function People() {
     }
   }
 
-  // ── Delete (soft — sets is_active = false) ────────────────────────────────
+  // ── Delete handlers ───────────────────────────────────────────────────────
 
   async function handleDeactivate() {
     if (!deleteTarget) return;
@@ -267,6 +295,21 @@ export default function People() {
       setPermDeleting(false);
     }
   }
+
+  async function handleBulkDelete() {
+    setBulkDeleting(true);
+    try {
+      await peopleApi.bulkDeletePermanent(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+      loadPeople();
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  // Names of selected people for the confirmation modal
+  const selectedNames = filtered.filter(p => selectedIds.has(p.id)).map(p => p.name);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -307,6 +350,39 @@ export default function People() {
         <span style={{ color: '#666', fontSize: 13, marginLeft: 4 }}>
           {loading ? '…' : `${filtered.length} ${filtered.length === 1 ? 'person' : 'people'}`}
         </span>
+
+        {/* Bulk action bar — only visible when rows are checked */}
+        {canHardDelete && selectedIds.size > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '7px 14px', background: '#1A0A0A',
+            border: '1px solid #5a2a2a', borderRadius: 6, marginLeft: 'auto',
+          }}>
+            <span style={{ fontSize: 13, color: '#cc9999' }}>
+              {selectedIds.size} selected
+            </span>
+            <button
+              onClick={() => setBulkDeleteOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '5px 12px', background: '#8B0000', border: 'none',
+                color: '#FFF', borderRadius: 4, fontSize: 13, fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+              </svg>
+              Delete {selectedIds.size} {selectedIds.size === 1 ? 'record' : 'records'}
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              style={{ padding: '5px 10px', background: 'transparent', border: '1px solid #444', color: '#888', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table card */}
@@ -330,6 +406,18 @@ export default function People() {
           <table style={S.table}>
             <thead>
               <tr>
+                {canHardDelete && (
+                  <th style={{ ...S.th, width: 44, paddingRight: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={el => { if (el) el.indeterminate = someSelected; }}
+                      onChange={toggleSelectAll}
+                      style={{ cursor: 'pointer', accentColor: '#E31837', width: 15, height: 15 }}
+                      title="Select all"
+                    />
+                  </th>
+                )}
                 {['Name', 'Level / Role', 'Discipline', 'Contract Type', 'FTE', 'Status', ''].map(h => (
                   <th key={h} style={S.th}>{h}</th>
                 ))}
@@ -343,6 +431,8 @@ export default function People() {
                   onEdit={() => openEdit(p)}
                   onDelete={() => setDeleteTarget(p)}
                   onPermDelete={canHardDelete ? () => setPermDeleteTarget(p) : undefined}
+                  selected={selectedIds.has(p.id)}
+                  onToggle={canHardDelete ? () => toggleSelect(p.id) : undefined}
                 />
               ))}
             </tbody>
@@ -440,11 +530,7 @@ export default function People() {
             </p>
             <div style={S.modalFooter}>
               <button style={S.btnSecondary} onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
-              <button
-                style={{ ...S.btnPrimary, background: '#c41530' }}
-                onClick={handleDeactivate}
-                disabled={deleting}
-              >
+              <button style={{ ...S.btnPrimary, background: '#c41530' }} onClick={handleDeactivate} disabled={deleting}>
                 {deleting ? 'Deactivating…' : 'Deactivate'}
               </button>
             </div>
@@ -452,7 +538,7 @@ export default function People() {
         </div>
       )}
 
-      {/* Permanent delete confirmation modal */}
+      {/* Single permanent delete confirmation modal */}
       {permDeleteTarget && (
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setPermDeleteTarget(null); }}>
           <div style={{ ...S.modal, maxWidth: 420 }}>
@@ -465,12 +551,46 @@ export default function People() {
             </div>
             <div style={S.modalFooter}>
               <button style={S.btnSecondary} onClick={() => setPermDeleteTarget(null)} disabled={permDeleting}>Cancel</button>
-              <button
-                style={{ ...S.btnPrimary, background: '#8B0000' }}
-                onClick={handlePermanentDelete}
-                disabled={permDeleting}
-              >
+              <button style={{ ...S.btnPrimary, background: '#8B0000' }} onClick={handlePermanentDelete} disabled={permDeleting}>
                 {permDeleting ? 'Deleting…' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation modal */}
+      {bulkDeleteOpen && (
+        <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setBulkDeleteOpen(false); }}>
+          <div style={{ ...S.modal, maxWidth: 460 }}>
+            <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E31837' }}>
+              Permanently Delete {selectedIds.size} {selectedIds.size === 1 ? 'Person' : 'People'}
+            </h2>
+            <p style={{ color: '#CCCCCC', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
+              The following {selectedIds.size === 1 ? 'person' : 'people'} and all their allocation records will be permanently removed. This cannot be undone.
+            </p>
+
+            {/* Scrollable name list */}
+            <div style={{
+              maxHeight: 160, overflowY: 'auto',
+              background: '#0D0D0D', border: '1px solid #2a2a2a',
+              borderRadius: 6, padding: '8px 12px', marginBottom: 12,
+            }}>
+              {selectedNames.map(name => (
+                <div key={name} style={{ fontSize: 13, color: '#CCC', padding: '3px 0', borderBottom: '1px solid #1a1a1a' }}>
+                  {name}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: '#1A0A0A', border: '1px solid #5a2a2a', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#cc6666', marginBottom: 20 }}>
+              All FTE allocations for {selectedIds.size === 1 ? 'this person' : 'these people'} will also be deleted.
+            </div>
+
+            <div style={S.modalFooter}>
+              <button style={S.btnSecondary} onClick={() => setBulkDeleteOpen(false)} disabled={bulkDeleting}>Cancel</button>
+              <button style={{ ...S.btnPrimary, background: '#8B0000' }} onClick={handleBulkDelete} disabled={bulkDeleting}>
+                {bulkDeleting ? 'Deleting…' : `Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'Record' : 'Records'} Permanently`}
               </button>
             </div>
           </div>
@@ -481,7 +601,7 @@ export default function People() {
 }
 
 // ---------------------------------------------------------------------------
-// Row sub-component (memo to avoid unnecessary re-renders)
+// Row sub-component
 // ---------------------------------------------------------------------------
 
 interface PersonRowProps {
@@ -489,22 +609,36 @@ interface PersonRowProps {
   onEdit: () => void;
   onDelete: () => void;
   onPermDelete?: () => void;
+  selected?: boolean;
+  onToggle?: () => void;
 }
 
-function PersonRow({ person: p, onEdit, onDelete, onPermDelete }: PersonRowProps) {
+function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onToggle }: PersonRowProps) {
   const [hover, setHover] = useState(false);
 
   return (
     <tr
-      style={{ background: hover ? 'rgba(255,255,255,0.02)' : 'transparent' }}
+      style={{ background: selected ? '#1a0a0a' : hover ? 'rgba(255,255,255,0.02)' : 'transparent' }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
+      {onToggle && (
+        <td style={{ ...S.td, width: 44, paddingRight: 0 }}>
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={onToggle}
+            style={{ cursor: 'pointer', accentColor: '#E31837', width: 15, height: 15 }}
+          />
+        </td>
+      )}
+
       <td style={S.td}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-            background: '#E3183722', border: '1px solid #E3183744',
+            background: selected ? '#E3183733' : '#E3183722',
+            border: `1px solid ${selected ? '#E31837' : '#E3183744'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12, fontWeight: 700, color: '#E31837',
           }}>

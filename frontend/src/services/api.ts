@@ -115,6 +115,9 @@ export const peopleApi = {
 
   deletePermanent: (id: number) =>
     client.delete(`/people/${id}/permanent`),
+
+  bulkDeletePermanent: (ids: number[]) =>
+    client.post<{ data: { deleted: number } }>('/people/bulk-delete', { ids }).then(r => r.data.data),
 };
 
 // ---------------------------------------------------------------------------
