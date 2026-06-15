@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, getUser } from '../hooks/useAuth';
 
@@ -31,9 +32,17 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+  const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
   const user = getUser();
+
+  const isExpanded = !collapsed || hovered;
 
   function handleLogout() {
     logout();
@@ -41,113 +50,194 @@ export default function Sidebar() {
   }
 
   return (
-    <aside style={{
-      width: 240,
-      minWidth: 240,
-      background: '#111111',
-      display: 'flex',
-      flexDirection: 'column',
-      borderRight: '1px solid #222222',
-      height: '100vh',
-    }}>
-      {/* Logo */}
-      <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid #222222' }}>
-        <div style={{ color: '#E31837', fontSize: 13, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-          Equinix
+    <aside
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        height: '100vh',
+        width: isExpanded ? 240 : 56,
+        background: '#111111',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRight: '1px solid #222222',
+        transition: 'width 0.25s ease',
+        overflow: 'hidden',
+        zIndex: 200,
+        boxShadow: collapsed && hovered ? '4px 0 24px rgba(0,0,0,0.35)' : 'none',
+      }}
+    >
+      {/* Logo + toggle */}
+      <div style={{
+        height: 68,
+        borderBottom: '1px solid #222222',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 14px',
+        gap: 10,
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}>
+        {/* Red "E" mark — always visible */}
+        <div style={{
+          width: 28, height: 28, borderRadius: 6,
+          background: '#E31837',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, fontWeight: 900, color: '#FFFFFF',
+          flexShrink: 0, letterSpacing: 0,
+        }}>
+          E
         </div>
-        <div style={{ color: '#888888', fontSize: 11, marginTop: 3, letterSpacing: '0.04em' }}>
-          GDC Workforce Planning
+
+        {/* Brand text — fades in when expanded */}
+        <div style={{
+          opacity: isExpanded ? 1 : 0,
+          transition: 'opacity 0.15s ease',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          flex: 1,
+          minWidth: 0,
+        }}>
+          <div style={{ color: '#E31837', fontSize: 13, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+            Equinix
+          </div>
+          <div style={{ color: '#888888', fontSize: 11, marginTop: 2, letterSpacing: '0.04em' }}>
+            GDC Workforce Planning
+          </div>
         </div>
+
+        {/* Collapse / pin-open toggle — only shown when expanded */}
+        <button
+          onClick={onToggle}
+          title={collapsed ? 'Pin sidebar open' : 'Collapse sidebar'}
+          style={{
+            opacity: isExpanded ? 1 : 0,
+            pointerEvents: isExpanded ? 'auto' : 'none',
+            transition: 'opacity 0.15s ease',
+            width: 26, height: 26,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid #333333',
+            borderRadius: 5,
+            color: '#777777',
+            cursor: 'pointer',
+            flexShrink: 0,
+            padding: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            {collapsed
+              /* last_page »» — "pin sidebar open" */
+              ? <path d="M5.59 7.41L10.18 12l-4.59 4.59L7 18l6-6-6-6zM16 6h2v12h-2z" />
+              /* first_page «« — "collapse sidebar" */
+              : <path d="M18.41 16.59L13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" />
+            }
+          </svg>
+        </button>
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, paddingTop: 8, overflowY: 'auto' }}>
+      <nav style={{ flex: 1, paddingTop: 8, overflowY: 'auto', overflowX: 'hidden' }}>
         {NAV.map(({ to, label, icon }) => (
           <NavLink
             key={to}
             to={to}
+            title={!isExpanded ? label : undefined}
             style={({ isActive }) => ({
               display: 'flex',
               alignItems: 'center',
               gap: 12,
-              padding: '10px 20px',
+              padding: '10px 19px',
               color: isActive ? '#FFFFFF' : '#999999',
               textDecoration: 'none',
               fontSize: 14,
               fontWeight: isActive ? 600 : 400,
               background: isActive ? 'rgba(227,24,55,0.1)' : 'transparent',
               borderLeft: `3px solid ${isActive ? '#E31837' : 'transparent'}`,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
             })}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
               <path d={ICONS[icon]} />
             </svg>
-            {label}
+            <span style={{
+              opacity: isExpanded ? 1 : 0,
+              transition: 'opacity 0.15s ease',
+            }}>
+              {label}
+            </span>
           </NavLink>
         ))}
       </nav>
 
       {/* User footer */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid #222222' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          {/* Avatar */}
+      <div style={{
+        borderTop: '1px solid #222222',
+        padding: '14px 14px',
+        flexShrink: 0,
+        overflow: 'hidden',
+      }}>
+        {/* Avatar + name row */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          overflow: 'hidden',
+        }}>
           <div style={{
-            width: 34,
-            height: 34,
+            width: 28, height: 28,
             borderRadius: '50%',
             background: '#E31837',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 13,
-            fontWeight: 700,
-            color: '#FFFFFF',
-            flexShrink: 0,
-            letterSpacing: '0.03em',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700, color: '#FFFFFF',
+            flexShrink: 0, letterSpacing: '0.03em',
           }}>
             {user ? initials(user.name) : '?'}
           </div>
-
-          {/* Name + role */}
-          <div style={{ overflow: 'hidden' }}>
-            <div style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: '#FFFFFF',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>
+          <div style={{
+            overflow: 'hidden',
+            opacity: isExpanded ? 1 : 0,
+            transition: 'opacity 0.15s ease',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+            flex: 1,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user?.name ?? 'Demo User'}
             </div>
-            <div style={{
-              fontSize: 11,
-              color: '#888888',
-              marginTop: 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>
+            <div style={{ fontSize: 11, color: '#888888', marginTop: 1 }}>
               {user?.role ?? ''}
             </div>
           </div>
         </div>
 
-        <button
-          onClick={handleLogout}
-          style={{
-            width: '100%',
-            padding: '7px 0',
-            background: 'transparent',
-            border: '1px solid #333333',
-            color: '#999999',
-            fontSize: 12,
-            borderRadius: 4,
-            cursor: 'pointer',
-          }}
-        >
-          Sign Out
-        </button>
+        {/* Sign out button — slides in with max-height transition */}
+        <div style={{
+          maxHeight: isExpanded ? 44 : 0,
+          opacity: isExpanded ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.25s ease, opacity 0.15s ease',
+          marginTop: isExpanded ? 12 : 0,
+        }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              padding: '7px 0',
+              background: 'transparent',
+              border: '1px solid #333333',
+              color: '#999999',
+              fontSize: 12,
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
     </aside>
   );
