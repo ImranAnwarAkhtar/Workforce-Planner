@@ -246,7 +246,7 @@ function PipelineTable({ rows, loading }: { rows: PipelineRow[]; loading: boolea
                   </td>
                 ))}
                 <td style={{ ...tdN, color: '#FFF' }}>{row.total}</td>
-                <td style={{ ...tdM }}>{row.totalWeight > 0 ? row.totalWeight.toFixed(1) : '—'}</td>
+                <td style={{ ...tdM }}>{row.totalWeight > 0 ? Number(row.totalWeight).toFixed(1) : '—'}</td>
               </tr>
             ))}
           </tbody>
@@ -269,7 +269,7 @@ function PipelineTable({ rows, loading }: { rows: PipelineRow[]; loading: boolea
                     <td key={i} style={{ ...tdN, fontSize: 12 }}>{v || '—'}</td>
                   ))}
                   <td style={{ ...tdN }}>{totals.total}</td>
-                  <td style={{ ...tdM }}>{totals.weight > 0 ? totals.weight.toFixed(1) : '—'}</td>
+                  <td style={{ ...tdM }}>{totals.weight > 0 ? Number(totals.weight).toFixed(1) : '—'}</td>
                 </tr>
               </tfoot>
             );
@@ -552,7 +552,7 @@ export default function Dashboard() {
       if (p.status === 'Approved' || p.status === 'Seeded' || p.status === 'Proposed') {
         grp[p.status as 'Approved' | 'Seeded' | 'Proposed']++;
       }
-      row.totalWeight += p.weight ?? 0;
+      row.totalWeight += Number(p.weight) || 0;
       row.total++;
     }
     return Object.values(byRegion).sort((a, b) => a.regionName.localeCompare(b.regionName));

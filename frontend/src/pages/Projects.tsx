@@ -493,7 +493,7 @@ function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdi
   const sm   = statusMeta(p.status);
   const tm   = typeMeta(p.type);
   const loc  = [p.metro, p.country_name, p.region_name].filter(Boolean).join(', ');
-  const adjCount = (p.weight ?? 1).toFixed(1);
+  const adjCount = (Number(p.weight) || 1).toFixed(1);
 
   return (
     <div
@@ -527,7 +527,7 @@ function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdi
         {/* Weight pill — top right */}
         <div style={{ textAlign: 'right', marginLeft: 10, flexShrink: 0 }}>
           <div style={{ fontSize: 20, fontWeight: 800, color: tm.color, lineHeight: 1 }}>
-            {(p.weight ?? 1).toFixed(1)}
+            {(Number(p.weight) || 1).toFixed(1)}
           </div>
           <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>
             weight
