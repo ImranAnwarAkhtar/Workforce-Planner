@@ -2,8 +2,10 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
   peopleApi, projectsApi, allocationsApi, refDataApi, gearingApi,
+  headcountApi, type CreateHeadcountBody,
   type Person, type Project, type Allocation, type Region, type GearingConstant,
 } from '../services/api';
+import PersonEditPanel from '../components/PersonEditPanel';
 
 interface PendingChange {
   personId: number;
@@ -89,8 +91,9 @@ const LBL: React.CSSProperties = {
 
 const STICKY_BG = '#FFFFFF';
 const ROW1_H    = 44;
-const FOOT_BG   = '#111827';
-const FOOT_BG2  = '#0D1320';
+const FOOT_BG   = '#F0F2F5';
+const FOOT_BG2  = '#E8EBF0';
+const FOOT_BORDER = '#C8CDD8';
 
 export default function Allocations() {
   // ── Selectors ────────────────────────────────────────────────────────────
@@ -111,12 +114,27 @@ export default function Allocations() {
   const [projects, setProjects]           = useState<Project[]>([]);
   const [allocations, setAllocations]     = useState<Allocation[]>([]);
   const [gearingConstants, setGearingConstants] = useState<GearingConstant[]>([]);
+  const [refLevels, setRefLevels]         = useState<{ id: number; level_name: string; short_code: string }[]>([]);
+  const [refCountries, setRefCountries]   = useState<{ id: number; name: string; region_id: number }[]>([]);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [loading, setLoading]               = useState(false);
   const [backendError, setBackendError]     = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
   const [saving, setSaving]                 = useState(false);
+
+  // Person edit panel
+  const [editPerson, setEditPerson] = useState<Person | null>(null);
+
+  // New headcount request modal
+  const [requestModal, setRequestModal] = useState<{
+    discipline: string; disciplineId?: number;
+  } | null>(null);
+  const [requestForm, setRequestForm] = useState({
+    name: '', contract_type_code: 'R FTE' as 'R FTE' | 'R CON',
+    level_id: '', country_id: '', notes: '',
+  });
+  const [requestSaving, setRequestSaving] = useState(false);
 
   const pendingCount = Object.keys(pendingChanges).length;
 
@@ -127,6 +145,8 @@ export default function Allocations() {
       .then(r => { setRegions(r); if (r.length > 0) setSelectedRegionId(r[0].id); })
       .catch(() => setBackendError(true));
     gearingApi.list().then(setGearingConstants).catch(() => {});
+    refDataApi.levels().then(setRefLevels).catch(() => {});
+    refDataApi.countries().then(setRefCountries).catch(() => {});
   }, []);
 
   // Reset country collapse + filter when region changes
@@ -220,7 +240,8 @@ export default function Allocations() {
       const levels = Object.entries(lvlMap)
         .sort(([a], [b]) => (LEVEL_ORDER[a] ?? 99) - (LEVEL_ORDER[b] ?? 99))
         .map(([code, { levelName, people: ppl }]) => ({ code, levelName, people: ppl }));
-      return { discipline: disc, levels, allPeople: discPeople };
+      const discId = discPeople[0]?.discipline_id ?? undefined;
+      return { discipline: disc, disciplineId: discId, levels, allPeople: discPeople };
     });
   }, [people]);
 
@@ -313,9 +334,9 @@ export default function Allocations() {
 
   function gearingStatusColor(allocated: number, gearMin: number, gearMax: number): string {
     if (gearMin === 0 && gearMax === 0) return '#777777';
-    if (allocated < gearMin - 0.05) return '#EF5350'; // understaffed
-    if (allocated > gearMax + 0.05)  return '#FFB74D'; // overstaffed
-    return '#66BB6A'; // within range
+    if (allocated < gearMin - 0.05) return '#C0392B'; // understaffed
+    if (allocated > gearMax + 0.05)  return '#B5600A'; // overstaffed
+    return '#1E8A4A'; // within range
   }
 
   // ── Cell change + save ────────────────────────────────────────────────────
@@ -346,6 +367,30 @@ export default function Allocations() {
       await loadData();
     } catch { toast.error('Failed to save — check backend connection'); }
     finally   { setSaving(false); }
+  }
+
+  // ── Headcount request ────────────────────────────────────────────────────
+
+  async function handleCreateRequest() {
+    if (!requestForm.name.trim()) { toast.error('Name is required'); return; }
+    setRequestSaving(true);
+    try {
+      const body: CreateHeadcountBody = {
+        name: requestForm.name.trim(),
+        contract_type_code: requestForm.contract_type_code,
+        discipline_id: requestModal?.disciplineId ?? undefined,
+        level_id: requestForm.level_id ? Number(requestForm.level_id) : undefined,
+        country_id: requestForm.country_id ? Number(requestForm.country_id) : undefined,
+        region_id: selectedRegionId ?? undefined,
+        notes: requestForm.notes.trim() || undefined,
+      };
+      await headcountApi.create(body);
+      toast.success('Headcount request created');
+      setRequestModal(null);
+      setRequestForm({ name: '', contract_type_code: 'R FTE', level_id: '', country_id: '', notes: '' });
+      await loadData();
+    } catch { toast.error('Failed to create request'); }
+    finally   { setRequestSaving(false); }
   }
 
   // ── Column count ──────────────────────────────────────────────────────────
@@ -651,7 +696,7 @@ export default function Allocations() {
 
             {/* ── Body ── */}
             <tbody>
-              {displayedHierarchy.map(({ discipline, levels, allPeople }) => {
+              {displayedHierarchy.map(({ discipline, disciplineId, levels, allPeople }) => {
                 const isDiscCollapsed = collapsedDisciplines.has(discipline);
                 const discColor       = DISCIPLINE_COLOURS[discipline] ?? '#888888';
                 const discTotal       = getGroupGrandTotal(allPeople);
@@ -740,10 +785,15 @@ export default function Allocations() {
                                   background: STICKY_BG, borderRight: '2px solid #E0E0E0',
                                   padding: '5px 14px 5px 28px', maxWidth: 220, overflow: 'hidden',
                                 }}>
-                                  <div style={{
-                                    fontSize: 13, color: '#111111', fontWeight: 500,
-                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                  }}>
+                                  <div
+                                    onClick={() => setEditPerson(person)}
+                                    title="Click to edit"
+                                    style={{
+                                      fontSize: 13, color: '#111111', fontWeight: 500,
+                                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                      cursor: 'pointer', textDecoration: 'underline',
+                                      textDecorationColor: '#CCCCCC', textDecorationStyle: 'dotted',
+                                    }}>
                                     {person.name}
                                   </div>
                                   <div style={{ display: 'flex', gap: 4, marginTop: 2, alignItems: 'center' }}>
@@ -847,6 +897,29 @@ export default function Allocations() {
                       <SubtotalRow label={`${discipline} · Total`} labelColor={discColor} bg={`${discColor}0D`} ppl={allPeople} />
                     )}
 
+                    {/* + Request headcount button for this discipline */}
+                    <tr>
+                      <td colSpan={totalColCount} style={{
+                        padding: '4px 14px 4px 18px',
+                        background: '#FAFAFA',
+                        borderBottom: '1px solid #EEEEEE',
+                      }}>
+                        <button
+                          onClick={() => {
+                            setRequestModal({ discipline, disciplineId: disciplineId });
+                            setRequestForm({ name: `TBH – ${discipline} `, contract_type_code: 'R FTE', level_id: '', country_id: '', notes: '' });
+                          }}
+                          style={{
+                            fontSize: 11, color: discColor, background: 'transparent',
+                            border: `1px dashed ${discColor}55`, borderRadius: 4,
+                            padding: '3px 10px', cursor: 'pointer',
+                          }}
+                        >
+                          + Request headcount ({discipline})
+                        </button>
+                      </td>
+                    </tr>
+
                   </React.Fragment>
                 );
               })}
@@ -857,15 +930,15 @@ export default function Allocations() {
               <tfoot>
                 {/* Separator */}
                 <tr>
-                  <td colSpan={totalColCount} style={{ padding: 0, height: 3, background: '#333333' }} />
+                  <td colSpan={totalColCount} style={{ padding: 0, height: 2, background: FOOT_BORDER }} />
                 </tr>
 
                 {/* Total Allocated */}
                 <tr style={{ background: FOOT_BG }}>
                   <td style={{
                     position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG,
-                    padding: '7px 14px', fontSize: 11, fontWeight: 700, color: '#CCCCCC',
-                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap',
+                    padding: '7px 14px', fontSize: 11, fontWeight: 700, color: '#333333',
+                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap',
                   }}>
                     Total Allocated
                   </td>
@@ -879,7 +952,7 @@ export default function Allocations() {
                         <td key={g.country} style={{
                           textAlign: 'center', fontSize: 13, fontWeight: 700, color: gc,
                           background: FOOT_BG, padding: '7px 6px',
-                          borderLeft: '2px solid #2A3545',
+                          borderLeft: `2px solid ${FOOT_BORDER}`,
                         }}>
                           {allocated > 0 ? allocated.toFixed(1) : '—'}
                         </td>
@@ -891,8 +964,8 @@ export default function Allocations() {
                           const pt = people.reduce((s, p) => s + getCellValue(p.id, proj.id), 0);
                           return (
                             <td key={proj.id} style={{
-                              textAlign: 'center', fontSize: 11, color: '#888888',
-                              background: FOOT_BG, padding: '7px 4px', borderLeft: '1px solid #2A3545',
+                              textAlign: 'center', fontSize: 11, color: '#555555',
+                              background: FOOT_BG, padding: '7px 4px', borderLeft: `1px solid ${FOOT_BORDER}`,
                             }}>
                               {pt > 0 ? pt.toFixed(1) : ''}
                             </td>
@@ -901,7 +974,7 @@ export default function Allocations() {
                         <td style={{
                           textAlign: 'center', fontSize: 13, fontWeight: 700, color: gc,
                           background: FOOT_BG, padding: '7px 6px',
-                          borderLeft: '1px solid #3A4555', borderRight: '1px solid #2A3545',
+                          borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}`,
                         }}>
                           {allocated > 0 ? allocated.toFixed(1) : '—'}
                         </td>
@@ -910,8 +983,8 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG,
-                    borderLeft: '2px solid #2A3545', padding: '7px 8px',
-                    textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#CCCCCC',
+                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '7px 8px',
+                    textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#333333',
                   }}>
                     {people.reduce((s, p) => s + displayedProjectIds.reduce((ss, pid) => ss + getCellValue(p.id, pid), 0), 0).toFixed(1)}
                   </td>
@@ -921,8 +994,8 @@ export default function Allocations() {
                 <tr style={{ background: FOOT_BG2 }}>
                   <td style={{
                     position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
-                    padding: '5px 14px', fontSize: 10, color: '#66BB6A',
-                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap', fontWeight: 600,
+                    padding: '5px 14px', fontSize: 10, color: '#1E8A4A',
+                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
                   }}>
                     Gearing Min
                   </td>
@@ -932,8 +1005,8 @@ export default function Allocations() {
                     if (isCollapsed) {
                       return (
                         <td key={g.country} style={{
-                          textAlign: 'center', fontSize: 11, color: '#66BB6A',
-                          background: FOOT_BG2, padding: '5px 6px', borderLeft: '2px solid #2A3545',
+                          textAlign: 'center', fontSize: 11, color: '#1E8A4A',
+                          background: FOOT_BG2, padding: '5px 6px', borderLeft: `2px solid ${FOOT_BORDER}`,
                         }}>
                           {gearMin > 0 ? gearMin.toFixed(1) : '—'}
                         </td>
@@ -942,12 +1015,12 @@ export default function Allocations() {
                     return (
                       <React.Fragment key={g.country}>
                         {g.projects.map(proj => (
-                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: '1px solid #2A3545' }} />
+                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />
                         ))}
                         <td style={{
-                          textAlign: 'center', fontSize: 11, color: '#66BB6A',
+                          textAlign: 'center', fontSize: 11, color: '#1E8A4A',
                           background: FOOT_BG2, padding: '5px 6px',
-                          borderLeft: '1px solid #3A4555', borderRight: '1px solid #2A3545',
+                          borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}`,
                         }}>
                           {gearMin > 0 ? gearMin.toFixed(1) : '—'}
                         </td>
@@ -956,8 +1029,8 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    borderLeft: '2px solid #2A3545', padding: '5px 8px',
-                    textAlign: 'center', fontSize: 10, color: '#444444',
+                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    textAlign: 'center', fontSize: 10, color: '#888888',
                   }}>—</td>
                 </tr>
 
@@ -965,8 +1038,8 @@ export default function Allocations() {
                 <tr style={{ background: FOOT_BG2 }}>
                   <td style={{
                     position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
-                    padding: '5px 14px', fontSize: 10, color: '#FFB74D',
-                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap', fontWeight: 600,
+                    padding: '5px 14px', fontSize: 10, color: '#B5600A',
+                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
                   }}>
                     Gearing Max
                   </td>
@@ -976,8 +1049,8 @@ export default function Allocations() {
                     if (isCollapsed) {
                       return (
                         <td key={g.country} style={{
-                          textAlign: 'center', fontSize: 11, color: '#FFB74D',
-                          background: FOOT_BG2, padding: '5px 6px', borderLeft: '2px solid #2A3545',
+                          textAlign: 'center', fontSize: 11, color: '#B5600A',
+                          background: FOOT_BG2, padding: '5px 6px', borderLeft: `2px solid ${FOOT_BORDER}`,
                         }}>
                           {gearMax > 0 ? gearMax.toFixed(1) : '—'}
                         </td>
@@ -986,12 +1059,12 @@ export default function Allocations() {
                     return (
                       <React.Fragment key={g.country}>
                         {g.projects.map(proj => (
-                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: '1px solid #2A3545' }} />
+                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />
                         ))}
                         <td style={{
-                          textAlign: 'center', fontSize: 11, color: '#FFB74D',
+                          textAlign: 'center', fontSize: 11, color: '#B5600A',
                           background: FOOT_BG2, padding: '5px 6px',
-                          borderLeft: '1px solid #3A4555', borderRight: '1px solid #2A3545',
+                          borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}`,
                         }}>
                           {gearMax > 0 ? gearMax.toFixed(1) : '—'}
                         </td>
@@ -1000,18 +1073,18 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    borderLeft: '2px solid #2A3545', padding: '5px 8px',
-                    textAlign: 'center', fontSize: 10, color: '#444444',
+                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    textAlign: 'center', fontSize: 10, color: '#888888',
                   }}>—</td>
                 </tr>
 
-                {/* Variance */}
-                <tr style={{ background: FOOT_BG2, borderBottom: '2px solid #333333' }}>
+                {/* Variance vs Min */}
+                <tr style={{ background: FOOT_BG2 }}>
                   <td style={{
                     position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
-                    padding: '5px 14px', fontSize: 10, color: '#AAAAAA',
-                    borderRight: '2px solid #2A3545', whiteSpace: 'nowrap', fontWeight: 600,
-                    borderBottom: '1px solid #2A3545',
+                    padding: '5px 14px', fontSize: 10, color: '#555555',
+                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
+                    borderTop: `1px solid ${FOOT_BORDER}`,
                   }}>
                     Variance vs Min
                   </td>
@@ -1025,8 +1098,8 @@ export default function Allocations() {
                       <td key={key} style={{
                         textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc,
                         background: FOOT_BG2, padding: '5px 6px',
-                        borderLeft: isCollapsed ? '2px solid #2A3545' : '1px solid #3A4555',
-                        borderRight: '1px solid #2A3545', borderBottom: '1px solid #2A3545',
+                        borderLeft: isCollapsed ? `2px solid ${FOOT_BORDER}` : `1px solid ${FOOT_BORDER}`,
+                        borderRight: `1px solid ${FOOT_BORDER}`, borderTop: `1px solid ${FOOT_BORDER}`,
                       }}>
                         {gearMin > 0 ? (variance >= 0 ? `+${variance.toFixed(1)}` : variance.toFixed(1)) : '—'}
                       </td>
@@ -1036,7 +1109,7 @@ export default function Allocations() {
                     return (
                       <React.Fragment key={g.country}>
                         {g.projects.map(proj => (
-                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: '1px solid #2A3545', borderBottom: '1px solid #2A3545' }} />
+                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}`, borderTop: `1px solid ${FOOT_BORDER}` }} />
                         ))}
                         {varCell()}
                       </React.Fragment>
@@ -1044,9 +1117,52 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    borderLeft: '2px solid #2A3545', padding: '5px 8px',
-                    textAlign: 'center', fontSize: 10, color: '#444444',
-                    borderBottom: '1px solid #2A3545',
+                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    textAlign: 'center', fontSize: 10, color: '#888888',
+                    borderTop: `1px solid ${FOOT_BORDER}`,
+                  }}>—</td>
+                </tr>
+
+                {/* Variance vs Max */}
+                <tr style={{ background: FOOT_BG2 }}>
+                  <td style={{
+                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
+                    padding: '5px 14px', fontSize: 10, color: '#555555',
+                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
+                  }}>
+                    Variance vs Max
+                  </td>
+                  {displayedCountryGroups.map(g => {
+                    const { allocated, gearMin, gearMax } = getCountryGearing(g.projects);
+                    const varianceMax = allocated - gearMax;
+                    const gc          = gearingStatusColor(allocated, gearMin, gearMax);
+                    const isCollapsed = collapsedCountries.has(g.country);
+
+                    const varMaxCell = (key?: number | string) => (
+                      <td key={key} style={{
+                        textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc,
+                        background: FOOT_BG2, padding: '5px 6px',
+                        borderLeft: isCollapsed ? `2px solid ${FOOT_BORDER}` : `1px solid ${FOOT_BORDER}`,
+                        borderRight: `1px solid ${FOOT_BORDER}`,
+                      }}>
+                        {gearMax > 0 ? (varianceMax >= 0 ? `+${varianceMax.toFixed(1)}` : varianceMax.toFixed(1)) : '—'}
+                      </td>
+                    );
+
+                    if (isCollapsed) return varMaxCell(g.country);
+                    return (
+                      <React.Fragment key={g.country}>
+                        {g.projects.map(proj => (
+                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />
+                        ))}
+                        {varMaxCell()}
+                      </React.Fragment>
+                    );
+                  })}
+                  <td style={{
+                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
+                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    textAlign: 'center', fontSize: 10, color: '#888888',
                   }}>—</td>
                 </tr>
               </tfoot>
@@ -1054,6 +1170,115 @@ export default function Allocations() {
 
           </table>
         </div>
+      )}
+
+      {/* ── Person edit panel ── */}
+      <PersonEditPanel
+        person={editPerson}
+        onClose={() => setEditPerson(null)}
+        onSaved={updated => {
+          setPeople(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p));
+          setEditPerson(null);
+        }}
+      />
+
+      {/* ── New headcount request modal ── */}
+      {requestModal && (
+        <>
+          <div onClick={() => setRequestModal(null)} style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 400,
+          }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 420, background: '#FFFFFF', borderRadius: 8,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)', zIndex: 401,
+            padding: 24, display: 'flex', flexDirection: 'column', gap: 14,
+          }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111111' }}>
+              Request Headcount — {requestModal.discipline}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>
+                Placeholder name
+              </label>
+              <input
+                style={{ padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13 }}
+                value={requestForm.name}
+                onChange={e => setRequestForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g. TBH – Construction VP"
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>Type</label>
+                <select
+                  style={{ padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13 }}
+                  value={requestForm.contract_type_code}
+                  onChange={e => setRequestForm(prev => ({ ...prev, contract_type_code: e.target.value as 'R FTE' | 'R CON' }))}
+                >
+                  <option value="R FTE">R FTE — Request Employee</option>
+                  <option value="R CON">R CON — Request Contractor</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>Level</label>
+                <select
+                  style={{ padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13 }}
+                  value={requestForm.level_id}
+                  onChange={e => setRequestForm(prev => ({ ...prev, level_id: e.target.value }))}
+                >
+                  <option value="">— Any level —</option>
+                  {refLevels.map(l => <option key={l.id} value={l.id}>{l.level_name} ({l.short_code})</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>Country</label>
+              <select
+                style={{ padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13 }}
+                value={requestForm.country_id}
+                onChange={e => setRequestForm(prev => ({ ...prev, country_id: e.target.value }))}
+              >
+                <option value="">— Not specified —</option>
+                {refCountries
+                  .filter(c => !selectedRegionId || c.region_id === selectedRegionId)
+                  .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>Notes / Justification</label>
+              <textarea
+                rows={3}
+                style={{ padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13, resize: 'vertical', fontFamily: 'inherit' }}
+                value={requestForm.notes}
+                onChange={e => setRequestForm(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Why is this role needed?"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <button onClick={() => setRequestModal(null)} style={{
+                flex: 1, padding: '9px 0', background: '#FFFFFF',
+                border: '1px solid #D5D5D5', borderRadius: 5, fontSize: 13, cursor: 'pointer',
+              }}>
+                Cancel
+              </button>
+              <button onClick={handleCreateRequest} disabled={requestSaving} style={{
+                flex: 2, padding: '9px 0',
+                background: requestSaving ? '#CCCCCC' : '#E31837',
+                border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600,
+                color: '#FFFFFF', cursor: requestSaving ? 'default' : 'pointer',
+              }}>
+                {requestSaving ? 'Submitting…' : 'Submit Request'}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -58,15 +58,21 @@ export interface Person {
   contracted_fte: number;
   is_active: boolean;
   workday_jr_id: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   contract_type_code: string | null;
   contract_type_description: string | null;
+  contract_category: string | null;
   colour_hex: string | null;
   level_name: string | null;
   level_code: string | null;
+  level_id: number | null;
   discipline_name: string | null;
+  discipline_id: number | null;
   tbh_id: string | null;
+  tbh_code_id: number | null;
+  contract_type_id: number | null;
   region_names: string | null;
   country_names: string | null;
 }
@@ -79,6 +85,7 @@ export interface PersonDetail extends Person {
 export interface PeopleQuery {
   discipline_id?: number;
   contract_type_id?: number;
+  contract_category?: string;
   region_id?: number;
   is_active?: 'true' | 'false' | 'all';
   limit?: number;
@@ -93,6 +100,7 @@ export interface CreatePersonBody {
   contracted_fte?: number;
   tbh_code_id?: number | null;
   workday_jr_id?: string | null;
+  notes?: string | null;
   region_ids?: number[];
   country_ids?: number[];
 }
@@ -120,6 +128,38 @@ export const peopleApi = {
 
   bulkDeletePermanent: (ids: number[]) =>
     client.post<{ data: { deleted: number } }>('/people/bulk-delete', { ids }).then(r => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
+// Headcount (placeholder workflow: R FTE → A FTE → FTE/SNR, R CON → A CON → CON)
+// ---------------------------------------------------------------------------
+
+export interface CreateHeadcountBody {
+  name: string;
+  contract_type_code: 'R FTE' | 'R CON';
+  level_id?: number | null;
+  discipline_id?: number | null;
+  contracted_fte?: number;
+  country_id?: number | null;
+  region_id?: number | null;
+  notes?: string | null;
+}
+
+export const headcountApi = {
+  list: () =>
+    client.get<ListResponse<Person>>('/headcount').then(r => r.data.data),
+
+  create: (body: CreateHeadcountBody) =>
+    client.post<ItemResponse<Person>>('/headcount', body).then(r => r.data.data),
+
+  approve: (id: number) =>
+    client.put<ItemResponse<Person>>(`/headcount/${id}/approve`).then(r => r.data.data),
+
+  assignTbh: (id: number, tbh_code_id: number | null) =>
+    client.put<ItemResponse<Person>>(`/headcount/${id}/tbh`, { tbh_code_id }).then(r => r.data.data),
+
+  convert: (id: number, body: { name: string; new_contract_type_code: string; notes?: string | null; workday_jr_id?: string | null }) =>
+    client.put<ItemResponse<Person>>(`/headcount/${id}/convert`, body).then(r => r.data.data),
 };
 
 // ---------------------------------------------------------------------------

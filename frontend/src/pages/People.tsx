@@ -188,7 +188,7 @@ export default function People() {
     setLoading(true);
     setError(null);
     try {
-      const data = await peopleApi.list({ is_active: statusFilter, limit: 500 });
+      const data = await peopleApi.list({ is_active: statusFilter, contract_category: 'existing', limit: 500 });
       setPeople(data);
       setSelectedIds(new Set());
     } catch (err: unknown) {

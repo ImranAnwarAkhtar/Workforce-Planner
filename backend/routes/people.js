@@ -6,7 +6,10 @@ const { requireRole, WRITER_ROLES, ROLES } = require('../middleware/rbac');
 const router = Router();
 
 router.get('/', requireAuth, async (req, res) => {
-  const { discipline_id, contract_type_id, region_id, is_active = 'true', limit = 100, offset = 0 } = req.query;
+  const {
+    discipline_id, contract_type_id, contract_category,
+    region_id, is_active = 'true', limit = 100, offset = 0,
+  } = req.query;
   const conditions = [];
   const params = [];
   let i = 1;
@@ -17,6 +20,12 @@ router.get('/', requireAuth, async (req, res) => {
   }
   if (discipline_id)    { conditions.push(`pe.discipline_id = $${i++}`);    params.push(parseInt(discipline_id, 10)); }
   if (contract_type_id) { conditions.push(`pe.contract_type_id = $${i++}`); params.push(parseInt(contract_type_id, 10)); }
+  if (contract_category) {
+    const cats = contract_category.split(',').map(c => c.trim()).filter(Boolean);
+    const placeholders = cats.map(() => `$${i++}`).join(', ');
+    conditions.push(`ct.category IN (${placeholders})`);
+    params.push(...cats);
+  }
   if (region_id) {
     conditions.push(`EXISTS (SELECT 1 FROM person_regions pr WHERE pr.person_id = pe.id AND pr.region_id = $${i++})`);
     params.push(parseInt(region_id, 10));
@@ -26,11 +35,13 @@ router.get('/', requireAuth, async (req, res) => {
   params.push(parseInt(limit, 10), parseInt(offset, 10));
 
   const { rows } = await pool.query(
-    `SELECT pe.id, pe.name, pe.contracted_fte, pe.is_active, pe.workday_jr_id, pe.created_at, pe.updated_at,
-            ct.code AS contract_type_code, ct.description AS contract_type_description, ct.colour_hex,
-            l.level_name, l.short_code AS level_code,
-            d.name AS discipline_name,
-            t.tbh_id,
+    `SELECT pe.id, pe.name, pe.contracted_fte, pe.is_active, pe.workday_jr_id, pe.notes,
+            pe.created_at, pe.updated_at,
+            ct.code AS contract_type_code, ct.description AS contract_type_description,
+            ct.colour_hex, ct.category AS contract_category,
+            l.level_name, l.short_code AS level_code, l.id AS level_id,
+            d.name AS discipline_name, d.id AS discipline_id,
+            t.tbh_id, pe.tbh_code_id,
             COALESCE((SELECT STRING_AGG(r.name, ', ' ORDER BY r.name)
                       FROM person_regions pr3 JOIN regions r ON pr3.region_id = r.id
                       WHERE pr3.person_id = pe.id), '') AS region_names,
@@ -138,7 +149,7 @@ router.post('/bulk-delete', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_
 
 router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => {
   const { name, contract_type_id, level_id, discipline_id, contracted_fte,
-          tbh_code_id, workday_jr_id, is_active, region_ids, country_ids } = req.body;
+          tbh_code_id, workday_jr_id, is_active, notes, region_ids, country_ids } = req.body;
   const sets = [];
   const params = [];
   let i = 1;
@@ -151,6 +162,7 @@ router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) =
   if (tbh_code_id      !== undefined) { sets.push(`tbh_code_id = $${i++}`);       params.push(tbh_code_id); }
   if (workday_jr_id    !== undefined) { sets.push(`workday_jr_id = $${i++}`);     params.push(workday_jr_id); }
   if (is_active        !== undefined) { sets.push(`is_active = $${i++}`);         params.push(is_active); }
+  if (notes            !== undefined) { sets.push(`notes = $${i++}`);             params.push(notes); }
 
   const client = await pool.connect();
   try {

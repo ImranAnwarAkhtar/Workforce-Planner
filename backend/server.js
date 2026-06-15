@@ -20,6 +20,7 @@ const dashboardRouter     = require('./routes/dashboard');
 const adminRouter         = require('./routes/admin');
 const commentsRouter      = require('./routes/comments');
 const importsRouter       = require('./routes/imports');
+const headcountRouter     = require('./routes/headcount');
 
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -58,6 +59,11 @@ app.use(auditMiddleware);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+// Run idempotent startup migrations
+const pool = require('./db/pool');
+pool.query(`
+  ALTER TABLE people ADD COLUMN IF NOT EXISTS notes TEXT;
+`).catch(err => logger.error('Startup migration failed', { error: err.message }));
 
 app.use('/api/projects',        wrapAsync(projectsRouter));
 app.use('/api/people',          wrapAsync(peopleRouter));
@@ -70,6 +76,7 @@ app.use('/api/dashboard',       wrapAsync(dashboardRouter));
 app.use('/api/admin',           wrapAsync(adminRouter));
 app.use('/api/comments',        wrapAsync(commentsRouter));
 app.use('/api/imports',         wrapAsync(importsRouter));
+app.use('/api/headcount',       wrapAsync(headcountRouter));
 
 app.use(notFound);
 app.use(errorHandler);
