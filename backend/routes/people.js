@@ -163,17 +163,7 @@ router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) =
   }
 });
 
-router.delete('/:id', requireAuth, requireRole(ROLES.PMO), async (req, res) => {
-  const { rows } = await pool.query(
-    'UPDATE people SET is_active = FALSE WHERE id = $1 RETURNING id',
-    [req.params.id]
-  );
-  if (!rows.length) return res.status(404).json({ error: 'Person not found' });
-  await req.auditLog({ actionType: 'DELETE', resourceType: 'person', resourceId: rows[0].id });
-  res.status(204).end();
-});
-
-// Permanent hard delete — removes the person and all their allocations
+// Permanent hard delete — must be registered before /:id to avoid route shadowing
 router.delete('/:id/permanent', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
   const client = await pool.connect();
   try {
@@ -196,6 +186,16 @@ router.delete('/:id/permanent', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFO
   } finally {
     client.release();
   }
+});
+
+router.delete('/:id', requireAuth, requireRole(ROLES.PMO), async (req, res) => {
+  const { rows } = await pool.query(
+    'UPDATE people SET is_active = FALSE WHERE id = $1 RETURNING id',
+    [req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Person not found' });
+  await req.auditLog({ actionType: 'DELETE', resourceType: 'person', resourceId: rows[0].id });
+  res.status(204).end();
 });
 
 module.exports = router;
