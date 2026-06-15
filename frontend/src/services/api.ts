@@ -67,6 +67,8 @@ export interface Person {
   level_code: string | null;
   discipline_name: string | null;
   tbh_id: string | null;
+  region_names: string | null;
+  country_names: string | null;
 }
 
 export interface PersonDetail extends Person {

@@ -15,17 +15,22 @@ const S = {
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 } as React.CSSProperties,
   title: { fontSize: 24, fontWeight: 700, margin: 0, color: '#111111' } as React.CSSProperties,
   accent: { width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
-  toolbar: { display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' as const, alignItems: 'center' },
-  searchWrap: { position: 'relative', flex: '1 1 260px', maxWidth: 340 } as React.CSSProperties,
+  statsBar:  { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, marginBottom: 20 } as React.CSSProperties,
+  statCard:  (accent: string): React.CSSProperties => ({ background: '#FFFFFF', border: '1px solid #E5E5E5', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }),
+  statNum:   { fontSize: 22, fontWeight: 700, color: '#111111', lineHeight: 1 } as React.CSSProperties,
+  statLabel: { fontSize: 10, color: '#888888', marginTop: 4, textTransform: 'uppercase' as const, letterSpacing: '0.06em' } as React.CSSProperties,
+
+  toolbar: { display: 'flex', gap: 7, marginBottom: 16, flexWrap: 'wrap' as const, alignItems: 'center' },
+  searchWrap: { position: 'relative', flex: '1 1 200px', maxWidth: 280 } as React.CSSProperties,
   searchInput: {
-    width: '100%', padding: '9px 12px 9px 36px',
+    width: '100%', padding: '6px 10px 6px 28px',
     background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6,
-    color: '#111111', fontSize: 14, outline: 'none',
+    color: '#111111', fontSize: 12, outline: 'none',
   } as React.CSSProperties,
-  searchIcon: { position: 'absolute' as const, left: 11, top: '50%', transform: 'translateY(-50%)', color: '#999', pointerEvents: 'none' as const },
+  searchIcon: { position: 'absolute' as const, left: 8, top: '50%', transform: 'translateY(-50%)', color: '#999', pointerEvents: 'none' as const },
   select: {
-    padding: '9px 12px', background: '#FFFFFF', border: '1px solid #D5D5D5',
-    borderRadius: 6, color: '#111111', fontSize: 14, cursor: 'pointer', outline: 'none',
+    padding: '6px 8px', background: '#FFFFFF', border: '1px solid #D5D5D5',
+    borderRadius: 6, color: '#111111', fontSize: 12, cursor: 'pointer', outline: 'none',
   } as React.CSSProperties,
   btnPrimary: {
     padding: '9px 18px', background: '#E31837', color: '#FFFFFF',
@@ -95,6 +100,18 @@ const S = {
 };
 
 // ---------------------------------------------------------------------------
+// Region colours
+// ---------------------------------------------------------------------------
+
+const REGION_PALETTE = ['#1565C0', '#1E8A4A', '#6A1B9A', '#B5600A', '#006064', '#C0392B', '#4477EE', '#D4870A'];
+
+function regionColor(name: string): string {
+  if (!name || name === 'Unassigned') return '#AAAAAA';
+  const hash = name.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return REGION_PALETTE[hash % REGION_PALETTE.length];
+}
+
+// ---------------------------------------------------------------------------
 // Form state
 // ---------------------------------------------------------------------------
 
@@ -124,8 +141,12 @@ export default function People() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'true' | 'false' | 'all'>('true');
+  const [search,          setSearch]          = useState('');
+  const [statusFilter,    setStatusFilter]    = useState<'true' | 'false' | 'all'>('true');
+  const [regionFilter,    setRegionFilter]    = useState('');
+  const [countryFilter,   setCountryFilter]   = useState('');
+  const [disciplineFilter,setDisciplineFilter] = useState('');
+  const [levelFilter,     setLevelFilter]     = useState('');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Person | null>(null);
@@ -179,21 +200,75 @@ export default function People() {
 
   useEffect(() => { loadPeople(); }, [loadPeople]);
 
-  // Clear selection when search filter changes
-  useEffect(() => { setSelectedIds(new Set()); }, [search]);
+  // Clear selection when filters change
+  useEffect(() => { setSelectedIds(new Set()); }, [search, regionFilter, countryFilter, disciplineFilter, levelFilter]);
+
+  // ── Derived filter options ────────────────────────────────────────────────
+
+  const allRegions = useMemo(() => {
+    const names: string[] = [];
+    people.forEach(p => {
+      if (p.region_names) {
+        p.region_names.split(', ').forEach(r => { if (r && !names.includes(r)) names.push(r); });
+      }
+    });
+    return names.sort();
+  }, [people]);
+
+  const allCountries = useMemo(() => {
+    const source = regionFilter
+      ? people.filter(p => (p.region_names ?? '').split(', ').includes(regionFilter))
+      : people;
+    const names: string[] = [];
+    source.forEach(p => {
+      if (p.country_names) {
+        p.country_names.split(', ').forEach(c => { if (c && !names.includes(c)) names.push(c); });
+      }
+    });
+    return names.sort();
+  }, [people, regionFilter]);
+
+  // ── Region stats (always based on full loaded list, not filtered) ─────────
+
+  const regionStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    people.forEach(p => {
+      if (!p.region_names) {
+        counts['Unassigned'] = (counts['Unassigned'] || 0) + 1;
+      } else {
+        p.region_names.split(', ').forEach(r => {
+          if (r) counts[r] = (counts[r] || 0) + 1;
+        });
+      }
+    });
+    return Object.entries(counts).sort(([a], [b]) => {
+      if (a === 'Unassigned') return 1;
+      if (b === 'Unassigned') return -1;
+      return a.localeCompare(b);
+    });
+  }, [people]);
 
   // ── Filtered list ─────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return people;
-    const q = search.toLowerCase();
-    return people.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.discipline_name ?? '').toLowerCase().includes(q) ||
-      (p.level_name ?? '').toLowerCase().includes(q) ||
-      (p.contract_type_code ?? '').toLowerCase().includes(q)
-    );
-  }, [people, search]);
+    let list = people;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.discipline_name  ?? '').toLowerCase().includes(q) ||
+        (p.level_name       ?? '').toLowerCase().includes(q) ||
+        (p.contract_type_code ?? '').toLowerCase().includes(q) ||
+        (p.region_names     ?? '').toLowerCase().includes(q) ||
+        (p.country_names    ?? '').toLowerCase().includes(q)
+      );
+    }
+    if (regionFilter)     list = list.filter(p => (p.region_names  ?? '').split(', ').includes(regionFilter));
+    if (countryFilter)    list = list.filter(p => (p.country_names ?? '').split(', ').includes(countryFilter));
+    if (disciplineFilter) list = list.filter(p => p.discipline_name === disciplineFilter);
+    if (levelFilter)      list = list.filter(p => p.level_name      === levelFilter);
+    return list;
+  }, [people, search, regionFilter, countryFilter, disciplineFilter, levelFilter]);
 
   // ── Selection helpers ─────────────────────────────────────────────────────
 
@@ -327,6 +402,22 @@ export default function People() {
         </button>
       </div>
 
+      {/* Stats bar */}
+      {!loading && people.length > 0 && (
+        <div style={S.statsBar}>
+          <div style={S.statCard('#E31837')}>
+            <div style={S.statNum}>{people.length}</div>
+            <div style={S.statLabel}>Total People</div>
+          </div>
+          {regionStats.map(([region, count]) => (
+            <div key={region} style={S.statCard(regionColor(region))}>
+              <div style={S.statNum}>{count}</div>
+              <div style={S.statLabel}>{region}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div style={S.toolbar}>
         <div style={S.searchWrap}>
@@ -342,14 +433,44 @@ export default function People() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
+        <select style={S.select} value={regionFilter} onChange={e => { setRegionFilter(e.target.value); setCountryFilter(''); }}>
+          <option value="">All regions</option>
+          {allRegions.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+
+        <select style={S.select} value={countryFilter} onChange={e => setCountryFilter(e.target.value)}>
+          <option value="">All countries</option>
+          {allCountries.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <select style={S.select} value={disciplineFilter} onChange={e => setDisciplineFilter(e.target.value)}>
+          <option value="">All disciplines</option>
+          {disciplines.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+        </select>
+
+        <select style={S.select} value={levelFilter} onChange={e => setLevelFilter(e.target.value)}>
+          <option value="">All levels</option>
+          {levels.map(l => <option key={l.id} value={l.level_name}>{l.level_name} ({l.short_code})</option>)}
+        </select>
+
         <select style={S.select} value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}>
           <option value="true">Active only</option>
           <option value="false">Inactive only</option>
           <option value="all">All statuses</option>
         </select>
-        <span style={{ color: '#666', fontSize: 13, marginLeft: 4 }}>
+
+        <span style={{ color: '#666', fontSize: 12, whiteSpace: 'nowrap' }}>
           {loading ? '…' : `${filtered.length} ${filtered.length === 1 ? 'person' : 'people'}`}
         </span>
+
+        {(search || regionFilter || countryFilter || disciplineFilter || levelFilter) && (
+          <button
+            style={{ padding: '4px 10px', background: 'transparent', border: '1px solid #D5D5D5', color: '#666666', borderRadius: 4, fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+            onClick={() => { setSearch(''); setRegionFilter(''); setCountryFilter(''); setDisciplineFilter(''); setLevelFilter(''); }}
+          >
+            Clear filters
+          </button>
+        )}
 
         {/* Bulk action bar — only visible when rows are checked */}
         {canHardDelete && selectedIds.size > 0 && (

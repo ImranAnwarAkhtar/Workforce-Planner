@@ -30,13 +30,21 @@ router.get('/', requireAuth, async (req, res) => {
             ct.code AS contract_type_code, ct.description AS contract_type_description, ct.colour_hex,
             l.level_name, l.short_code AS level_code,
             d.name AS discipline_name,
-            t.tbh_id
+            t.tbh_id,
+            COALESCE(STRING_AGG(DISTINCT r.name ORDER BY r.name), '') AS region_names,
+            COALESCE(STRING_AGG(DISTINCT cou.name ORDER BY cou.name), '') AS country_names
      FROM people pe
      LEFT JOIN contract_types ct ON pe.contract_type_id = ct.id
      LEFT JOIN levels l ON pe.level_id = l.id
      LEFT JOIN disciplines d ON pe.discipline_id = d.id
      LEFT JOIN tbh_codes t ON pe.tbh_code_id = t.id
+     LEFT JOIN person_regions pr2 ON pr2.person_id = pe.id
+     LEFT JOIN regions r ON pr2.region_id = r.id
+     LEFT JOIN person_countries pc ON pc.person_id = pe.id
+     LEFT JOIN countries cou ON pc.country_id = cou.id
      ${where}
+     GROUP BY pe.id, pe.name, pe.contracted_fte, pe.is_active, pe.workday_jr_id, pe.created_at, pe.updated_at,
+              ct.code, ct.description, ct.colour_hex, l.level_name, l.short_code, d.name, t.tbh_id
      ORDER BY pe.name ASC
      LIMIT $${i} OFFSET $${i + 1}`,
     params
