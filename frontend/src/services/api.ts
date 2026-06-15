@@ -454,6 +454,16 @@ export const refDataApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Imports
+// ---------------------------------------------------------------------------
+
+export const importsApi = {
+  people:   (records: any[]) => client.post('/imports/people',   { records }).then(r => r.data.data),
+  projects: (records: any[]) => client.post('/imports/projects', { records }).then(r => r.data.data),
+  tbhCodes: (records: any[]) => client.post('/imports/tbh-codes', { records }).then(r => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
 

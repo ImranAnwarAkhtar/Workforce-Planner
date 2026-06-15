@@ -107,7 +107,6 @@ export default function Allocations() {
       setPeople(peopleData);
       setProjects(projectsData);
       setAllocations(allocData);
-      if (!peopleData.length && !projectsData.length) setBackendError(true);
     } catch {
       setBackendError(true);
     } finally {

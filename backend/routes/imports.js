@@ -131,4 +131,53 @@ router.post('/tbh-codes', requireAuth, requireRole(ROLES.PMO, ROLES.FINANCE), as
   }
 });
 
+// POST /api/imports/projects
+router.post('/projects', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { records } = req.body;
+  if (!Array.isArray(records) || !records.length) {
+    return res.status(400).json({ error: 'records array is required' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const regionRows = await client.query('SELECT id, code, name FROM regions');
+    const countryRows = await client.query('SELECT id, code, name FROM countries');
+    const regionByCode = Object.fromEntries(regionRows.rows.map(r => [r.code.toUpperCase(), r.id]));
+    const regionByName = Object.fromEntries(regionRows.rows.map(r => [r.name.toLowerCase(), r.id]));
+    const countryByCode = Object.fromEntries(countryRows.rows.map(c => [c.code.toUpperCase(), c.id]));
+    const countryByName = Object.fromEntries(countryRows.rows.map(c => [c.name.toLowerCase(), c.id]));
+
+    const inserted = [];
+    for (const r of records) {
+      if (!r.name || !r.type || !r.status) continue;
+      const regionId = r.region_id ?? regionByCode[String(r.region_code ?? '').toUpperCase()]
+        ?? regionByName[String(r.region_name ?? '').toLowerCase()] ?? null;
+      const countryId = r.country_id ?? countryByCode[String(r.country_code ?? '').toUpperCase()]
+        ?? countryByName[String(r.country_name ?? '').toLowerCase()] ?? null;
+
+      const type = ['Retail','xScale','Matrix'].includes(r.type) ? r.type : 'Retail';
+      const status = ['Approved','Seeded','Proposed'].includes(r.status) ? r.status : 'Proposed';
+
+      const { rows } = await client.query(
+        `INSERT INTO projects (name, type, status, weight, region_id, country_id, metro, phase_code, year, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT DO NOTHING RETURNING *`,
+        [r.name, type, status, r.weight ?? 1.0, regionId, countryId,
+         r.metro ?? null, r.phase_code ?? null, r.year ?? null, req.user.id]
+      );
+      if (rows[0]) inserted.push(rows[0]);
+    }
+    await client.query('COMMIT');
+    await req.auditLog({ actionType: 'BULK_IMPORT', resourceType: 'project', newValue: { count: inserted.length } });
+    res.status(201).json({ data: { imported: inserted.length, records: inserted } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

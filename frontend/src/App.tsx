@@ -11,6 +11,7 @@ import Requests from './pages/Requests';
 import ChangeRequests from './pages/ChangeRequests';
 import Recruitment from './pages/Recruitment';
 import Admin from './pages/Admin';
+import Import from './pages/Import';
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
               <Route path="/change-requests" element={<ChangeRequests />} />
               <Route path="/recruitment"     element={<Recruitment />} />
               <Route path="/admin"           element={<Admin />} />
+              <Route path="/import"          element={<Import />} />
             </Route>
           </Route>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

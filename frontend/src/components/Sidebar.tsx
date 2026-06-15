@@ -10,6 +10,7 @@ const ICONS: Record<string, string> = {
   changes:    'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z',
   recruitment:'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
   admin:      'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z',
+  import:     'M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z',
 };
 
 const NAV = [
@@ -20,6 +21,7 @@ const NAV = [
   { to: '/requests',        label: 'Hire Requests',   icon: 'requests' },
   { to: '/change-requests', label: 'Change Requests', icon: 'changes' },
   { to: '/recruitment',     label: 'Recruitment',     icon: 'recruitment' },
+  { to: '/import',          label: 'Import Data',     icon: 'import' },
   { to: '/admin',           label: 'Admin',           icon: 'admin' },
 ];
 
