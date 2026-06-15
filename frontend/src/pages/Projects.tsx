@@ -54,11 +54,11 @@ const S = {
   statNum:     { fontSize: 22, fontWeight: 700, color: '#111111', lineHeight: 1 } as React.CSSProperties,
   statLabel:   { fontSize: 10, color: '#888888', marginTop: 4, textTransform: 'uppercase' as const, letterSpacing: '0.06em' } as React.CSSProperties,
 
-  toolbar:     { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' as const, alignItems: 'center' } as React.CSSProperties,
-  searchWrap:  { position: 'relative' as const, flex: '1 1 220px', maxWidth: 300 } as React.CSSProperties,
-  searchInput: { width: '100%', padding: '9px 12px 9px 34px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6, color: '#111111', fontSize: 14, outline: 'none' } as React.CSSProperties,
-  searchIcon:  { position: 'absolute' as const, left: 10, top: '50%', transform: 'translateY(-50%)', color: '#999', pointerEvents: 'none' as const },
-  filterSel:   { padding: '9px 12px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6, color: '#111111', fontSize: 13, cursor: 'pointer', outline: 'none' } as React.CSSProperties,
+  toolbar:     { display: 'flex', gap: 7, marginBottom: 16, flexWrap: 'wrap' as const, alignItems: 'center' } as React.CSSProperties,
+  searchWrap:  { position: 'relative' as const, flex: '1 1 160px', maxWidth: 220 } as React.CSSProperties,
+  searchInput: { width: '100%', padding: '6px 10px 6px 28px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6, color: '#111111', fontSize: 12, outline: 'none' } as React.CSSProperties,
+  searchIcon:  { position: 'absolute' as const, left: 8, top: '50%', transform: 'translateY(-50%)', color: '#999', pointerEvents: 'none' as const },
+  filterSel:   { padding: '6px 8px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6, color: '#111111', fontSize: 12, cursor: 'pointer', outline: 'none' } as React.CSSProperties,
 
   centerBox:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: '#999' } as React.CSSProperties,
 
@@ -141,6 +141,7 @@ export default function Projects() {
   const [search,         setSearch]         = useState('');
   const [statusFilter,   setStatusFilter]   = useState('');
   const [typeFilter,     setTypeFilter]     = useState('');
+  const [regionFilter,   setRegionFilter]   = useState('');
   const [countryFilter,  setCountryFilter]  = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'true' | 'false' | 'all'>('true');
 
@@ -180,14 +181,22 @@ export default function Projects() {
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
 
+  const allRegions = useMemo(() => {
+    const names = Array.from(new Set(projects.map(p => p.region_name ?? '').filter(Boolean)));
+    return names.sort();
+  }, [projects]);
+
   const allCountries = useMemo(() => {
-    const names = Array.from(new Set(projects.map(p => p.country_name ?? 'Unassigned')));
+    const source = regionFilter
+      ? projects.filter(p => (p.region_name ?? '') === regionFilter)
+      : projects;
+    const names = Array.from(new Set(source.map(p => p.country_name ?? 'Unassigned')));
     return names.sort((a, b) => {
       if (a === 'Unassigned') return 1;
       if (b === 'Unassigned') return -1;
       return a.localeCompare(b);
     });
-  }, [projects]);
+  }, [projects, regionFilter]);
 
   const filtered = useMemo(() => {
     let list = projects;
@@ -203,9 +212,10 @@ export default function Projects() {
     }
     if (statusFilter)  list = list.filter(p => p.status === statusFilter);
     if (typeFilter)    list = list.filter(p => p.type   === typeFilter);
+    if (regionFilter)  list = list.filter(p => (p.region_name ?? '') === regionFilter);
     if (countryFilter) list = list.filter(p => (p.country_name ?? 'Unassigned') === countryFilter);
     return list;
-  }, [projects, search, statusFilter, typeFilter, countryFilter]);
+  }, [projects, search, statusFilter, typeFilter, regionFilter, countryFilter]);
 
   // Country groups and derived matrix for the aligned-row layout
   const countryGroups = useMemo(() => groupByCountry(filtered), [filtered]);
@@ -366,6 +376,11 @@ export default function Projects() {
             />
           </div>
 
+          <select style={S.filterSel} value={regionFilter} onChange={e => { setRegionFilter(e.target.value); setCountryFilter(''); }}>
+            <option value="">All regions</option>
+            {allRegions.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+
           <select style={S.filterSel} value={countryFilter} onChange={e => setCountryFilter(e.target.value)}>
             <option value="">All countries</option>
             {allCountries.map(c => <option key={c} value={c}>{c}</option>)}
@@ -388,15 +403,15 @@ export default function Projects() {
           </select>
 
           {!loading && (
-            <span style={{ color: '#666666', fontSize: 13, whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#666666', fontSize: 12, whiteSpace: 'nowrap' }}>
               {filtered.length} {filtered.length === 1 ? 'project' : 'projects'} · {countriesList.length} {countriesList.length === 1 ? 'country' : 'countries'}
             </span>
           )}
 
-          {(search || statusFilter || typeFilter || countryFilter) && (
+          {(search || statusFilter || typeFilter || regionFilter || countryFilter) && (
             <button
-              style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 12px', whiteSpace: 'nowrap' as const }}
-              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); setCountryFilter(''); }}
+              style={{ ...S.btnSecondary, fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' as const }}
+              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); setRegionFilter(''); setCountryFilter(''); }}
             >
               Clear filters
             </button>
