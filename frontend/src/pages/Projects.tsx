@@ -13,7 +13,7 @@ const PROJECT_TYPES    = ['Retail', 'xScale', 'Matrix'] as const;
 const PROJECT_STATUSES = ['Approved', 'Seeded', 'Proposed'] as const;
 const WEIGHT_OPTIONS   = [0.5, 1.0, 1.5, 2.0] as const;
 const STATUS_ORDER     = { Approved: 0, Seeded: 1, Proposed: 2 } as const;
-const COL_W            = 210; // column / card width in px
+const COL_W            = 165; // column / card width in px
 
 type ProjectType   = typeof PROJECT_TYPES[number];
 type ProjectStatus = typeof PROJECT_STATUSES[number];
@@ -42,7 +42,7 @@ function typeMeta(t: string) {
 // ---------------------------------------------------------------------------
 
 const S = {
-  page:        { color: '#111111' } as React.CSSProperties,
+  page:        { color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' } as React.CSSProperties,
   header:      { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 } as React.CSSProperties,
   title:       { fontSize: 24, fontWeight: 700, margin: 0, color: '#111111' } as React.CSSProperties,
   accent:      { width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
@@ -97,14 +97,14 @@ function groupByCountry(projects: Project[]): [string, Project[]][] {
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(p);
   }
-  for (const list of map.values()) {
+  map.forEach(list => {
     list.sort((a, b) => {
       const sd = (STATUS_ORDER[a.status as keyof typeof STATUS_ORDER] ?? 9)
                - (STATUS_ORDER[b.status as keyof typeof STATUS_ORDER] ?? 9);
       return sd !== 0 ? sd : a.name.localeCompare(b.name);
     });
-  }
-  return [...map.entries()].sort(([a], [b]) => {
+  });
+  return Array.from(map.entries()).sort(([a], [b]) => {
     if (a === 'Unassigned') return 1;
     if (b === 'Unassigned') return -1;
     return a.localeCompare(b);
@@ -141,6 +141,7 @@ export default function Projects() {
   const [search,         setSearch]         = useState('');
   const [statusFilter,   setStatusFilter]   = useState('');
   const [typeFilter,     setTypeFilter]     = useState('');
+  const [countryFilter,  setCountryFilter]  = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'true' | 'false' | 'all'>('true');
 
   const [modalOpen,    setModalOpen]    = useState(false);
@@ -179,6 +180,15 @@ export default function Projects() {
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
 
+  const allCountries = useMemo(() => {
+    const names = Array.from(new Set(projects.map(p => p.country_name ?? 'Unassigned')));
+    return names.sort((a, b) => {
+      if (a === 'Unassigned') return 1;
+      if (b === 'Unassigned') return -1;
+      return a.localeCompare(b);
+    });
+  }, [projects]);
+
   const filtered = useMemo(() => {
     let list = projects;
     if (search.trim()) {
@@ -191,10 +201,11 @@ export default function Projects() {
         (p.metro         ?? '').toLowerCase().includes(q)
       );
     }
-    if (statusFilter) list = list.filter(p => p.status === statusFilter);
-    if (typeFilter)   list = list.filter(p => p.type   === typeFilter);
+    if (statusFilter)  list = list.filter(p => p.status === statusFilter);
+    if (typeFilter)    list = list.filter(p => p.type   === typeFilter);
+    if (countryFilter) list = list.filter(p => (p.country_name ?? 'Unassigned') === countryFilter);
     return list;
-  }, [projects, search, statusFilter, typeFilter]);
+  }, [projects, search, statusFilter, typeFilter, countryFilter]);
 
   // Country groups and derived matrix for the aligned-row layout
   const countryGroups = useMemo(() => groupByCountry(filtered), [filtered]);
@@ -317,89 +328,99 @@ export default function Projects() {
   return (
     <div style={S.page}>
 
-      {/* Header */}
-      <div style={S.header}>
-        <div>
-          <h1 style={S.title}>Projects</h1>
-          <div style={S.accent} />
-        </div>
-        <button style={S.btnPrimary} onClick={openAdd}>+ Add Project</button>
-      </div>
+      {/* ── Fixed top section ── */}
+      <div style={{ flexShrink: 0 }}>
 
-      {/* Stats bar */}
-      <div style={S.statsRow}>
-        {statItems.map(({ label, value, color }) => (
-          <div key={label} style={S.statCard(color)}>
-            <div style={S.statNum}>{value}</div>
-            <div style={S.statLabel}>{label}</div>
+        {/* Header */}
+        <div style={S.header}>
+          <div>
+            <h1 style={S.title}>Projects</h1>
+            <div style={S.accent} />
           </div>
-        ))}
-      </div>
-
-      {/* Toolbar */}
-      <div style={S.toolbar}>
-        <div style={S.searchWrap}>
-          <span style={S.searchIcon}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-            </svg>
-          </span>
-          <input
-            style={S.searchInput}
-            placeholder="Search projects…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          <button style={S.btnPrimary} onClick={openAdd}>+ Add Project</button>
         </div>
 
-        <select style={S.filterSel} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          {PROJECT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-
-        <select style={S.filterSel} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-          <option value="">All types</option>
-          {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-
-        <select style={S.filterSel} value={isActiveFilter} onChange={e => setIsActiveFilter(e.target.value as typeof isActiveFilter)}>
-          <option value="true">Active only</option>
-          <option value="false">Inactive only</option>
-          <option value="all">All</option>
-        </select>
-
-        {!loading && (
-          <span style={{ color: '#666666', fontSize: 13 }}>
-            {filtered.length} {filtered.length === 1 ? 'project' : 'projects'} · {countriesList.length} {countriesList.length === 1 ? 'country' : 'countries'}
-          </span>
-        )}
-      </div>
-
-      {/* Content */}
-      {loading ? (
-        <div style={S.centerBox}><div className="spinner" /></div>
-      ) : error ? (
-        <div style={{ ...S.centerBox, flexDirection: 'column', gap: 12 }}>
-          <span style={{ color: '#E31837' }}>Failed to load projects</span>
-          <span style={{ fontSize: 12, color: '#666' }}>{error}</span>
-          <button style={S.btnSecondary} onClick={loadProjects}>Retry</button>
+        {/* Stats bar */}
+        <div style={S.statsRow}>
+          {statItems.map(({ label, value, color }) => (
+            <div key={label} style={S.statCard(color)}>
+              <div style={S.statNum}>{value}</div>
+              <div style={S.statLabel}>{label}</div>
+            </div>
+          ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ ...S.centerBox, flexDirection: 'column', gap: 8 }}>
-          <span style={{ color: '#666' }}>No projects found</span>
-          {(search || statusFilter || typeFilter) && (
+
+        {/* Toolbar */}
+        <div style={S.toolbar}>
+          <div style={S.searchWrap}>
+            <span style={S.searchIcon}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
+            </span>
+            <input
+              style={S.searchInput}
+              placeholder="Search projects…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+
+          <select style={S.filterSel} value={countryFilter} onChange={e => setCountryFilter(e.target.value)}>
+            <option value="">All countries</option>
+            {allCountries.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <select style={S.filterSel} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            {PROJECT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+
+          <select style={S.filterSel} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+            <option value="">All types</option>
+            {PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+
+          <select style={S.filterSel} value={isActiveFilter} onChange={e => setIsActiveFilter(e.target.value as typeof isActiveFilter)}>
+            <option value="true">Active only</option>
+            <option value="false">Inactive only</option>
+            <option value="all">All</option>
+          </select>
+
+          {!loading && (
+            <span style={{ color: '#666666', fontSize: 13, whiteSpace: 'nowrap' }}>
+              {filtered.length} {filtered.length === 1 ? 'project' : 'projects'} · {countriesList.length} {countriesList.length === 1 ? 'country' : 'countries'}
+            </span>
+          )}
+
+          {(search || statusFilter || typeFilter || countryFilter) && (
             <button
-              style={{ ...S.btnSecondary, fontSize: 13, padding: '6px 14px' }}
-              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); }}
+              style={{ ...S.btnSecondary, fontSize: 12, padding: '5px 12px', whiteSpace: 'nowrap' as const }}
+              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); setCountryFilter(''); }}
             >
               Clear filters
             </button>
           )}
         </div>
-      ) : (
+      </div>
+
+      {/* ── Scrollable grid section — fills remaining height, scrollbar stays at bottom ── */}
+      <div style={{ flex: 1, overflow: 'auto', minHeight: 0, paddingBottom: 12 }}>
+        {loading ? (
+          <div style={S.centerBox}><div className="spinner" /></div>
+        ) : error ? (
+          <div style={{ ...S.centerBox, flexDirection: 'column', gap: 12 }}>
+            <span style={{ color: '#E31837' }}>Failed to load projects</span>
+            <span style={{ fontSize: 12, color: '#666' }}>{error}</span>
+            <button style={S.btnSecondary} onClick={loadProjects}>Retry</button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ ...S.centerBox, flexDirection: 'column', gap: 8 }}>
+            <span style={{ color: '#666' }}>No projects found</span>
+          </div>
+        ) : (
         /* ── Row-aligned grid: rows = status, columns = country ── */
-        <div style={{ overflowX: 'auto', paddingBottom: 20 }}>
-          <div style={{ minWidth: 'max-content' }}>
+        <div style={{ minWidth: 'max-content' }}>
 
             {/* Country header row */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -412,13 +433,13 @@ export default function Projects() {
                       border: '1px solid #E0E0E0',
                       borderTop: '3px solid #E31837',
                       borderRadius: 8,
-                      padding: '11px 13px 10px',
+                      padding: '9px 11px 8px',
                       boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                     }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', marginBottom: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#111111', marginBottom: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {country}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#666666', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666666', marginBottom: 5 }}>
                         <span><strong style={{ color: '#111111' }}>{cs.total}</strong> projects</span>
                         <span>Wt: <strong style={{ color: '#E31837' }}>{cs.weight.toFixed(1)}</strong></span>
                       </div>
@@ -508,8 +529,8 @@ export default function Projects() {
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Add / Edit modal */}
       {modalOpen && (
