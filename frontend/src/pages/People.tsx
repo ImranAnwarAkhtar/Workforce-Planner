@@ -524,8 +524,8 @@ export default function People() {
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
           <div style={{ ...S.modal, maxWidth: 400 }}>
             <h2 style={{ ...S.modalTitle, marginBottom: 12 }}>Deactivate Person</h2>
-            <p style={{ color: '#CCCCCC', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-              Are you sure you want to deactivate <strong style={{ color: '#FFFFFF' }}>{deleteTarget.name}</strong>?
+            <p style={{ color: '#555555', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+              Are you sure you want to deactivate <strong style={{ color: '#111111' }}>{deleteTarget.name}</strong>?
               They will be hidden from active views but their data will be preserved.
             </p>
             <div style={S.modalFooter}>
@@ -543,8 +543,8 @@ export default function People() {
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setPermDeleteTarget(null); }}>
           <div style={{ ...S.modal, maxWidth: 420 }}>
             <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E31837' }}>Permanently Delete Person</h2>
-            <p style={{ color: '#CCCCCC', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
-              This will permanently remove <strong style={{ color: '#FFFFFF' }}>{permDeleteTarget.name}</strong> and all their allocation records. This action cannot be undone.
+            <p style={{ color: '#555555', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
+              This will permanently remove <strong style={{ color: '#111111' }}>{permDeleteTarget.name}</strong> and all their allocation records. This action cannot be undone.
             </p>
             <div style={{ background: '#FEF0F0', border: '1px solid #F5C0BB', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#C0392B', marginBottom: 20 }}>
               All FTE allocations for this person will also be deleted.
@@ -566,7 +566,7 @@ export default function People() {
             <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E31837' }}>
               Permanently Delete {selectedIds.size} {selectedIds.size === 1 ? 'Person' : 'People'}
             </h2>
-            <p style={{ color: '#CCCCCC', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
+            <p style={{ color: '#555555', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
               The following {selectedIds.size === 1 ? 'person' : 'people'} and all their allocation records will be permanently removed. This cannot be undone.
             </p>
 
@@ -645,9 +645,9 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
             {p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
           </div>
           <div>
-            <div style={{ fontWeight: 500, color: '#FFFFFF' }}>{p.name}</div>
+            <div style={{ fontWeight: 600, color: '#111111' }}>{p.name}</div>
             {p.workday_jr_id && (
-              <div style={{ fontSize: 11, color: '#666', marginTop: 1 }}>{p.workday_jr_id}</div>
+              <div style={{ fontSize: 11, color: '#888888', marginTop: 1 }}>{p.workday_jr_id}</div>
             )}
           </div>
         </div>
@@ -655,14 +655,14 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
 
       <td style={S.td}>
         {p.level_name
-          ? <span style={{ color: '#CCCCCC' }}>{p.level_name}</span>
-          : <span style={{ color: '#444' }}>—</span>}
+          ? <span style={{ color: '#111111' }}>{p.level_name}</span>
+          : <span style={{ color: '#AAAAAA' }}>—</span>}
       </td>
 
       <td style={S.td}>
         {p.discipline_name
-          ? <span style={{ color: '#CCCCCC' }}>{p.discipline_name}</span>
-          : <span style={{ color: '#444' }}>—</span>}
+          ? <span style={{ color: '#111111' }}>{p.discipline_name}</span>
+          : <span style={{ color: '#AAAAAA' }}>—</span>}
       </td>
 
       <td style={S.td}>
@@ -672,7 +672,7 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
       </td>
 
       <td style={S.td}>
-        <span style={{ color: Number(p.contracted_fte) >= 1 ? '#CCCCCC' : '#E8A020', fontWeight: 500 }}>
+        <span style={{ color: Number(p.contracted_fte) >= 1 ? '#111111' : '#B5600A', fontWeight: 600 }}>
           {Number(p.contracted_fte).toFixed(1)}
         </span>
       </td>
