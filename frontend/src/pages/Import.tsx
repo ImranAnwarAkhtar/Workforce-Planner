@@ -489,14 +489,14 @@ export default function Import() {
   const previewRows = parsed?.rows.slice(0, 50) ?? [];
 
   return (
-    <div style={{ color: '#FFF', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ padding: '16px 24px', background: '#111', borderBottom: '1px solid #222', flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div style={{ padding: '16px 24px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Data Import</h1>
           <div style={{ width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 5 }} />
-          <p style={{ fontSize: 13, color: '#666', marginTop: 8, marginBottom: 0 }}>
+          <p style={{ fontSize: 13, color: '#666666', marginTop: 8, marginBottom: 0 }}>
             Upload your GDC HUB Summaries Excel file to import workforce planning data
           </p>
         </div>
@@ -506,7 +506,7 @@ export default function Import() {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 16px', background: 'transparent',
-            border: '1px solid #444', color: '#AAA',
+            border: '1px solid #D5D5D5', color: '#555555',
             borderRadius: 6, fontSize: 13, cursor: 'pointer',
             whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 16,
           }}
@@ -519,12 +519,12 @@ export default function Import() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, background: '#111', borderBottom: '1px solid #222', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 0, background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', flexShrink: 0 }}>
         {(Object.keys(TAB_LABELS) as Tab[]).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             padding: '12px 24px', background: 'transparent', border: 'none',
             borderBottom: activeTab === tab ? '2px solid #E31837' : '2px solid transparent',
-            color: activeTab === tab ? '#FFF' : '#666',
+            color: activeTab === tab ? '#111111' : '#999999',
             fontSize: 14, fontWeight: activeTab === tab ? 600 : 400,
             cursor: 'pointer',
           }}>
@@ -536,7 +536,7 @@ export default function Import() {
       <div style={{ flex: 1, overflow: 'auto', padding: 24 }}>
 
         {/* Tab description */}
-        <div style={{ marginBottom: 20, padding: '10px 14px', background: '#1A1A1A', borderLeft: '3px solid #333', borderRadius: 4, fontSize: 13, color: '#888' }}>
+        <div style={{ marginBottom: 20, padding: '10px 14px', background: '#F5F6FA', borderLeft: '3px solid #D5D5D5', borderRadius: 4, fontSize: 13, color: '#666666' }}>
           {TAB_DESC[activeTab]}
         </div>
 
@@ -547,15 +547,15 @@ export default function Import() {
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
             style={{
-              border: `2px dashed ${dragging ? '#E31837' : '#333'}`,
+              border: `2px dashed ${dragging ? '#E31837' : '#D5D5D5'}`,
               borderRadius: 10, padding: '48px 32px', textAlign: 'center',
-              background: dragging ? '#1A0000' : '#0D0D0D',
+              background: dragging ? '#FFF5F5' : '#FAFAFA',
               cursor: 'pointer', transition: 'all 0.15s',
               maxWidth: 600, margin: '0 auto',
             }}
           >
             <div style={{ fontSize: 40, marginBottom: 16 }}>📂</div>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#CCC' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#111111' }}>
               Drop your Excel file here
             </div>
             <div style={{ fontSize: 13, color: '#555', marginBottom: 24 }}>
@@ -585,8 +585,8 @@ export default function Import() {
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => { setParsed(null); setResult(null); }} style={{
-                  padding: '8px 16px', background: 'transparent', border: '1px solid #333',
-                  color: '#888', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                  padding: '8px 16px', background: 'transparent', border: '1px solid #D5D5D5',
+                  color: '#666666', borderRadius: 6, fontSize: 13, cursor: 'pointer',
                 }}>
                   Clear
                 </button>
@@ -600,16 +600,16 @@ export default function Import() {
               </div>
             </div>
 
-            <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid #222' }}>
+            <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid #E5E5E5' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr style={{ background: '#0D0D0D' }}>
-                    <th style={{ padding: '8px 12px', color: '#555', fontSize: 11, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>#</th>
+                  <tr style={{ background: '#F8F9FA' }}>
+                    <th style={{ padding: '8px 12px', color: '#666666', fontSize: 11, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>#</th>
                     {activeTab === 'people' && (
-                      <th style={{ padding: '8px 12px', color: '#555', fontSize: 11, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Source</th>
+                      <th style={{ padding: '8px 12px', color: '#666666', fontSize: 11, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Source</th>
                     )}
                     {previewCols.map(col => (
-                      <th key={col.key} style={{ padding: '8px 12px', color: '#555', fontSize: 11, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                      <th key={col.key} style={{ padding: '8px 12px', color: '#666666', fontSize: 11, textAlign: 'left', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                         {col.label}
                       </th>
                     ))}
@@ -617,22 +617,22 @@ export default function Import() {
                 </thead>
                 <tbody>
                   {previewRows.map((row, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid #1A1A1A', background: i % 2 === 0 ? 'transparent' : '#0A0A0A' }}>
-                      <td style={{ padding: '7px 12px', color: '#444', fontSize: 11 }}>{i + 1}</td>
+                    <tr key={i} style={{ borderTop: '1px solid #F0F0F0', background: i % 2 === 0 ? 'transparent' : '#FAFAFA' }}>
+                      <td style={{ padding: '7px 12px', color: '#666666', fontSize: 11 }}>{i + 1}</td>
                       {activeTab === 'people' && (
                         <td style={{ padding: '7px 12px' }}>
                           <span style={{
                             fontSize: 10, padding: '2px 6px', borderRadius: 3,
-                            background: row._source === 'FTE' ? '#1A1A2B' : '#1A2B1A',
-                            color: row._source === 'FTE' ? '#5599FF' : '#33CC77',
-                            border: `1px solid ${row._source === 'FTE' ? '#2244AA' : '#1A6633'}`,
+                            background: row._source === 'FTE' ? '#EBF0FF' : '#E8F5EE',
+                            color: row._source === 'FTE' ? '#2244BB' : '#1E8A4A',
+                            border: `1px solid ${row._source === 'FTE' ? '#BDD0FF' : '#A8D8BF'}`,
                           }}>
                             {row._source}
                           </span>
                         </td>
                       )}
                       {previewCols.map(col => (
-                        <td key={col.key} style={{ padding: '7px 12px', color: '#CCC', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td key={col.key} style={{ padding: '7px 12px', color: '#333333', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {String(row._preview?.[col.key] ?? '')}
                         </td>
                       ))}
@@ -652,7 +652,7 @@ export default function Import() {
             <div style={{ fontSize: 13, marginTop: 8 }}>Make sure you uploaded the GDC HUB Summaries file.</div>
             <button onClick={() => setParsed(null)} style={{
               marginTop: 20, padding: '8px 20px', background: 'transparent',
-              border: '1px solid #333', color: '#888', borderRadius: 6, cursor: 'pointer', fontSize: 13,
+              border: '1px solid #D5D5D5', color: '#666666', borderRadius: 6, cursor: 'pointer', fontSize: 13,
             }}>Try Again</button>
           </div>
         )}

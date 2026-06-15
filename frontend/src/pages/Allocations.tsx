@@ -16,16 +16,16 @@ interface PendingChange {
 const DISCIPLINES = ['Construction', 'Design', 'Commercial', 'Commissioning', 'Other'];
 
 const CONTRACT_COLOURS: Record<string, { bg: string; color: string; border: string }> = {
-  'FTE':       { bg: '#1A1A1A', color: '#CCCCCC', border: '#444444' },
-  'SNR':       { bg: '#1A1A1A', color: '#CCCCCC', border: '#444444' },
-  'VP':        { bg: '#1A1A1A', color: '#CCCCCC', border: '#444444' },
-  'Dr':        { bg: '#1A1A1A', color: '#CCCCCC', border: '#444444' },
-  'CON':       { bg: '#2B1E00', color: '#F9A825', border: '#F9A825' },
-  'A FTE':     { bg: '#2B0008', color: '#FF6B6B', border: '#E31837' },
-  'A CON':     { bg: '#2B1E00', color: '#F9A825', border: '#F9A825' },
-  'R FTE':     { bg: '#2B0020', color: '#E91E8C', border: '#E91E8C' },
-  'R CON':     { bg: '#2B0020', color: '#E91E8C', border: '#E91E8C' },
-  'R FTE 26':  { bg: '#2B0020', color: '#E91E8C', border: '#E91E8C' },
+  'FTE':       { bg: '#F0F0F0', color: '#444444', border: '#D0D0D0' },
+  'SNR':       { bg: '#F0F0F0', color: '#444444', border: '#D0D0D0' },
+  'VP':        { bg: '#F0F0F0', color: '#444444', border: '#D0D0D0' },
+  'Dr':        { bg: '#F0F0F0', color: '#444444', border: '#D0D0D0' },
+  'CON':       { bg: '#FFF8E1', color: '#E65100', border: '#F9A825' },
+  'A FTE':     { bg: '#FFF0F0', color: '#C0392B', border: '#E31837' },
+  'A CON':     { bg: '#FFF8E1', color: '#E65100', border: '#F9A825' },
+  'R FTE':     { bg: '#FDE8F6', color: '#AD1457', border: '#E91E8C' },
+  'R CON':     { bg: '#FDE8F6', color: '#AD1457', border: '#E91E8C' },
+  'R FTE 26':  { bg: '#FDE8F6', color: '#AD1457', border: '#E91E8C' },
 };
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -40,11 +40,11 @@ function contractColour(code: string | null) {
 }
 
 function fteCellColour(val: number): string {
-  if (val <= 0)    return '#555555';
-  if (val < 0.5)   return '#8888FF';
-  if (val < 1.0)   return '#F9A825';
-  if (val === 1.0) return '#33CC77';
-  return '#E31837';
+  if (val <= 0)    return '#AAAAAA';
+  if (val < 0.5)   return '#4477EE';
+  if (val < 1.0)   return '#D4870A';
+  if (val === 1.0) return '#1E8A4A';
+  return '#C0392B';
 }
 
 function rowTotalColour(total: number, contracted: number): string {
@@ -217,15 +217,15 @@ export default function Allocations() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const selectedRegionName = regions.find(r => r.id === selectedRegionId)?.name ?? '';
-  const STICKY_BG = '#111111';
+  const STICKY_BG = '#FFFFFF';
 
   return (
-    <div style={{ color: '#FFF', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Header ── */}
       <div style={{
-        padding: '16px 24px', background: '#111111',
-        borderBottom: '1px solid #222222', flexShrink: 0,
+        padding: '16px 24px', background: '#FFFFFF',
+        borderBottom: '1px solid #E5E5E5', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div>
@@ -234,7 +234,7 @@ export default function Allocations() {
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {pendingCount > 0 && (
-              <span style={{ fontSize: 12, color: '#F9A825', background: '#2B1E00', padding: '4px 10px', borderRadius: 12, border: '1px solid #F9A825' }}>
+              <span style={{ fontSize: 12, color: '#D4870A', background: '#FFF8E1', padding: '4px 10px', borderRadius: 12, border: '1px solid #F9A825' }}>
                 {pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''}
               </span>
             )}
@@ -243,7 +243,7 @@ export default function Allocations() {
               disabled={saving || pendingCount === 0}
               style={{
                 padding: '8px 20px',
-                background: pendingCount > 0 ? '#E31837' : '#333',
+                background: pendingCount > 0 ? '#E31837' : '#CCCCCC',
                 color: '#FFF', border: 'none', borderRadius: 6,
                 fontSize: 14, fontWeight: 600,
                 cursor: pendingCount > 0 ? 'pointer' : 'default',
@@ -257,22 +257,22 @@ export default function Allocations() {
         {/* Controls */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Region</label>
+            <label style={{ fontSize: 12, color: '#666666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Region</label>
             <select
               value={selectedRegionId ?? ''}
               onChange={e => setSelectedRegionId(Number(e.target.value))}
-              style={{ padding: '7px 10px', background: '#1A1A1A', border: '1px solid #333', borderRadius: 5, color: '#FFF', fontSize: 13 }}
+              style={{ padding: '7px 10px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, color: '#111111', fontSize: 13 }}
             >
               {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Year</label>
+            <label style={{ fontSize: 12, color: '#666666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Year</label>
             <select
               value={selectedYear}
               onChange={e => setSelectedYear(Number(e.target.value))}
-              style={{ padding: '7px 10px', background: '#1A1A1A', border: '1px solid #333', borderRadius: 5, color: '#FFF', fontSize: 13 }}
+              style={{ padding: '7px 10px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, color: '#111111', fontSize: 13 }}
             >
               <option value={2026}>2026</option>
               <option value={2027}>2027</option>
@@ -281,11 +281,11 @@ export default function Allocations() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Status</label>
+            <label style={{ fontSize: 12, color: '#666666', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Status</label>
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              style={{ padding: '7px 10px', background: '#1A1A1A', border: '1px solid #333', borderRadius: 5, color: '#FFF', fontSize: 13 }}
+              style={{ padding: '7px 10px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, color: '#111111', fontSize: 13 }}
             >
               <option>All</option>
               <option>Approved</option>
@@ -294,7 +294,7 @@ export default function Allocations() {
             </select>
           </div>
 
-          <span style={{ fontSize: 12, color: '#555', marginLeft: 4 }}>
+          <span style={{ fontSize: 12, color: '#999999', marginLeft: 4 }}>
             {visibleProjects.length} project{visibleProjects.length !== 1 ? 's' : ''} · {people.length} people
           </span>
         </div>
@@ -302,9 +302,9 @@ export default function Allocations() {
 
       {/* ── Backend error banner ── */}
       {backendError && (
-        <div style={{ padding: '10px 24px', background: '#2B1E0D', borderBottom: '1px solid #5E3A1A', color: '#F9A825', fontSize: 13, flexShrink: 0 }}>
-          ⚠ Cannot reach backend. Make sure it is running: <code style={{ background: '#111', padding: '2px 6px', borderRadius: 3 }}>cd backend && npm start</code>
-          <button onClick={loadData} style={{ marginLeft: 12, padding: '3px 10px', background: 'transparent', border: '1px solid #F9A825', color: '#F9A825', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Retry</button>
+        <div style={{ padding: '10px 24px', background: '#FFFBEB', borderBottom: '1px solid #F5DFA0', color: '#996600', fontSize: 13, flexShrink: 0 }}>
+          ⚠ Cannot reach backend. Make sure it is running: <code style={{ background: '#F5F5F5', padding: '2px 6px', borderRadius: 3 }}>cd backend && npm start</code>
+          <button onClick={loadData} style={{ marginLeft: 12, padding: '3px 10px', background: 'transparent', border: '1px solid #D4870A', color: '#996600', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}>Retry</button>
         </div>
       )}
 
@@ -317,7 +317,7 @@ export default function Allocations() {
 
       {/* ── Empty state ── */}
       {!loading && !backendError && visibleProjects.length === 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, flexDirection: 'column', gap: 8, color: '#555' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, flexDirection: 'column', gap: 8, color: '#666666' }}>
           <div style={{ fontSize: 16 }}>No projects found for {selectedRegionName} {selectedYear}</div>
           <div style={{ fontSize: 13 }}>Add projects in the Projects screen first, then assign them to this region and year.</div>
         </div>
@@ -337,29 +337,29 @@ export default function Allocations() {
             </colgroup>
 
             <thead>
-              <tr style={{ background: '#0D0D0D' }}>
+              <tr style={{ background: '#F8F9FA' }}>
                 <th style={{
                   position: 'sticky', top: 0, left: 0, zIndex: 4,
-                  background: '#0D0D0D', borderRight: '2px solid #333',
-                  borderBottom: '1px solid #333', padding: '10px 14px',
-                  textAlign: 'left', fontSize: 11, color: '#666',
+                  background: '#F8F9FA', borderRight: '2px solid #E0E0E0',
+                  borderBottom: '1px solid #E0E0E0', padding: '10px 14px',
+                  textAlign: 'left', fontSize: 11, color: '#666666',
                   textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap',
                 }}>
                   Person
                 </th>
                 <th style={{
                   position: 'sticky', top: 0, left: 220, zIndex: 4,
-                  background: '#0D0D0D', borderRight: '1px solid #222',
-                  borderBottom: '1px solid #333', padding: '10px 6px',
-                  fontSize: 10, color: '#666', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  background: '#F8F9FA', borderRight: '1px solid #E5E5E5',
+                  borderBottom: '1px solid #E0E0E0', padding: '10px 6px',
+                  fontSize: 10, color: '#666666', textTransform: 'uppercase', whiteSpace: 'nowrap',
                 }}>
                   Type
                 </th>
                 <th style={{
                   position: 'sticky', top: 0, left: 290, zIndex: 4,
-                  background: '#0D0D0D', borderRight: '2px solid #444',
-                  borderBottom: '1px solid #333', padding: '10px 6px',
-                  fontSize: 10, color: '#666', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                  background: '#F8F9FA', borderRight: '2px solid #D5D5D5',
+                  borderBottom: '1px solid #E0E0E0', padding: '10px 6px',
+                  fontSize: 10, color: '#666666', textTransform: 'uppercase', whiteSpace: 'nowrap',
                 }}>
                   FTE
                 </th>
@@ -367,13 +367,13 @@ export default function Allocations() {
                 {visibleProjects.map(p => (
                   <th key={p.id} style={{
                     position: 'sticky', top: 0, zIndex: 3,
-                    background: '#0D0D0D', borderBottom: '1px solid #333',
-                    borderRight: '1px solid #1A1A1A', padding: '6px 4px',
+                    background: '#F8F9FA', borderBottom: '1px solid #E0E0E0',
+                    borderRight: '1px solid #EEEEEE', padding: '6px 4px',
                     textAlign: 'center', minWidth: 80,
                   }}>
                     <div style={{
                       fontSize: 11, fontWeight: 600,
-                      color: STATUS_COLOURS[p.status] ?? '#CCC',
+                      color: STATUS_COLOURS[p.status] ?? '#333333',
                       whiteSpace: 'nowrap', overflow: 'hidden',
                       textOverflow: 'ellipsis', maxWidth: 72,
                     }} title={p.name}>
@@ -382,24 +382,24 @@ export default function Allocations() {
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginTop: 3 }}>
                       <span style={{
                         fontSize: 9, padding: '1px 4px', borderRadius: 3,
-                        background: '#1A1A1A',
-                        color: STATUS_COLOURS[p.status] ?? '#888',
-                        border: `1px solid ${STATUS_COLOURS[p.status] ?? '#333'}`,
+                        background: '#FFFFFF',
+                        color: STATUS_COLOURS[p.status] ?? '#666666',
+                        border: `1px solid ${STATUS_COLOURS[p.status] ?? '#CCCCCC'}`,
                       }}>
                         {p.status}
                       </span>
                     </div>
                     {p.weight !== 1 && (
-                      <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>wt:{p.weight}</div>
+                      <div style={{ fontSize: 9, color: '#999999', marginTop: 2 }}>wt:{p.weight}</div>
                     )}
                   </th>
                 ))}
 
                 <th style={{
                   position: 'sticky', top: 0, right: 0, zIndex: 4,
-                  background: '#0D0D0D', borderLeft: '2px solid #444',
-                  borderBottom: '1px solid #333', padding: '10px 8px',
-                  fontSize: 10, color: '#666', textTransform: 'uppercase', textAlign: 'center',
+                  background: '#F8F9FA', borderLeft: '2px solid #D5D5D5',
+                  borderBottom: '1px solid #E0E0E0', padding: '10px 8px',
+                  fontSize: 10, color: '#666666', textTransform: 'uppercase', textAlign: 'center',
                 }}>
                   Total
                 </th>
@@ -418,16 +418,16 @@ export default function Allocations() {
                     {/* Discipline header row */}
                     <tr>
                       <td colSpan={3 + visibleProjects.length + 1} style={{
-                        background: '#1A1A1A',
+                        background: '#F5F6FA',
                         borderLeft: '3px solid #E31837',
-                        borderTop: '2px solid #333',
-                        borderBottom: '1px solid #333',
+                        borderTop: '2px solid #E0E0E0',
+                        borderBottom: '1px solid #E0E0E0',
                         padding: '8px 14px',
-                        fontWeight: 700, fontSize: 13, color: '#FFF',
+                        fontWeight: 700, fontSize: 13, color: '#111111',
                         position: 'sticky', left: 0,
                       }}>
                         {discipline}
-                        <span style={{ marginLeft: 16, color: '#666', fontWeight: 400, fontSize: 12 }}>
+                        <span style={{ marginLeft: 16, color: '#888888', fontWeight: 400, fontSize: 12 }}>
                           {dPeople.length} {dPeople.length === 1 ? 'person' : 'people'}
                         </span>
                       </td>
@@ -440,21 +440,21 @@ export default function Allocations() {
                       const cc         = contractColour(person.contract_type_code);
 
                       return (
-                        <tr key={person.id} style={{ borderBottom: '1px solid #1A1A1A' }}>
+                        <tr key={person.id} style={{ borderBottom: '1px solid #F0F0F0' }}>
 
                           <td style={{
                             position: 'sticky', left: 0, zIndex: 2,
-                            background: STICKY_BG, borderRight: '2px solid #333',
+                            background: STICKY_BG, borderRight: '2px solid #E0E0E0',
                             padding: '6px 14px', whiteSpace: 'nowrap',
                             overflow: 'hidden', textOverflow: 'ellipsis',
-                            maxWidth: 220, color: '#EEEEEE', fontWeight: 500,
+                            maxWidth: 220, color: '#111111', fontWeight: 500,
                           }}>
                             {person.name}
                           </td>
 
                           <td style={{
                             position: 'sticky', left: 220, zIndex: 2,
-                            background: STICKY_BG, borderRight: '1px solid #222',
+                            background: STICKY_BG, borderRight: '1px solid #E5E5E5',
                             padding: '6px 4px', textAlign: 'center',
                           }}>
                             <span style={{
@@ -468,9 +468,9 @@ export default function Allocations() {
 
                           <td style={{
                             position: 'sticky', left: 290, zIndex: 2,
-                            background: STICKY_BG, borderRight: '2px solid #444',
+                            background: STICKY_BG, borderRight: '2px solid #D5D5D5',
                             padding: '6px 4px', textAlign: 'center',
-                            fontSize: 11, color: '#666',
+                            fontSize: 11, color: '#666666',
                           }}>
                             {contracted.toFixed(1)}
                           </td>
@@ -483,8 +483,8 @@ export default function Allocations() {
                             return (
                               <td key={proj.id} style={{
                                 padding: '3px 4px', textAlign: 'center',
-                                borderRight: '1px solid #1A1A1A',
-                                background: dirty ? '#1A1200' : 'transparent',
+                                borderRight: '1px solid #EEEEEE',
+                                background: dirty ? '#FFFBEB' : 'transparent',
                               }}>
                                 <input
                                   type="number"
@@ -494,8 +494,8 @@ export default function Allocations() {
                                   onBlur={e => handleCellChange(person.id, proj.id, e.target.value)}
                                   style={{
                                     width: 56, padding: '4px 2px',
-                                    background: '#0D0D0D',
-                                    border: dirty ? '2px solid #F9A825' : '1px solid #1E1E1E',
+                                    background: '#FFFFFF',
+                                    border: dirty ? '2px solid #F9A825' : '1px solid #E0E0E0',
                                     borderRadius: 3, color: fteCellColour(val),
                                     textAlign: 'center', fontSize: 12,
                                     fontFamily: 'monospace', outline: 'none',
@@ -507,7 +507,7 @@ export default function Allocations() {
 
                           <td style={{
                             position: 'sticky', right: 0, zIndex: 2,
-                            background: STICKY_BG, borderLeft: '2px solid #444',
+                            background: STICKY_BG, borderLeft: '2px solid #D5D5D5',
                             padding: '6px 8px', textAlign: 'center',
                             fontWeight: 700, fontSize: 13,
                             color: rowTotalColour(total, contracted),
@@ -519,12 +519,12 @@ export default function Allocations() {
                     })}
 
                     {/* Discipline proposed total row */}
-                    <tr style={{ background: '#0A0A0A', borderTop: '1px solid #2A2A2A' }}>
+                    <tr style={{ background: '#F5F5F5', borderTop: '1px solid #E8E8E8' }}>
                       <td colSpan={3} style={{
                         position: 'sticky', left: 0, zIndex: 2,
-                        background: '#0A0A0A', padding: '5px 14px',
-                        fontSize: 11, color: '#555', fontStyle: 'italic',
-                        borderRight: '2px solid #333',
+                        background: '#F5F5F5', padding: '5px 14px',
+                        fontSize: 11, color: '#888888', fontStyle: 'italic',
+                        borderRight: '2px solid #E0E0E0',
                       }}>
                         {discipline} · Proposed
                       </td>
@@ -534,8 +534,8 @@ export default function Allocations() {
                         return (
                           <td key={proj.id} style={{
                             padding: '5px 4px', textAlign: 'center',
-                            fontSize: 11, color: projTotal > 0 ? '#33CC77' : '#333',
-                            borderRight: '1px solid #1A1A1A',
+                            fontSize: 11, color: projTotal > 0 ? '#1E8A4A' : '#CCCCCC',
+                            borderRight: '1px solid #EEEEEE',
                           }}>
                             {projTotal > 0 ? projTotal.toFixed(1) : ''}
                           </td>
@@ -543,9 +543,9 @@ export default function Allocations() {
                       })}
                       <td style={{
                         position: 'sticky', right: 0, zIndex: 2,
-                        background: '#0A0A0A', borderLeft: '2px solid #444',
+                        background: '#F5F5F5', borderLeft: '2px solid #D5D5D5',
                         padding: '5px 8px', textAlign: 'center',
-                        fontSize: 11, color: '#33CC77', fontWeight: 700,
+                        fontSize: 11, color: '#1E8A4A', fontWeight: 700,
                       }}>
                         {disciplineTotal > 0 ? disciplineTotal.toFixed(1) : '—'}
                       </td>

@@ -7,7 +7,7 @@ export default function Layout() {
       <Sidebar />
       <main style={{
         flex: 1,
-        background: '#1A1A1A',
+        background: '#F5F6FA',
         overflowY: 'auto',
         padding: 28,
       }}>

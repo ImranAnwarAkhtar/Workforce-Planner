@@ -16,21 +16,21 @@ const STAGE_LABELS  = ['Submitted', 'Dept Review', 'Commercial Review', 'Final A
 // Shared styles
 // ---------------------------------------------------------------------------
 
-const tk = { bg2: '#111111', border: '#222222', accent: '#E31837', muted: '#888888' };
-const card: React.CSSProperties = { background: tk.bg2, border: `1px solid ${tk.border}`, borderRadius: 8 };
+const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E31837', muted: '#666666' };
+const card: React.CSSProperties = { background: tk.bg2, border: `1px solid ${tk.border}`, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
 const inputSt: React.CSSProperties = {
-  width: '100%', padding: '8px 11px', background: '#1A1A1A', border: '1px solid #333',
-  borderRadius: 6, color: '#FFF', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+  width: '100%', padding: '8px 11px', background: '#FFFFFF', border: '1px solid #D5D5D5',
+  borderRadius: 6, color: '#111111', fontSize: 14, outline: 'none', boxSizing: 'border-box',
 };
 const selectSt: React.CSSProperties = { ...inputSt, cursor: 'pointer' };
 const labelSt: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 700, color: tk.muted, marginBottom: 4, letterSpacing: '0.07em', textTransform: 'uppercase' };
 const btnPrimary: React.CSSProperties = { padding: '8px 16px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer' };
-const btnSecondary: React.CSSProperties = { padding: '8px 16px', background: 'transparent', color: '#CCC', border: '1px solid #333', borderRadius: 6, fontSize: 14, cursor: 'pointer' };
-const btnGreen: React.CSSProperties = { padding: '5px 12px', background: '#0D2B1E', color: '#33CC77', border: '1px solid #1A5E38', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-const btnRed: React.CSSProperties   = { padding: '5px 12px', background: '#2B0D0D', color: '#E31837', border: '1px solid #5E1A1A', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 };
-const modalBox: React.CSSProperties = { background: tk.bg2, border: '1px solid #333', borderRadius: 10, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: '26px 30px' };
-const modalFooter: React.CSSProperties = { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22, paddingTop: 18, borderTop: '1px solid #222' };
+const btnSecondary: React.CSSProperties = { padding: '8px 16px', background: 'transparent', color: '#555555', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 14, cursor: 'pointer' };
+const btnGreen: React.CSSProperties = { padding: '5px 12px', background: '#E8F5EE', color: '#1E8A4A', border: '1px solid #A8D8BF', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+const btnRed: React.CSSProperties   = { padding: '5px 12px', background: '#FEF0F0', color: '#C0392B', border: '1px solid #F5C0BB', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 };
+const modalBox: React.CSSProperties = { background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: '26px 30px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' };
+const modalFooter: React.CSSProperties = { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22, paddingTop: 18, borderTop: '1px solid #EEEEEE' };
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; border: string }> = {
   Pending:  { bg: '#2B1E0D', color: '#FFAA33', border: '#5E3A1A' },

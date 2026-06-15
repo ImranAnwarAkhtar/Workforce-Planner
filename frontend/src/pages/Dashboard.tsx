@@ -73,10 +73,11 @@ interface HcRow {
 // Styles
 // ---------------------------------------------------------------------------
 
-const C = { accent: '#E31837', bg2: '#111111', border: '#222222', muted: '#888888' };
+const C = { accent: '#E31837', bg2: '#FFFFFF', border: '#E8E8E8', muted: '#666666' };
 
 const card: React.CSSProperties = {
   background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '18px 20px',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
 };
 
 const sectionTitle: React.CSSProperties = {
@@ -87,12 +88,12 @@ const sectionTitle: React.CSSProperties = {
 const th: React.CSSProperties = {
   padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700,
   letterSpacing: '0.07em', textTransform: 'uppercase', color: C.muted,
-  background: '#0D0D0D', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
+  background: '#F8F9FA', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
 };
 const thR: React.CSSProperties = { ...th, textAlign: 'right' };
-const td0: React.CSSProperties = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #161616', color: '#DDD', fontWeight: 500 };
-const tdN: React.CSSProperties = { ...td0, textAlign: 'right', fontWeight: 700, color: '#FFF' };
-const tdM: React.CSSProperties = { ...td0, textAlign: 'right', color: '#666' };
+const td0: React.CSSProperties = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #F0F0F0', color: '#333333', fontWeight: 500 };
+const tdN: React.CSSProperties = { ...td0, textAlign: 'right', fontWeight: 700, color: '#111111' };
+const tdM: React.CSSProperties = { ...td0, textAlign: 'right', color: '#666666' };
 
 // ---------------------------------------------------------------------------
 // SVG icons
@@ -114,7 +115,7 @@ function KpiCard({ label, value, sub, accent, icon, loading: ld }: {
   return (
     <div style={{ ...card, borderTop: `3px solid ${accent}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ fontSize: 30, fontWeight: 800, color: ld ? '#333' : '#FFF', lineHeight: 1 }}>
+        <div style={{ fontSize: 30, fontWeight: 800, color: ld ? '#BBBBBB' : '#111111', lineHeight: 1 }}>
           {ld ? '—' : value}
         </div>
         <div style={{ width: 36, height: 36, borderRadius: 7, background: `${accent}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent, flexShrink: 0 }}>
@@ -122,7 +123,7 @@ function KpiCard({ label, value, sub, accent, icon, loading: ld }: {
         </div>
       </div>
       <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: '#484848', marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: '#888888', marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }
@@ -143,10 +144,10 @@ function DeptChart({ data, loading }: { data: DeptCount[]; loading: boolean }) {
           {data.map(({ name, count }) => (
             <div key={name}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                <span style={{ fontSize: 12, color: '#CCC' }}>{name}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#FFF' }}>{count}</span>
+                <span style={{ fontSize: 12, color: '#555555' }}>{name}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#111111' }}>{count}</span>
               </div>
-              <div style={{ height: 5, background: '#1E1E1E', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ height: 5, background: '#EEEEEE', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${Math.round((count / max) * 100)}%`, background: 'linear-gradient(90deg,#E31837,#ff4d6a)', borderRadius: 3, transition: 'width .4s' }} />
               </div>
             </div>
@@ -184,13 +185,13 @@ function AllocationSummary({ bands, total, loading }: { bands: AllocationBands; 
             {items.map((it, i) => (
               <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 9, height: 9, borderRadius: '50%', background: it.color, flexShrink: 0 }} />
-                <div style={{ flex: 1, fontSize: 12, color: '#CCC' }}>{it.label}</div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#FFF', minWidth: 28, textAlign: 'right' }}>{it.count}</div>
-                <div style={{ fontSize: 10, color: '#444', minWidth: 30, textAlign: 'right' }}>{pcts[i]}%</div>
+                <div style={{ flex: 1, fontSize: 12, color: '#555555' }}>{it.label}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: '#111111', minWidth: 28, textAlign: 'right' }}>{it.count}</div>
+                <div style={{ fontSize: 10, color: '#888888', minWidth: 30, textAlign: 'right' }}>{pcts[i]}%</div>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #1A1A1A', fontSize: 11, color: '#444' }}>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #EEEEEE', fontSize: 11, color: '#888888' }}>
             {total} active employees tracked
           </div>
         </>
@@ -233,15 +234,15 @@ function PipelineTable({ rows, loading }: { rows: PipelineRow[]; loading: boolea
             ) : rows.length === 0 ? (
               <tr><td colSpan={9} style={{ ...td0, textAlign: 'center', color: '#444', padding: '28px 0' }}>No projects found</td></tr>
             ) : rows.map((row, i) => (
-              <tr key={row.regionName} style={{ background: i % 2 === 0 ? '#111111' : '#0D0D0D' }}>
+              <tr key={row.regionName} style={{ background: i % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
                 <td style={td0}>{row.regionName}</td>
                 {STATUS_COLS.map(s => (
-                  <td key={`r-${s}`} style={{ ...tdM, color: row.retail[s] > 0 ? STATUS_COLOR[s] : '#2A2A2A' }}>
+                  <td key={`r-${s}`} style={{ ...tdM, color: row.retail[s] > 0 ? STATUS_COLOR[s] : '#CCCCCC' }}>
                     {row.retail[s] || '—'}
                   </td>
                 ))}
                 {STATUS_COLS.map(s => (
-                  <td key={`x-${s}`} style={{ ...tdM, color: row.xScale[s] > 0 ? STATUS_COLOR[s] : '#2A2A2A' }}>
+                  <td key={`x-${s}`} style={{ ...tdM, color: row.xScale[s] > 0 ? STATUS_COLOR[s] : '#CCCCCC' }}>
                     {row.xScale[s] || '—'}
                   </td>
                 ))}
@@ -263,8 +264,8 @@ function PipelineTable({ rows, loading }: { rows: PipelineRow[]; loading: boolea
             }), { rA: 0, rS: 0, rP: 0, xA: 0, xS: 0, xP: 0, total: 0, weight: 0 });
             return (
               <tfoot>
-                <tr style={{ background: '#0A0A0A', borderTop: '2px solid #222' }}>
-                  <td style={{ ...td0, color: '#555', fontSize: 11, fontStyle: 'italic' }}>Total</td>
+                <tr style={{ background: '#F5F5F5', borderTop: '2px solid #E0E0E0' }}>
+                  <td style={{ ...td0, color: '#888888', fontSize: 11, fontStyle: 'italic' }}>Total</td>
                   {[totals.rA, totals.rS, totals.rP, totals.xA, totals.xS, totals.xP].map((v, i) => (
                     <td key={i} style={{ ...tdN, fontSize: 12 }}>{v || '—'}</td>
                   ))}
@@ -309,7 +310,7 @@ function HeadcountTable({ rows, loading }: { rows: HcRow[]; loading: boolean }) 
             ) : rows.length === 0 ? (
               <tr><td colSpan={7} style={{ ...td0, textAlign: 'center', color: '#444', padding: '28px 0' }}>No data</td></tr>
             ) : rows.map((row, i) => (
-              <tr key={row.regionName} style={{ background: i % 2 === 0 ? '#111111' : '#0D0D0D' }}>
+              <tr key={row.regionName} style={{ background: i % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
                 <td style={td0}>{row.regionName}</td>
                 <td style={{ ...tdM, color: row.vpDir > 0 ? '#CC88FF' : '#2A2A2A' }}>{row.vpDir || '—'}</td>
                 <td style={{ ...tdM, color: row.fte > 0 ? '#AAA' : '#2A2A2A' }}>{row.fte || '—'}</td>
@@ -330,8 +331,8 @@ function HeadcountTable({ rows, loading }: { rows: HcRow[]; loading: boolean }) 
             }), { vpDir: 0, fte: 0, contingent: 0, approvedTBH: 0, requestedTBH: 0, total: 0 });
             return (
               <tfoot>
-                <tr style={{ background: '#0A0A0A', borderTop: '2px solid #222' }}>
-                  <td style={{ ...td0, color: '#555', fontSize: 11, fontStyle: 'italic' }}>Total</td>
+                <tr style={{ background: '#F5F5F5', borderTop: '2px solid #E0E0E0' }}>
+                  <td style={{ ...td0, color: '#888888', fontSize: 11, fontStyle: 'italic' }}>Total</td>
                   <td style={{ ...tdN, fontSize: 12 }}>{t.vpDir || '—'}</td>
                   <td style={{ ...tdN, fontSize: 12 }}>{t.fte || '—'}</td>
                   <td style={{ ...tdN, fontSize: 12 }}>{t.contingent || '—'}</td>

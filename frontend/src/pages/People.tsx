@@ -11,86 +11,86 @@ import { getUser } from '../hooks/useAuth';
 // ---------------------------------------------------------------------------
 
 const S = {
-  page: { color: '#FFFFFF' } as React.CSSProperties,
+  page: { color: '#111111' } as React.CSSProperties,
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 } as React.CSSProperties,
-  title: { fontSize: 24, fontWeight: 700, margin: 0 } as React.CSSProperties,
+  title: { fontSize: 24, fontWeight: 700, margin: 0, color: '#111111' } as React.CSSProperties,
   accent: { width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
   toolbar: { display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' as const, alignItems: 'center' },
   searchWrap: { position: 'relative', flex: '1 1 260px', maxWidth: 340 } as React.CSSProperties,
   searchInput: {
     width: '100%', padding: '9px 12px 9px 36px',
-    background: '#111111', border: '1px solid #333333', borderRadius: 6,
-    color: '#FFFFFF', fontSize: 14, outline: 'none',
+    background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6,
+    color: '#111111', fontSize: 14, outline: 'none',
   } as React.CSSProperties,
-  searchIcon: { position: 'absolute' as const, left: 11, top: '50%', transform: 'translateY(-50%)', color: '#666', pointerEvents: 'none' as const },
+  searchIcon: { position: 'absolute' as const, left: 11, top: '50%', transform: 'translateY(-50%)', color: '#999', pointerEvents: 'none' as const },
   select: {
-    padding: '9px 12px', background: '#111111', border: '1px solid #333333',
-    borderRadius: 6, color: '#FFFFFF', fontSize: 14, cursor: 'pointer', outline: 'none',
+    padding: '9px 12px', background: '#FFFFFF', border: '1px solid #D5D5D5',
+    borderRadius: 6, color: '#111111', fontSize: 14, cursor: 'pointer', outline: 'none',
   } as React.CSSProperties,
   btnPrimary: {
     padding: '9px 18px', background: '#E31837', color: '#FFFFFF',
     border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600,
     cursor: 'pointer', whiteSpace: 'nowrap' as const,
   } as React.CSSProperties,
-  card: { background: '#111111', borderRadius: 8, border: '1px solid #222222', overflow: 'hidden' } as React.CSSProperties,
+  card: { background: '#FFFFFF', borderRadius: 8, border: '1px solid #E5E5E5', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } as React.CSSProperties,
   table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 14 },
   th: {
     padding: '11px 16px', textAlign: 'left' as const, fontSize: 11,
     fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
-    color: '#888888', background: '#0D0D0D', borderBottom: '1px solid #222222',
+    color: '#666666', background: '#F8F9FA', borderBottom: '1px solid #E8E8E8',
     whiteSpace: 'nowrap' as const,
   } as React.CSSProperties,
-  td: { padding: '12px 16px', borderBottom: '1px solid #1E1E1E', verticalAlign: 'middle' as const },
-  center: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, color: '#666' },
+  td: { padding: '12px 16px', borderBottom: '1px solid #F0F0F0', verticalAlign: 'middle' as const },
+  center: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, color: '#999' },
   badge: (colour?: string | null): React.CSSProperties => ({
     display: 'inline-block', padding: '2px 8px', borderRadius: 12,
     fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-    background: colour ? `${colour}22` : '#33333366',
-    color: colour ?? '#CCCCCC',
-    border: `1px solid ${colour ? `${colour}55` : '#444'}`,
+    background: colour ? `${colour}18` : '#F0F0F0',
+    color: colour ?? '#666666',
+    border: `1px solid ${colour ? `${colour}44` : '#D5D5D5'}`,
   }),
   activeBadge: (active: boolean): React.CSSProperties => ({
     display: 'inline-block', padding: '2px 8px', borderRadius: 12,
     fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-    background: active ? '#1a3a1a' : '#3a1a1a',
-    color: active ? '#66cc66' : '#cc6666',
-    border: `1px solid ${active ? '#2a5a2a' : '#5a2a2a'}`,
+    background: active ? '#E8F5EE' : '#FEF0F0',
+    color: active ? '#1E8A4A' : '#C0392B',
+    border: `1px solid ${active ? '#A8D8BF' : '#F5C0BB'}`,
   }),
   actionBtn: (danger?: boolean): React.CSSProperties => ({
     padding: '4px 10px', fontSize: 12, fontWeight: 500,
     background: 'transparent',
-    border: `1px solid ${danger ? '#5a2a2a' : '#333333'}`,
-    color: danger ? '#cc6666' : '#AAAAAA',
+    border: `1px solid ${danger ? '#F5C0BB' : '#D5D5D5'}`,
+    color: danger ? '#C0392B' : '#555555',
     borderRadius: 4, cursor: 'pointer',
   }),
   overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     zIndex: 100, padding: 20,
   } as React.CSSProperties,
   modal: {
-    background: '#111111', border: '1px solid #333333', borderRadius: 10,
+    background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10,
     width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' as const,
-    padding: '28px 32px',
+    padding: '28px 32px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
   } as React.CSSProperties,
-  modalTitle: { fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#FFFFFF' } as React.CSSProperties,
+  modalTitle: { fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#111111' } as React.CSSProperties,
   fieldGroup: { marginBottom: 16 } as React.CSSProperties,
-  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#888888', marginBottom: 5, letterSpacing: '0.06em', textTransform: 'uppercase' as const } as React.CSSProperties,
+  label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#666666', marginBottom: 5, letterSpacing: '0.06em', textTransform: 'uppercase' as const } as React.CSSProperties,
   input: {
     width: '100%', padding: '9px 12px',
-    background: '#1A1A1A', border: '1px solid #333333', borderRadius: 6,
-    color: '#FFFFFF', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const,
+    background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6,
+    color: '#111111', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const,
   } as React.CSSProperties,
   modalSelect: {
     width: '100%', padding: '9px 12px',
-    background: '#1A1A1A', border: '1px solid #333333', borderRadius: 6,
-    color: '#FFFFFF', fontSize: 14, outline: 'none', cursor: 'pointer',
+    background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6,
+    color: '#111111', fontSize: 14, outline: 'none', cursor: 'pointer',
   } as React.CSSProperties,
   formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } as React.CSSProperties,
-  modalFooter: { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 20, borderTop: '1px solid #222' } as React.CSSProperties,
+  modalFooter: { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 20, borderTop: '1px solid #EEEEEE' } as React.CSSProperties,
   btnSecondary: {
-    padding: '9px 18px', background: 'transparent', color: '#CCCCCC',
-    border: '1px solid #333333', borderRadius: 6, fontSize: 14, cursor: 'pointer',
+    padding: '9px 18px', background: 'transparent', color: '#555555',
+    border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 14, cursor: 'pointer',
   } as React.CSSProperties,
 };
 
@@ -355,10 +355,10 @@ export default function People() {
         {canHardDelete && selectedIds.size > 0 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
-            padding: '7px 14px', background: '#1A0A0A',
-            border: '1px solid #5a2a2a', borderRadius: 6, marginLeft: 'auto',
+            padding: '7px 14px', background: '#FEF0F0',
+            border: '1px solid #F5C0BB', borderRadius: 6, marginLeft: 'auto',
           }}>
-            <span style={{ fontSize: 13, color: '#cc9999' }}>
+            <span style={{ fontSize: 13, color: '#C0392B' }}>
               {selectedIds.size} selected
             </span>
             <button
@@ -546,7 +546,7 @@ export default function People() {
             <p style={{ color: '#CCCCCC', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
               This will permanently remove <strong style={{ color: '#FFFFFF' }}>{permDeleteTarget.name}</strong> and all their allocation records. This action cannot be undone.
             </p>
-            <div style={{ background: '#1A0A0A', border: '1px solid #5a2a2a', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#cc6666', marginBottom: 20 }}>
+            <div style={{ background: '#FEF0F0', border: '1px solid #F5C0BB', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#C0392B', marginBottom: 20 }}>
               All FTE allocations for this person will also be deleted.
             </div>
             <div style={S.modalFooter}>
@@ -573,17 +573,17 @@ export default function People() {
             {/* Scrollable name list */}
             <div style={{
               maxHeight: 160, overflowY: 'auto',
-              background: '#0D0D0D', border: '1px solid #2a2a2a',
+              background: '#F8F9FA', border: '1px solid #E0E0E0',
               borderRadius: 6, padding: '8px 12px', marginBottom: 12,
             }}>
               {selectedNames.map(name => (
-                <div key={name} style={{ fontSize: 13, color: '#CCC', padding: '3px 0', borderBottom: '1px solid #1a1a1a' }}>
+                <div key={name} style={{ fontSize: 13, color: '#333333', padding: '3px 0', borderBottom: '1px solid #EEEEEE' }}>
                   {name}
                 </div>
               ))}
             </div>
 
-            <div style={{ background: '#1A0A0A', border: '1px solid #5a2a2a', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#cc6666', marginBottom: 20 }}>
+            <div style={{ background: '#FEF0F0', border: '1px solid #F5C0BB', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#C0392B', marginBottom: 20 }}>
               All FTE allocations for {selectedIds.size === 1 ? 'this person' : 'these people'} will also be deleted.
             </div>
 
@@ -618,7 +618,7 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
 
   return (
     <tr
-      style={{ background: selected ? '#1a0a0a' : hover ? 'rgba(255,255,255,0.02)' : 'transparent' }}
+      style={{ background: selected ? '#FEF0F0' : hover ? '#FAFAFA' : 'transparent' }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -637,8 +637,8 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-            background: selected ? '#E3183733' : '#E3183722',
-            border: `1px solid ${selected ? '#E31837' : '#E3183744'}`,
+            background: selected ? '#FDDDE2' : '#FEF0F2',
+            border: `1px solid ${selected ? '#E31837' : '#F5C0C8'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12, fontWeight: 700, color: '#E31837',
           }}>
@@ -694,7 +694,7 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
               style={{
                 ...S.actionBtn(true),
                 display: 'flex', alignItems: 'center', gap: 4,
-                borderColor: '#7a1a1a', background: '#1a0000',
+                borderColor: '#F5C0BB', background: '#FEF5F5',
               }}
               onClick={onPermDelete}
               title="Permanently delete this person and all their allocations"

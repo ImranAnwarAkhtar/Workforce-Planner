@@ -9,11 +9,11 @@ const rawClient = axios.create({ baseURL: BASE });
 // Styles
 // ---------------------------------------------------------------------------
 
-const tk = { bg2: '#111111', border: '#222222', accent: '#E31837', muted: '#888888' };
-const card: React.CSSProperties = { background: tk.bg2, border: `1px solid ${tk.border}`, borderRadius: 8, overflow: 'hidden' };
-const th: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: tk.muted, background: '#0D0D0D', borderBottom: `1px solid ${tk.border}`, whiteSpace: 'nowrap' };
-const td: React.CSSProperties = { padding: '10px 14px', borderBottom: '1px solid #1A1A1A', fontSize: 14, color: '#CCC' };
-const btnSecondary: React.CSSProperties = { padding: '8px 14px', background: 'transparent', color: '#CCC', border: '1px solid #333', borderRadius: 6, fontSize: 13, cursor: 'pointer' };
+const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E31837', muted: '#666666' };
+const card: React.CSSProperties = { background: tk.bg2, border: `1px solid ${tk.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
+const th: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: tk.muted, background: '#F8F9FA', borderBottom: `1px solid ${tk.border}`, whiteSpace: 'nowrap' };
+const td: React.CSSProperties = { padding: '10px 14px', borderBottom: '1px solid #F0F0F0', fontSize: 14, color: '#333333' };
+const btnSecondary: React.CSSProperties = { padding: '8px 14px', background: 'transparent', color: '#555555', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 13, cursor: 'pointer' };
 
 interface ChangeRule { id: number; change_type: string; auto_approve: boolean }
 interface User { id: number; name: string; email: string; role: string; is_active: boolean }
@@ -28,7 +28,7 @@ function LoadingRows({ cols }: { cols: number }) {
       {Array.from({ length: 4 }).map((_, i) => (
         <tr key={i}>
           {Array.from({ length: cols }).map((__, j) => (
-            <td key={j} style={td}><div style={{ height: 14, background: '#1E1E1E', borderRadius: 3, width: '70%' }} /></td>
+            <td key={j} style={td}><div style={{ height: 14, background: '#EEEEEE', borderRadius: 3, width: '70%' }} /></td>
           ))}
         </tr>
       ))}
@@ -52,7 +52,7 @@ function DisciplinesTab() {
           {loading ? <LoadingRows cols={2} /> : data.length === 0 ? (
             <tr><td colSpan={2} style={{ ...td, textAlign: 'center', color: '#555' }}>No data</td></tr>
           ) : data.map(d => (
-            <tr key={d.id}><td style={td}>{d.id}</td><td style={{ ...td, color: '#FFF', fontWeight: 500 }}>{d.name}</td></tr>
+            <tr key={d.id}><td style={td}>{d.id}</td><td style={{ ...td, color: '#111111', fontWeight: 500 }}>{d.name}</td></tr>
           ))}
         </tbody>
       </table>
@@ -74,8 +74,8 @@ function LevelsTab() {
           ) : data.map(l => (
             <tr key={l.id}>
               <td style={td}>{l.id}</td>
-              <td style={{ ...td, color: '#FFF', fontWeight: 500 }}>{l.level_name}</td>
-              <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#1A1A2B', color: '#9977FF', border: '1px solid #3A2A66', fontSize: 11, fontWeight: 600 }}>{l.short_code}</span></td>
+              <td style={{ ...td, color: '#111111', fontWeight: 500 }}>{l.level_name}</td>
+              <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#F0ECFF', color: '#6644BB', border: '1px solid #C5B8F0', fontSize: 11, fontWeight: 600 }}>{l.short_code}</span></td>
               <td style={td}>{l.level_number ?? '—'}</td>
             </tr>
           ))}
@@ -99,7 +99,7 @@ function ContractTypesTab() {
           ) : data.map(c => (
             <tr key={c.id}>
               <td style={td}>{c.id}</td>
-              <td style={{ ...td, color: '#FFF', fontWeight: 600 }}>{c.code}</td>
+              <td style={{ ...td, color: '#111111', fontWeight: 600 }}>{c.code}</td>
               <td style={td}>{c.description}</td>
               <td style={td}>{c.category ?? '—'}</td>
               <td style={td}>
@@ -129,8 +129,8 @@ function RegionsTab() {
           ) : data.map(r => (
             <tr key={r.id}>
               <td style={td}>{r.id}</td>
-              <td style={{ ...td, color: '#FFF', fontWeight: 500 }}>{r.name}</td>
-              <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#1A1A1A', color: '#888', border: '1px solid #333', fontSize: 11 }}>{r.code}</span></td>
+              <td style={{ ...td, color: '#111111', fontWeight: 500 }}>{r.name}</td>
+              <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#F5F5F5', color: '#666666', border: '1px solid #E0E0E0', fontSize: 11 }}>{r.code}</span></td>
             </tr>
           ))}
         </tbody>
@@ -151,7 +151,7 @@ function UsersTab() {
   }, []);
   return (
     <div style={card}>
-      {error && <div style={{ padding: '12px 16px', fontSize: 13, color: '#FFAA33', background: '#2B1E0D', borderBottom: '1px solid #5E3A1A' }}>⚠ Requires PMO role — data may not be available</div>}
+      {error && <div style={{ padding: '12px 16px', fontSize: 13, color: '#996600', background: '#FFFBEB', borderBottom: '1px solid #F5DFA0' }}>⚠ Requires PMO role — data may not be available</div>}
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead><tr><th style={th}>ID</th><th style={th}>Name</th><th style={th}>Email</th><th style={th}>Role</th><th style={th}>Active</th></tr></thead>
         <tbody>
@@ -160,9 +160,9 @@ function UsersTab() {
           ) : data.map(u => (
             <tr key={u.id}>
               <td style={td}>{u.id}</td>
-              <td style={{ ...td, color: '#FFF', fontWeight: 500 }}>{u.name}</td>
+              <td style={{ ...td, color: '#111111', fontWeight: 500 }}>{u.name}</td>
               <td style={td}>{u.email}</td>
-              <td style={td}><span style={{ padding: '1px 8px', borderRadius: 10, background: '#1A1A2B', color: '#9977FF', border: '1px solid #3A2A66', fontSize: 11, fontWeight: 600 }}>{u.role}</span></td>
+              <td style={td}><span style={{ padding: '1px 8px', borderRadius: 10, background: '#F0ECFF', color: '#6644BB', border: '1px solid #C5B8F0', fontSize: 11, fontWeight: 600 }}>{u.role}</span></td>
               <td style={td}>
                 <span style={{ color: u.is_active ? '#33CC77' : '#E31837', fontSize: 12, fontWeight: 600 }}>
                   {u.is_active ? 'Active' : 'Inactive'}
@@ -213,7 +213,7 @@ function ChangeRulesTab() {
               <tr><td colSpan={2} style={{ ...td, textAlign: 'center', color: '#555' }}>No rules configured</td></tr>
             ) : rules.map(r => (
               <tr key={r.id}>
-                <td style={{ ...td, color: '#FFF', fontWeight: 500 }}>{r.change_type}</td>
+                <td style={{ ...td, color: '#111111', fontWeight: 500 }}>{r.change_type}</td>
                 <td style={td}>
                   <button
                     onClick={() => toggle(r)}
@@ -221,9 +221,9 @@ function ChangeRulesTab() {
                     style={{
                       padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
                       cursor: saving === r.id ? 'wait' : 'pointer', border: 'none',
-                      background: r.auto_approve ? '#0D2B1E' : '#2B0D0D',
-                      color: r.auto_approve ? '#33CC77' : '#E31837',
-                      outline: `1px solid ${r.auto_approve ? '#1A5E38' : '#5E1A1A'}`,
+                      background: r.auto_approve ? '#E8F5EE' : '#FEF0F0',
+                      color: r.auto_approve ? '#1E8A4A' : '#C0392B',
+                      outline: `1px solid ${r.auto_approve ? '#A8D8BF' : '#F5C0BB'}`,
                     }}
                   >
                     {saving === r.id ? '…' : r.auto_approve ? 'ON' : 'OFF'}
@@ -249,21 +249,21 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState<Tab>('Disciplines');
 
   return (
-    <div style={{ color: '#FFF' }}>
+    <div style={{ color: '#111111' }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Admin</h1>
         <div style={{ width: 40, height: 3, background: tk.accent, borderRadius: 2, marginTop: 6 }} />
-        <p style={{ fontSize: 13, color: '#555', marginTop: 8 }}>Reference data and system configuration</p>
+        <p style={{ fontSize: 13, color: '#555555', marginTop: 8 }}>Reference data and system configuration</p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: '1px solid #222', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 20, borderBottom: '1px solid #E5E5E5', flexWrap: 'wrap' }}>
         {TABS.map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             padding: '8px 16px', background: 'transparent', border: 'none',
             borderBottom: activeTab === tab ? `2px solid ${tk.accent}` : '2px solid transparent',
-            color: activeTab === tab ? '#FFF' : '#888', fontSize: 14,
+            color: activeTab === tab ? '#111111' : '#999999', fontSize: 14,
             cursor: 'pointer', fontWeight: activeTab === tab ? 600 : 400, marginBottom: -1,
           }}>{tab}</button>
         ))}
