@@ -12,27 +12,28 @@ import {
 const PROJECT_TYPES    = ['Retail', 'xScale', 'Matrix'] as const;
 const PROJECT_STATUSES = ['Approved', 'Seeded', 'Proposed'] as const;
 const WEIGHT_OPTIONS   = [0.5, 1.0, 1.5, 2.0] as const;
+const STATUS_ORDER     = { Approved: 0, Seeded: 1, Proposed: 2 } as const;
 
 type ProjectType   = typeof PROJECT_TYPES[number];
 type ProjectStatus = typeof PROJECT_STATUSES[number];
 
 const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string }> = {
-  'Approved': { color: '#33CC77', bg: '#0D2B1E', border: '#1A5E38', dot: '#33CC77' },
-  'Seeded':   { color: '#F9A825', bg: '#2B1E0D', border: '#5E3A1A', dot: '#F9A825' },
-  'Proposed': { color: '#5599FF', bg: '#0D1B2B', border: '#1A3A66', dot: '#5599FF' },
+  'Approved': { color: '#1E8A4A', bg: '#E8F5EE', border: '#A8D8BF', dot: '#1E8A4A' },
+  'Seeded':   { color: '#B5600A', bg: '#FFF3DC', border: '#F0C060', dot: '#D4870A' },
+  'Proposed': { color: '#1D4EBB', bg: '#EBF0FF', border: '#BDD0FF', dot: '#4477EE' },
 };
 
 const TYPE_META: Record<ProjectType, { color: string; bg: string; border: string }> = {
-  Retail:  { color: '#2196F3', bg: '#0D1929', border: '#1A3A5E' },
-  xScale:  { color: '#9C27B0', bg: '#1E0D2B', border: '#3A1A5E' },
-  Matrix:  { color: '#00BCD4', bg: '#0D2A2E', border: '#1A5A63' },
+  Retail:  { color: '#1565C0', bg: '#E3F2FD', border: '#90CAF9' },
+  xScale:  { color: '#6A1B9A', bg: '#F3E5F7', border: '#CE93D8' },
+  Matrix:  { color: '#006064', bg: '#E0F5F6', border: '#80CBC4' },
 };
 
 function statusMeta(s: string) {
-  return STATUS_META[s as ProjectStatus] ?? { color: '#888', bg: '#1E1E1E', border: '#333' };
+  return STATUS_META[s] ?? { color: '#888888', bg: '#F5F5F5', border: '#DDDDDD', dot: '#AAAAAA' };
 }
 function typeMeta(t: string) {
-  return TYPE_META[t as ProjectType] ?? { color: '#666', bg: '#1A1A1A', border: '#333' };
+  return TYPE_META[t as ProjectType] ?? { color: '#555555', bg: '#F0F0F0', border: '#D5D5D5' };
 }
 
 // ---------------------------------------------------------------------------
@@ -47,7 +48,7 @@ const S = {
   btnPrimary:  { padding: '9px 18px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 } as React.CSSProperties,
   btnSecondary:{ padding: '9px 18px', background: 'transparent', color: '#555555', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 14, cursor: 'pointer' } as React.CSSProperties,
 
-  statsRow:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, marginBottom: 20 } as React.CSSProperties,
+  statsRow:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10, marginBottom: 20 } as React.CSSProperties,
   statCard:    (accent: string) => ({ background: '#FFFFFF', border: '1px solid #E5E5E5', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } as React.CSSProperties),
   statNum:     { fontSize: 22, fontWeight: 700, color: '#111111', lineHeight: 1 } as React.CSSProperties,
   statLabel:   { fontSize: 10, color: '#888888', marginTop: 4, textTransform: 'uppercase' as const, letterSpacing: '0.06em' } as React.CSSProperties,
@@ -58,10 +59,9 @@ const S = {
   searchIcon:  { position: 'absolute' as const, left: 10, top: '50%', transform: 'translateY(-50%)', color: '#999', pointerEvents: 'none' as const },
   filterSel:   { padding: '9px 12px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6, color: '#111111', fontSize: 13, cursor: 'pointer', outline: 'none' } as React.CSSProperties,
 
-  grid:        { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 } as React.CSSProperties,
   centerBox:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: '#999' } as React.CSSProperties,
 
-  overlay:     { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 },
+  overlay:     { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
   modal:       { background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto' as const, padding: '28px 32px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } as React.CSSProperties,
   modalTitle:  { fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#111111' } as React.CSSProperties,
   fg:          { marginBottom: 16 } as React.CSSProperties,
@@ -80,10 +80,35 @@ const S = {
   }),
   actionBtn: (danger?: boolean): React.CSSProperties => ({
     padding: '4px 10px', fontSize: 12, fontWeight: 500, background: 'transparent',
-    border: `1px solid ${danger ? '#5a2a2a' : '#333'}`,
-    color: danger ? '#cc6666' : '#AAA', borderRadius: 4, cursor: 'pointer',
+    border: `1px solid ${danger ? '#F5C0BB' : '#D5D5D5'}`,
+    color: danger ? '#C0392B' : '#666666', borderRadius: 4, cursor: 'pointer',
   }),
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function groupByCountry(projects: Project[]): [string, Project[]][] {
+  const map = new Map<string, Project[]>();
+  for (const p of projects) {
+    const key = p.country_name ?? 'Unassigned';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => {
+      const sd = (STATUS_ORDER[a.status as keyof typeof STATUS_ORDER] ?? 9)
+               - (STATUS_ORDER[b.status as keyof typeof STATUS_ORDER] ?? 9);
+      return sd !== 0 ? sd : a.name.localeCompare(b.name);
+    });
+  }
+  return [...map.entries()].sort(([a], [b]) => {
+    if (a === 'Unassigned') return 1;
+    if (b === 'Unassigned') return -1;
+    return a.localeCompare(b);
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Form state
@@ -112,18 +137,18 @@ export default function Projects() {
 
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
-  const [search,        setSearch]        = useState('');
-  const [statusFilter,  setStatusFilter]  = useState('');
-  const [typeFilter,    setTypeFilter]    = useState('');
+  const [search,         setSearch]         = useState('');
+  const [statusFilter,   setStatusFilter]   = useState('');
+  const [typeFilter,     setTypeFilter]     = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'true' | 'false' | 'all'>('true');
 
-  const [modalOpen,   setModalOpen]   = useState(false);
-  const [editTarget,  setEditTarget]  = useState<Project | null>(null);
-  const [form,        setForm]        = useState<FormState>(emptyForm);
-  const [nameError,   setNameError]   = useState('');
-  const [saving,      setSaving]      = useState(false);
+  const [modalOpen,    setModalOpen]    = useState(false);
+  const [editTarget,   setEditTarget]   = useState<Project | null>(null);
+  const [form,         setForm]         = useState<FormState>(emptyForm);
+  const [nameError,    setNameError]    = useState('');
+  const [saving,       setSaving]       = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
-  const [deleting,    setDeleting]    = useState(false);
+  const [deleting,     setDeleting]     = useState(false);
 
   // ── Reference data ────────────────────────────────────────────────────────
 
@@ -133,8 +158,6 @@ export default function Projects() {
       refDataApi.countries().catch(() => [] as Country[]),
     ]).then(([r, c]) => { setRegions(r); setCountries(c); });
   }, []);
-
-  // ── Country cascade ───────────────────────────────────────────────────────
 
   useEffect(() => {
     setFilteredCountries(
@@ -167,10 +190,10 @@ export default function Projects() {
       const q = search.toLowerCase();
       list = list.filter(p =>
         p.name.toLowerCase().includes(q) ||
-        (p.region_name ?? '').toLowerCase().includes(q) ||
-        (p.country_name ?? '').toLowerCase().includes(q) ||
-        (p.phase_code ?? '').toLowerCase().includes(q) ||
-        (p.metro ?? '').toLowerCase().includes(q)
+        (p.region_name   ?? '').toLowerCase().includes(q) ||
+        (p.country_name  ?? '').toLowerCase().includes(q) ||
+        (p.phase_code    ?? '').toLowerCase().includes(q) ||
+        (p.metro         ?? '').toLowerCase().includes(q)
       );
     }
     if (statusFilter) list = list.filter(p => p.status === statusFilter);
@@ -178,15 +201,20 @@ export default function Projects() {
     return list;
   }, [projects, search, statusFilter, typeFilter]);
 
+  const countryGroups = useMemo(() => groupByCountry(filtered), [filtered]);
+
   // ── Stats ─────────────────────────────────────────────────────────────────
 
   const stats = useMemo(() => {
     const all = projects;
     return {
-      total:    all.length,
-      active:   all.filter(p => p.status === 'Approved').length,
-      planning: all.filter(p => p.status === 'Seeded').length,
-      onHold:   all.filter(p => p.status === 'Proposed').length,
+      total:       all.length,
+      approved:    all.filter(p => p.status === 'Approved').length,
+      seeded:      all.filter(p => p.status === 'Seeded').length,
+      proposed:    all.filter(p => p.status === 'Proposed').length,
+      retail:      all.filter(p => p.type === 'Retail').length,
+      xscale:      all.filter(p => p.type === 'xScale').length,
+      totalWeight: all.reduce((s, p) => s + (Number(p.weight) || 1), 0),
     };
   }, [projects]);
 
@@ -206,7 +234,7 @@ export default function Projects() {
       year:       p.year ? String(p.year) : '',
       region_id:  p.region_id  ? String(p.region_id)  : '',
       country_id: p.country_id ? String(p.country_id) : '',
-      metro:      p.metro ?? '',
+      metro:      p.metro      ?? '',
       phase_code: p.phase_code ?? '',
     });
     setNameError(''); setModalOpen(true);
@@ -256,10 +284,13 @@ export default function Projects() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const statItems = [
-    { label: 'Total',    value: stats.total,    color: '#555555' },
-    { label: 'Approved', value: stats.active,   color: '#33CC77' },
-    { label: 'Seeded',   value: stats.planning, color: '#F9A825' },
-    { label: 'Proposed', value: stats.onHold,   color: '#5599FF' },
+    { label: 'Total',        value: stats.total,                    color: '#555555' },
+    { label: 'Approved',     value: stats.approved,                 color: '#1E8A4A' },
+    { label: 'Seeded',       value: stats.seeded,                   color: '#D4870A' },
+    { label: 'Proposed',     value: stats.proposed,                 color: '#4477EE' },
+    { label: 'Retail',       value: stats.retail,                   color: '#1565C0' },
+    { label: 'xScale',       value: stats.xscale,                   color: '#6A1B9A' },
+    { label: 'Total Weight', value: stats.totalWeight.toFixed(1),   color: '#E31837' },
   ];
 
   return (
@@ -317,8 +348,8 @@ export default function Projects() {
         </select>
 
         {!loading && (
-          <span style={{ color: '#555', fontSize: 13 }}>
-            {filtered.length} {filtered.length === 1 ? 'project' : 'projects'}
+          <span style={{ color: '#666666', fontSize: 13 }}>
+            {filtered.length} {filtered.length === 1 ? 'project' : 'projects'} · {countryGroups.length} {countryGroups.length === 1 ? 'country' : 'countries'}
           </span>
         )}
       </div>
@@ -329,27 +360,37 @@ export default function Projects() {
       ) : error ? (
         <div style={{ ...S.centerBox, flexDirection: 'column', gap: 12 }}>
           <span style={{ color: '#E31837' }}>Failed to load projects</span>
-          <span style={{ fontSize: 12, color: '#555' }}>{error}</span>
+          <span style={{ fontSize: 12, color: '#666' }}>{error}</span>
           <button style={S.btnSecondary} onClick={loadProjects}>Retry</button>
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ ...S.centerBox, flexDirection: 'column', gap: 8 }}>
-          <span>No projects found</span>
+          <span style={{ color: '#666' }}>No projects found</span>
           {(search || statusFilter || typeFilter) && (
-            <button style={{ ...S.btnSecondary, fontSize: 13, padding: '6px 14px' }}
-              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); }}>
+            <button
+              style={{ ...S.btnSecondary, fontSize: 13, padding: '6px 14px' }}
+              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); }}
+            >
               Clear filters
             </button>
           )}
         </div>
       ) : (
-        <div style={S.grid}>
-          {filtered.map(p => (
-            <ProjectCard
-              key={p.id}
-              project={p}
-              onEdit={() => openEdit(p)}
-              onDelete={() => setDeleteTarget(p)}
+        /* Country columns — horizontal scroll */
+        <div style={{
+          display: 'flex',
+          gap: 16,
+          overflowX: 'auto',
+          alignItems: 'flex-start',
+          paddingBottom: 20,
+        }}>
+          {countryGroups.map(([country, projs]) => (
+            <CountryColumn
+              key={country}
+              country={country}
+              projects={projs}
+              onEdit={openEdit}
+              onDelete={setDeleteTarget}
             />
           ))}
         </div>
@@ -361,11 +402,10 @@ export default function Projects() {
           <div style={S.modal}>
             <h2 style={S.modalTitle}>{editTarget ? 'Edit Project' : 'Add Project'}</h2>
 
-            {/* Name */}
             <div style={S.fg}>
               <label style={S.lbl}>Project Name *</label>
               <input
-                style={{ ...S.inp, borderColor: nameError ? '#E31837' : '#333' }}
+                style={{ ...S.inp, borderColor: nameError ? '#E31837' : '#D5D5D5' }}
                 value={form.name}
                 onChange={e => setField('name', e.target.value)}
                 placeholder="Enter project name"
@@ -374,7 +414,6 @@ export default function Projects() {
               {nameError && <span style={{ fontSize: 11, color: '#E31837', display: 'block', marginTop: 3 }}>{nameError}</span>}
             </div>
 
-            {/* Type / Status / Weight */}
             <div style={S.row3}>
               <div style={S.fg}>
                 <label style={S.lbl}>Type</label>
@@ -398,7 +437,6 @@ export default function Projects() {
               </div>
             </div>
 
-            {/* Year */}
             <div style={S.fg}>
               <label style={S.lbl}>Year</label>
               <input
@@ -409,7 +447,6 @@ export default function Projects() {
               />
             </div>
 
-            {/* Region */}
             <div style={S.fg}>
               <label style={S.lbl}>Region</label>
               <select style={S.sel} value={form.region_id} onChange={e => setField('region_id', e.target.value)}>
@@ -418,7 +455,6 @@ export default function Projects() {
               </select>
             </div>
 
-            {/* Country / Metro */}
             <div style={S.row2}>
               <div style={S.fg}>
                 <label style={S.lbl}>Country</label>
@@ -442,7 +478,6 @@ export default function Projects() {
               </div>
             </div>
 
-            {/* Phase Code */}
             <div style={S.fg}>
               <label style={S.lbl}>Phase Code</label>
               <input
@@ -467,12 +502,12 @@ export default function Projects() {
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
           <div style={{ ...S.modal, maxWidth: 420 }}>
             <h2 style={{ ...S.modalTitle, marginBottom: 12 }}>Archive Project</h2>
-            <p style={{ color: '#CCC', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
-              Archive <strong style={{ color: '#FFF' }}>{deleteTarget.name}</strong>? It will be hidden from active views but all data and allocations are preserved.
+            <p style={{ color: '#555555', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
+              Archive <strong style={{ color: '#111111' }}>{deleteTarget.name}</strong>? It will be hidden from active views but all data and allocations are preserved.
             </p>
             <div style={S.mFooter}>
               <button style={S.btnSecondary} onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
-              <button style={{ ...S.btnPrimary, background: '#c41530' }} onClick={handleDeactivate} disabled={deleting}>
+              <button style={{ ...S.btnPrimary, background: '#C0392B' }} onClick={handleDeactivate} disabled={deleting}>
                 {deleting ? 'Archiving…' : 'Archive'}
               </button>
             </div>
@@ -484,111 +519,205 @@ export default function Projects() {
 }
 
 // ---------------------------------------------------------------------------
+// Country column
+// ---------------------------------------------------------------------------
+
+function CountryColumn({
+  country, projects, onEdit, onDelete,
+}: {
+  country: string;
+  projects: Project[];
+  onEdit: (p: Project) => void;
+  onDelete: (p: Project) => void;
+}) {
+  const retail      = projects.filter(p => p.type === 'Retail').length;
+  const xscale      = projects.filter(p => p.type === 'xScale').length;
+  const matrix      = projects.filter(p => p.type === 'Matrix').length;
+  const totalWeight = projects.reduce((s, p) => s + (Number(p.weight) || 1), 0);
+
+  const byStatus = {
+    Approved: projects.filter(p => p.status === 'Approved'),
+    Seeded:   projects.filter(p => p.status === 'Seeded'),
+    Proposed: projects.filter(p => p.status === 'Proposed'),
+  };
+
+  return (
+    <div style={{ width: 272, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+
+      {/* Column header */}
+      <div style={{
+        background: '#FFFFFF',
+        border: '1px solid #E0E0E0',
+        borderBottom: '2px solid #E31837',
+        borderRadius: '8px 8px 0 0',
+        padding: '14px 16px 12px',
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#111111', marginBottom: 10 }}>
+          {country}
+        </div>
+
+        {/* Summary row 1: total + weight */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <span style={{ fontSize: 12, color: '#666666' }}>
+            <strong style={{ color: '#111111', fontSize: 14 }}>{projects.length}</strong>
+            {' '}project{projects.length !== 1 ? 's' : ''}
+          </span>
+          <span style={{ fontSize: 12, color: '#666666' }}>
+            Wt: <strong style={{ color: '#E31837' }}>{totalWeight.toFixed(1)}</strong>
+          </span>
+        </div>
+
+        {/* Summary row 2: type breakdown */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {retail > 0 && (
+            <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 10, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
+              {retail} Retail
+            </span>
+          )}
+          {xscale > 0 && (
+            <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 10, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
+              {xscale} xScale
+            </span>
+          )}
+          {matrix > 0 && (
+            <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 10, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
+              {matrix} Matrix
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Column body */}
+      <div style={{
+        background: '#EAEDF2',
+        border: '1px solid #E0E0E0',
+        borderTop: 'none',
+        borderRadius: '0 0 8px 8px',
+        padding: '8px 10px 12px',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0,
+        minHeight: 80,
+      }}>
+        {(['Approved', 'Seeded', 'Proposed'] as const).map(status => {
+          const group = byStatus[status];
+          if (group.length === 0) return null;
+          const sm = statusMeta(status);
+          return (
+            <div key={status}>
+              {/* Status section header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                margin: '8px 2px 6px',
+              }}>
+                <span style={{
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: sm.dot, flexShrink: 0, display: 'inline-block',
+                }} />
+                <span style={{
+                  fontSize: 10, fontWeight: 700, color: sm.color,
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                }}>
+                  {status}
+                </span>
+                <span style={{
+                  marginLeft: 'auto', fontSize: 10, fontWeight: 600,
+                  color: '#FFFFFF', background: sm.color,
+                  padding: '0px 5px', borderRadius: 8,
+                }}>
+                  {group.length}
+                </span>
+              </div>
+
+              {/* Cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {group.map(p => (
+                  <ProjectCard
+                    key={p.id}
+                    project={p}
+                    onEdit={() => onEdit(p)}
+                    onDelete={() => onDelete(p)}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Project card
 // ---------------------------------------------------------------------------
 
 function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdit: () => void; onDelete: () => void }) {
   const [hover, setHover] = useState(false);
 
-  const sm   = statusMeta(p.status);
-  const tm   = typeMeta(p.type);
-  const loc  = [p.metro, p.country_name, p.region_name].filter(Boolean).join(', ');
-  const adjCount = (Number(p.weight) || 1).toFixed(1);
+  const tm      = typeMeta(p.type);
+  const weight  = Number(p.weight) || 1;
+  const metaParts = [p.metro, p.phase_code].filter(Boolean);
 
   return (
     <div
-      style={{
-        background: '#111111',
-        border: `1px solid ${hover ? '#444' : '#222'}`,
-        borderLeft: `4px solid ${tm.color}`,
-        borderRadius: 8,
-        padding: '18px 18px 16px',
-        cursor: 'default',
-        transition: 'border-color 0.15s, transform 0.1s',
-        transform: hover ? 'translateY(-1px)' : 'none',
-      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      style={{
+        background: '#FFFFFF',
+        border: `1px solid ${hover ? '#C8C8C8' : '#E4E4E4'}`,
+        borderLeft: `3px solid ${tm.color}`,
+        borderRadius: 6,
+        padding: '12px 13px 10px',
+        boxShadow: hover ? '0 2px 10px rgba(0,0,0,0.09)' : '0 1px 3px rgba(0,0,0,0.04)',
+        transition: 'box-shadow 0.15s, border-color 0.15s',
+        cursor: 'default',
+      }}
     >
-      {/* Top: badges + weight */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', flex: 1 }}>
-          {/* Status badge */}
-          <span style={S.badge(sm.bg, sm.color, sm.border)}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: sm.color, display: 'inline-block' }} />
-            {p.status}
-          </span>
-          {/* Type badge */}
-          <span style={S.badge(tm.bg, tm.color, tm.border)}>
-            {p.type}
-          </span>
-        </div>
-
-        {/* Weight pill — top right */}
-        <div style={{ textAlign: 'right', marginLeft: 10, flexShrink: 0 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: tm.color, lineHeight: 1 }}>
-            {(Number(p.weight) || 1).toFixed(1)}
-          </div>
-          <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 1 }}>
-            weight
-          </div>
-        </div>
+      {/* Top row: type badge + weight */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+        <span style={S.badge(tm.bg, tm.color, tm.border)}>{p.type}</span>
+        <span style={{
+          fontSize: 17, fontWeight: 800, color: tm.color, lineHeight: 1,
+        }}>
+          {weight.toFixed(1)}
+        </span>
       </div>
 
-      {/* Name */}
-      <div style={{ fontSize: 15, fontWeight: 700, color: '#FFF', lineHeight: 1.35, marginBottom: 12 }}>
+      {/* Project name */}
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', lineHeight: 1.4, marginBottom: 8 }}>
         {p.name}
       </div>
 
-      {/* Meta rows */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
-        {loc && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#999' }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="#555">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            <span>{loc}</span>
-          </div>
-        )}
-        {(p.year || p.phase_code) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#999' }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="#555">
-              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-            </svg>
-            <span>{[p.year && `FY${p.year}`, p.phase_code].filter(Boolean).join(' · ')}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div style={{ height: 1, background: '#1E1E1E', marginBottom: 12 }} />
-
-      {/* Footer: Adj Count + actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Weight block */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 9, color: '#444', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Adj Count</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: tm.color, lineHeight: 1.2 }}>{adjCount}</div>
-          </div>
-        </div>
-
-        {/* Phase / year compact */}
-        {p.year && (
-          <div style={{ padding: '2px 7px', borderRadius: 4, background: '#1A1A1A', border: '1px solid #2A2A2A', fontSize: 10, color: '#555' }}>
-            {p.year}
-          </div>
-        )}
-
-        <div style={{ flex: 1 }} />
-
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 5 }}>
-          <button style={S.actionBtn()} onClick={onEdit}>Edit</button>
-          {p.is_active && (
-            <button style={S.actionBtn(true)} onClick={onDelete}>Archive</button>
+      {/* Meta: metro / phase code / year */}
+      {(metaParts.length > 0 || p.year) && (
+        <div style={{ fontSize: 11, color: '#888888', marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {metaParts.length > 0 && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="#AAAAAA">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              {metaParts.join(' · ')}
+            </span>
+          )}
+          {p.year && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="#AAAAAA">
+                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+              </svg>
+              FY{p.year}
+            </span>
           )}
         </div>
+      )}
+
+      {/* Divider + actions */}
+      <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 8, display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+        <button style={S.actionBtn()} onClick={onEdit}>Edit</button>
+        {p.is_active && (
+          <button style={S.actionBtn(true)} onClick={onDelete}>Archive</button>
+        )}
       </div>
     </div>
   );
