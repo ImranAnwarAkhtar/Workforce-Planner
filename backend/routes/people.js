@@ -173,4 +173,29 @@ router.delete('/:id', requireAuth, requireRole(ROLES.PMO), async (req, res) => {
   res.status(204).end();
 });
 
+// Permanent hard delete — removes the person and all their allocations
+router.delete('/:id/permanent', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const check = await client.query('SELECT id, name FROM people WHERE id = $1', [req.params.id]);
+    if (!check.rows.length) return res.status(404).json({ error: 'Person not found' });
+    const { id, name } = check.rows[0];
+
+    await client.query('DELETE FROM allocations    WHERE person_id = $1', [id]);
+    await client.query('DELETE FROM person_regions  WHERE person_id = $1', [id]);
+    await client.query('DELETE FROM person_countries WHERE person_id = $1', [id]);
+    await client.query('DELETE FROM people          WHERE id = $1', [id]);
+
+    await client.query('COMMIT');
+    await req.auditLog({ actionType: 'PERMANENT_DELETE', resourceType: 'person', resourceId: id, newValue: { name } });
+    res.status(204).end();
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

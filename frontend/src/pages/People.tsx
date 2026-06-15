@@ -4,6 +4,7 @@ import {
   type Person, type Discipline, type Level, type ContractType,
   type CreatePersonBody,
 } from '../services/api';
+import { getUser } from '../hooks/useAuth';
 
 // ---------------------------------------------------------------------------
 // Styles
@@ -136,6 +137,12 @@ export default function People() {
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [permDeleteTarget, setPermDeleteTarget] = useState<Person | null>(null);
+  const [permDeleting, setPermDeleting] = useState(false);
+
+  const user = getUser();
+  const canHardDelete = user?.role === 'Workforce Planning' || user?.role === 'PMO';
+
   // ── Load reference data once ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -249,6 +256,18 @@ export default function People() {
     }
   }
 
+  async function handlePermanentDelete() {
+    if (!permDeleteTarget) return;
+    setPermDeleting(true);
+    try {
+      await peopleApi.deletePermanent(permDeleteTarget.id);
+      setPermDeleteTarget(null);
+      loadPeople();
+    } finally {
+      setPermDeleting(false);
+    }
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -323,6 +342,7 @@ export default function People() {
                   person={p}
                   onEdit={() => openEdit(p)}
                   onDelete={() => setDeleteTarget(p)}
+                  onPermDelete={canHardDelete ? () => setPermDeleteTarget(p) : undefined}
                 />
               ))}
             </tbody>
@@ -409,7 +429,7 @@ export default function People() {
         </div>
       )}
 
-      {/* Delete confirmation modal */}
+      {/* Deactivate confirmation modal */}
       {deleteTarget && (
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
           <div style={{ ...S.modal, maxWidth: 400 }}>
@@ -431,6 +451,31 @@ export default function People() {
           </div>
         </div>
       )}
+
+      {/* Permanent delete confirmation modal */}
+      {permDeleteTarget && (
+        <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setPermDeleteTarget(null); }}>
+          <div style={{ ...S.modal, maxWidth: 420 }}>
+            <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E31837' }}>Permanently Delete Person</h2>
+            <p style={{ color: '#CCCCCC', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
+              This will permanently remove <strong style={{ color: '#FFFFFF' }}>{permDeleteTarget.name}</strong> and all their allocation records. This action cannot be undone.
+            </p>
+            <div style={{ background: '#1A0A0A', border: '1px solid #5a2a2a', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#cc6666', marginBottom: 20 }}>
+              All FTE allocations for this person will also be deleted.
+            </div>
+            <div style={S.modalFooter}>
+              <button style={S.btnSecondary} onClick={() => setPermDeleteTarget(null)} disabled={permDeleting}>Cancel</button>
+              <button
+                style={{ ...S.btnPrimary, background: '#8B0000' }}
+                onClick={handlePermanentDelete}
+                disabled={permDeleting}
+              >
+                {permDeleting ? 'Deleting…' : 'Delete Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -443,9 +488,10 @@ interface PersonRowProps {
   person: Person;
   onEdit: () => void;
   onDelete: () => void;
+  onPermDelete?: () => void;
 }
 
-function PersonRow({ person: p, onEdit, onDelete }: PersonRowProps) {
+function PersonRow({ person: p, onEdit, onDelete, onPermDelete }: PersonRowProps) {
   const [hover, setHover] = useState(false);
 
   return (
@@ -492,8 +538,8 @@ function PersonRow({ person: p, onEdit, onDelete }: PersonRowProps) {
       </td>
 
       <td style={S.td}>
-        <span style={{ color: p.contracted_fte >= 1 ? '#CCCCCC' : '#E8A020', fontWeight: 500 }}>
-          {p.contracted_fte.toFixed(1)}
+        <span style={{ color: Number(p.contracted_fte) >= 1 ? '#CCCCCC' : '#E8A020', fontWeight: 500 }}>
+          {Number(p.contracted_fte).toFixed(1)}
         </span>
       </td>
 
@@ -508,6 +554,22 @@ function PersonRow({ person: p, onEdit, onDelete }: PersonRowProps) {
           <button style={S.actionBtn()} onClick={onEdit}>Edit</button>
           {p.is_active && (
             <button style={S.actionBtn(true)} onClick={onDelete}>Deactivate</button>
+          )}
+          {onPermDelete && (
+            <button
+              style={{
+                ...S.actionBtn(true),
+                display: 'flex', alignItems: 'center', gap: 4,
+                borderColor: '#7a1a1a', background: '#1a0000',
+              }}
+              onClick={onPermDelete}
+              title="Permanently delete this person and all their allocations"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+              </svg>
+              Delete
+            </button>
           )}
         </div>
       </td>

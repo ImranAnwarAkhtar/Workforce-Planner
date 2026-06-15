@@ -112,6 +112,9 @@ export const peopleApi = {
 
   deactivate: (id: number) =>
     client.delete(`/people/${id}`),
+
+  deletePermanent: (id: number) =>
+    client.delete(`/people/${id}/permanent`),
 };
 
 // ---------------------------------------------------------------------------
