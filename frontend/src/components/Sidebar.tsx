@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, getUser } from '../hooks/useAuth';
+import equinixFortressWhite from '../assets/equinix-fortress-white.svg';
 
 const ICONS: Record<string, string> = {
   dashboard:  'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
@@ -82,16 +83,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         flexShrink: 0,
         overflow: 'hidden',
       }}>
-        {/* Red "E" mark — always visible */}
-        <div style={{
-          width: 28, height: 28, borderRadius: 6,
-          background: '#E31837',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 900, color: '#FFFFFF',
-          flexShrink: 0, letterSpacing: 0,
-        }}>
-          E
-        </div>
+        {/* Equinix fortress mark — always visible */}
+        <img
+          src={equinixFortressWhite}
+          alt="Equinix"
+          style={{ height: 28, width: 'auto', flexShrink: 0, display: 'block' }}
+        />
 
         {/* Brand text — fades in when expanded */}
         <div style={{
@@ -102,9 +99,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           flex: 1,
           minWidth: 0,
         }}>
-          <div style={{ color: '#E31837', fontSize: 13, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-            Equinix
-          </div>
           <div style={{ color: '#888888', fontSize: 11, marginTop: 2, letterSpacing: '0.04em' }}>
             GDC Workforce Planning
           </div>

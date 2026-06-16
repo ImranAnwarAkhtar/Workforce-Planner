@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import equinixFortressWhite from '../assets/equinix-fortress-white.svg';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -118,10 +119,8 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: 20, borderRight: '1px solid #333', marginRight: 16, flexShrink: 0 }}>
-        <div style={{ fontSize: 18, fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.5px' }}>
-          <span style={{ color: C.accent }}>E</span>QUINIX
-        </div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.15em', marginTop: 2 }}>HUB IQ</div>
+        <img src={equinixFortressWhite} alt="Equinix" style={{ height: 30, width: 'auto', display: 'block' }} />
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.15em', marginTop: 4 }}>HUB IQ</div>
         <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>{yearA} vs {yearB}</div>
       </div>
 

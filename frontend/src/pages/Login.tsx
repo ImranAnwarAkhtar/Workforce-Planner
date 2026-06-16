@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../hooks/useAuth';
+import equinixLogoReversed from '../assets/equinix-logo-reversed.svg';
 
 const ROLES = [
   'Workforce Planning',
@@ -52,15 +53,8 @@ export default function Login() {
         boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
       }}>
         {/* Logo */}
-        <div style={{
-          color: '#E31837',
-          fontSize: 13,
-          fontWeight: 900,
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase' as const,
-          marginBottom: 12,
-        }}>
-          Equinix
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+          <img src={equinixLogoReversed} alt="Equinix" style={{ height: 32, width: 'auto' }} />
         </div>
 
         <h1 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 700, lineHeight: 1.3, margin: '0 0 8px' }}>
