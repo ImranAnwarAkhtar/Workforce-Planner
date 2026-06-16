@@ -146,7 +146,7 @@ function buildSummary(projRow, hcRows) {
 // ---------------------------------------------------------------------------
 
 async function fetchShared() {
-  const [gcRes, hcRes, pdRes] = await Promise.all([
+  const [gcRes, hcRes, pdRes, trendRes, tbhRes] = await Promise.all([
     pool.query(`
       SELECT d.name AS discipline_name, gc.project_type,
              gc.min_divisor::float AS min_divisor,
@@ -177,11 +177,27 @@ async function fetchShared() {
       GROUP BY d.name, r.name, ct.category
       ORDER BY d.name, r.name
     `),
+    pool.query(`
+      SELECT year, status, COUNT(*)::int AS count
+      FROM projects
+      WHERE is_active = TRUE AND year IS NOT NULL
+      GROUP BY year, status
+      ORDER BY year, status
+    `),
+    pool.query(`
+      SELECT COALESCE(req_status, 'Not Raised') AS req_status, COUNT(*)::int AS count
+      FROM tbh_codes
+      GROUP BY req_status
+      ORDER BY count DESC
+      LIMIT 12
+    `),
   ]);
   return {
-    gearingConsts:        gcRes.rows,
-    hcByRegion:           hcRes.rows,
-    peopleByDiscRegion:   pdRes.rows,
+    gearingConsts:      gcRes.rows,
+    hcByRegion:         hcRes.rows,
+    peopleByDiscRegion: pdRes.rows,
+    projectTrend:       trendRes.rows,
+    tbhStatus:          tbhRes.rows,
   };
 }
 
@@ -191,7 +207,7 @@ async function fetchShared() {
 
 async function fetchForYear(year) {
   const y = parseInt(year, 10);
-  const [projSumRes, pipelineRes, projGearRes, reqRes] = await Promise.all([
+  const [projSumRes, pipelineRes, projGearRes, reqRes, metaRes] = await Promise.all([
     pool.query(`
       SELECT COUNT(*)::int AS total_projects,
              COUNT(*) FILTER (WHERE type = 'Retail')::int AS retail_count,
@@ -242,12 +258,19 @@ async function fetchForYear(year) {
       WHERE pe.is_active = TRUE AND ct.category = 'requested'
       ORDER BY d.name, r.name, c.name, l.short_code
     `),
+    pool.query(`
+      SELECT COUNT(DISTINCT country_id)::int AS countries_count,
+             COUNT(DISTINCT metro) FILTER (WHERE metro IS NOT NULL AND metro != '')::int AS metros_count
+      FROM projects
+      WHERE is_active = TRUE AND year = $1
+    `, [y]),
   ]);
   return {
-    projSum:      projSumRes.rows[0] || {},
-    pipelineRows: pipelineRes.rows,
-    projsByRegion:projGearRes.rows,
-    requests:     reqRes.rows,
+    projSum:        projSumRes.rows[0] || {},
+    pipelineRows:   pipelineRes.rows,
+    projsByRegion:  projGearRes.rows,
+    requests:       reqRes.rows,
+    meta:           metaRes.rows[0] || { countries_count: 0, metros_count: 0 },
   };
 }
 
@@ -289,6 +312,7 @@ router.get('/hub-iq', requireAuth, async (req, res) => {
       headcount: buildHeadcountRows(shared.hcByRegion),
       gearing:   buildGearingRows(d.projsByRegion, shared.gearingConsts, shared.peopleByDiscRegion),
       requests:  d.requests,
+      meta:      d.meta,
     };
   }
 
@@ -296,6 +320,8 @@ router.get('/hub-iq', requireAuth, async (req, res) => {
     available_years: available,
     yearA,
     yearB,
+    project_trend: shared.projectTrend,
+    tbh_status:    shared.tbhStatus,
     years: {
       [yearA]: buildYear(dataA),
       [yearB]: buildYear(dataB),

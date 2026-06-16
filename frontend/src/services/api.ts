@@ -600,10 +600,14 @@ export interface HubIqGearingRegion {
   region_name: string; min: number; max: number;
   proposed: number; optimal: number; variance: number; variance_pct: number;
 }
+export interface HubIqGearingTotals {
+  min: number; max: number;
+  proposed: number; optimal: number; variance: number; variance_pct: number;
+}
 export interface HubIqGearingDisc {
   discipline: string;
   regions: HubIqGearingRegion[];
-  totals: HubIqGearingRegion & { region_name?: never };
+  totals: HubIqGearingTotals;
 }
 
 export interface HubIqRequest {
@@ -612,17 +616,25 @@ export interface HubIqRequest {
   planning_year: number | null; person_name: string; contracted_fte: number;
 }
 
+export interface HubIqMeta { countries_count: number; metros_count: number }
+
 export interface HubIqYearData {
   summary:   HubIqSummary;
   pipeline:  HubIqPipelineRow[];
   headcount: HubIqHeadcountRow[];
   gearing:   HubIqGearingDisc[];
   requests:  HubIqRequest[];
+  meta:      HubIqMeta;
 }
+
+export interface HubIqTrendRow   { year: number; status: string; count: number }
+export interface HubIqTbhStatus  { req_status: string; count: number }
 
 export interface HubIqResponse {
   available_years: number[];
   yearA: number;
   yearB: number;
+  project_trend: HubIqTrendRow[];
+  tbh_status:    HubIqTbhStatus[];
   years: Record<number, HubIqYearData>;
 }
