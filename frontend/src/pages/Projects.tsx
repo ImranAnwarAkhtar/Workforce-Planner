@@ -13,7 +13,7 @@ const PROJECT_TYPES    = ['Retail', 'xScale', 'Matrix'] as const;
 const PROJECT_STATUSES = ['Approved', 'Seeded', 'Proposed'] as const;
 const WEIGHT_OPTIONS   = [0.5, 1.0, 1.5, 2.0] as const;
 const STATUS_ORDER     = { Approved: 0, Seeded: 1, Proposed: 2 } as const;
-const COL_W            = 165; // column / card width in px
+const COL_W            = 120; // column / card width in px
 
 type ProjectType   = typeof PROJECT_TYPES[number];
 type ProjectStatus = typeof PROJECT_STATUSES[number];
@@ -78,11 +78,6 @@ const S = {
     padding: '2px 7px', borderRadius: 10, fontSize: 10, fontWeight: 600,
     letterSpacing: '0.03em', background: bg, color, border: `1px solid ${border}`,
     whiteSpace: 'nowrap' as const,
-  }),
-  actionBtn: (danger?: boolean): React.CSSProperties => ({
-    padding: '3px 9px', fontSize: 11, fontWeight: 500, background: 'transparent',
-    border: `1px solid ${danger ? '#F5C0BB' : '#D5D5D5'}`,
-    color: danger ? '#C0392B' : '#666666', borderRadius: 4, cursor: 'pointer',
   }),
 };
 
@@ -523,8 +518,7 @@ export default function Projects() {
                             <ProjectCard
                               key={p.id}
                               project={p}
-                              onEdit={() => openEdit(p)}
-                              onDelete={() => setDeleteTarget(p)}
+                              onClick={() => openEdit(p)}
                             />
                           ))}
                           {/* Empty placeholder preserves column width alignment */}
@@ -639,6 +633,15 @@ export default function Projects() {
             </div>
 
             <div style={S.mFooter}>
+              {editTarget && editTarget.is_active && (
+                <button
+                  style={{ ...S.btnSecondary, color: '#C0392B', borderColor: '#F5C0BB', marginRight: 'auto' }}
+                  onClick={() => { setModalOpen(false); setDeleteTarget(editTarget); }}
+                  disabled={saving}
+                >
+                  Archive
+                </button>
+              )}
               <button style={S.btnSecondary} onClick={() => setModalOpen(false)} disabled={saving}>Cancel</button>
               <button style={S.btnPrimary}   onClick={handleSave}              disabled={saving}>
                 {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Project'}
@@ -670,10 +673,10 @@ export default function Projects() {
 }
 
 // ---------------------------------------------------------------------------
-// Project card  (210px column width)
+// Project card
 // ---------------------------------------------------------------------------
 
-function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdit: () => void; onDelete: () => void }) {
+function ProjectCard({ project: p, onClick }: { project: Project; onClick: () => void }) {
   const [hover, setHover] = useState(false);
   const tm     = typeMeta(p.type);
   const weight = Number(p.weight) || 1;
@@ -681,63 +684,43 @@ function ProjectCard({ project: p, onEdit, onDelete }: { project: Project; onEdi
 
   return (
     <div
+      onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
+      title="Click to edit"
       style={{
-        background: '#FFFFFF',
-        border: `1px solid ${hover ? '#C8C8C8' : '#E4E4E4'}`,
+        background: hover ? '#FAFAFA' : '#FFFFFF',
+        border: `1px solid ${hover ? '#BBBBBB' : '#E4E4E4'}`,
         borderLeft: `3px solid ${tm.color}`,
         borderRadius: 6,
-        padding: '10px 11px 9px',
-        boxShadow: hover ? '0 2px 8px rgba(0,0,0,0.09)' : '0 1px 2px rgba(0,0,0,0.04)',
-        transition: 'box-shadow 0.15s, border-color 0.15s',
-        cursor: 'default',
+        padding: '7px 9px 6px',
+        boxShadow: hover ? '0 2px 6px rgba(0,0,0,0.10)' : '0 1px 2px rgba(0,0,0,0.04)',
+        transition: 'box-shadow 0.12s, border-color 0.12s, background 0.12s',
+        cursor: 'pointer',
         width: '100%',
-        boxSizing: 'border-box',
+        boxSizing: 'border-box' as const,
       }}
     >
       {/* Type badge + weight */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <span style={S.badge(tm.bg, tm.color, tm.border)}>{p.type}</span>
-        <span style={{ fontSize: 15, fontWeight: 800, color: tm.color, lineHeight: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ ...S.badge(tm.bg, tm.color, tm.border), fontSize: 9, padding: '1px 5px' }}>{p.type}</span>
+        <span style={{ fontSize: 13, fontWeight: 800, color: tm.color, lineHeight: 1 }}>
           {weight.toFixed(1)}
         </span>
       </div>
 
       {/* Project name */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#111111', lineHeight: 1.4, marginBottom: 7 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', lineHeight: 1.35, marginBottom: 4, wordBreak: 'break-word' as const }}>
         {p.name}
       </div>
 
-      {/* Meta */}
+      {/* Meta — compact single line */}
       {(meta || p.year) && (
-        <div style={{ fontSize: 10, color: '#999999', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {meta && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="#BBBBBB" style={{ flexShrink: 0 }}>
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-              </svg>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</span>
-            </span>
-          )}
-          {p.year && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <svg width="9" height="9" viewBox="0 0 24 24" fill="#BBBBBB" style={{ flexShrink: 0 }}>
-                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-              </svg>
-              FY{p.year}
-            </span>
-          )}
+        <div style={{ fontSize: 9, color: '#AAAAAA', display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+          {p.year && <span>FY{p.year}</span>}
+          {meta && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>{meta}</span>}
         </div>
       )}
-
-      {/* Actions */}
-      <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 7, display: 'flex', justifyContent: 'flex-end', gap: 5 }}>
-        <button style={S.actionBtn()} onClick={onEdit}>Edit</button>
-        {p.is_active && (
-          <button style={S.actionBtn(true)} onClick={onDelete}>Archive</button>
-        )}
-      </div>
     </div>
   );
 }
