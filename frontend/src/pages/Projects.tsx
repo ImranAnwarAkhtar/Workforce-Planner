@@ -47,6 +47,7 @@ const S = {
   title:       { fontSize: 24, fontWeight: 700, margin: 0, color: '#111111' } as React.CSSProperties,
   accent:      { width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
   btnPrimary:  { padding: '9px 18px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 } as React.CSSProperties,
+  btnCompact:  { padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 } as React.CSSProperties,
   btnSecondary:{ padding: '9px 18px', background: 'transparent', color: '#555555', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 14, cursor: 'pointer' } as React.CSSProperties,
 
   statsRow:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10, marginBottom: 20 } as React.CSSProperties,
@@ -140,6 +141,8 @@ export default function Projects() {
   const [countryFilter,  setCountryFilter]  = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'true' | 'false' | 'all'>('true');
 
+  const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
+
   const [modalOpen,    setModalOpen]    = useState(false);
   const [editTarget,   setEditTarget]   = useState<Project | null>(null);
   const [form,         setForm]         = useState<FormState>(emptyForm);
@@ -229,16 +232,22 @@ export default function Projects() {
     return m;
   }, [countryGroups]);
 
-  // Per-country summary stats
+  // Per-country summary stats (includes per-status breakdown for totals row)
   const countryStats = useMemo(() => {
-    const s: Record<string, { total: number; retail: number; xscale: number; matrix: number; weight: number }> = {};
+    const s: Record<string, {
+      total: number; retail: number; xscale: number; matrix: number; weight: number;
+      approved: number; seeded: number; proposed: number;
+    }> = {};
     for (const [country, projs] of countryGroups) {
       s[country] = {
-        total:  projs.length,
-        retail: projs.filter(p => p.type === 'Retail').length,
-        xscale: projs.filter(p => p.type === 'xScale').length,
-        matrix: projs.filter(p => p.type === 'Matrix').length,
-        weight: projs.reduce((sum, p) => sum + (Number(p.weight) || 1), 0),
+        total:    projs.length,
+        retail:   projs.filter(p => p.type === 'Retail').length,
+        xscale:   projs.filter(p => p.type === 'xScale').length,
+        matrix:   projs.filter(p => p.type === 'Matrix').length,
+        weight:   projs.reduce((sum, p) => sum + (Number(p.weight) || 1), 0),
+        approved: projs.filter(p => p.status === 'Approved').length,
+        seeded:   projs.filter(p => p.status === 'Seeded').length,
+        proposed: projs.filter(p => p.status === 'Proposed').length,
       };
     }
     return s;
@@ -256,6 +265,14 @@ export default function Projects() {
       totalWeight: all.reduce((s, p) => s + (Number(p.weight) || 1), 0),
     };
   }, [projects]);
+
+  function toggleStatus(status: string) {
+    setCollapsedStatuses(prev => {
+      const next = new Set(prev);
+      next.has(status) ? next.delete(status) : next.add(status);
+      return next;
+    });
+  }
 
   function openAdd() {
     setEditTarget(null); setForm(emptyForm); setNameError(''); setModalOpen(true);
@@ -336,13 +353,12 @@ export default function Projects() {
       {/* ── Fixed top section ── */}
       <div style={{ flexShrink: 0 }}>
 
-        {/* Header */}
+        {/* Header — title only, button moved to toolbar */}
         <div style={S.header}>
           <div>
             <h1 style={S.title}>Projects</h1>
             <div style={S.accent} />
           </div>
-          <button style={S.btnPrimary} onClick={openAdd}>+ Add Project</button>
         </div>
 
         {/* Stats bar */}
@@ -355,7 +371,7 @@ export default function Projects() {
           ))}
         </div>
 
-        {/* Toolbar */}
+        {/* Toolbar — filters + Add Project button at right */}
         <div style={S.toolbar}>
           <div style={S.searchWrap}>
             <span style={S.searchIcon}>
@@ -411,10 +427,15 @@ export default function Projects() {
               Clear filters
             </button>
           )}
+
+          {/* Add Project — compact, right-most item */}
+          <button style={{ ...S.btnCompact, marginLeft: 'auto' }} onClick={openAdd}>
+            + Add Project
+          </button>
         </div>
       </div>
 
-      {/* ── Scrollable grid section — fills remaining height, scrollbar stays at bottom ── */}
+      {/* ── Scrollable grid section ── */}
       <div style={{ flex: 1, overflow: 'auto', minHeight: 0, paddingBottom: 12 }}>
         {loading ? (
           <div style={S.centerBox}><div className="spinner" /></div>
@@ -429,90 +450,107 @@ export default function Projects() {
             <span style={{ color: '#666' }}>No projects found</span>
           </div>
         ) : (
-        /* ── Row-aligned grid: rows = status, columns = country ── */
         <div style={{ minWidth: 'max-content' }}>
 
-            {/* Country header row */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              {countriesList.map(country => {
-                const cs = countryStats[country];
-                return (
-                  <div key={country} style={{ width: COL_W, flexShrink: 0 }}>
-                    <div style={{
-                      background: '#FFFFFF',
-                      border: '1px solid #E0E0E0',
-                      borderTop: '3px solid #E31837',
-                      borderRadius: 8,
-                      padding: '9px 11px 8px',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-                    }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#111111', marginBottom: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {country}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666666', marginBottom: 5 }}>
-                        <span><strong style={{ color: '#111111' }}>{cs.total}</strong> projects</span>
-                        <span>Wt: <strong style={{ color: '#E31837' }}>{cs.weight.toFixed(1)}</strong></span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {cs.retail > 0 && (
-                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
-                            {cs.retail} Retail
-                          </span>
-                        )}
-                        {cs.xscale > 0 && (
-                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
-                            {cs.xscale} xScale
-                          </span>
-                        )}
-                        {cs.matrix > 0 && (
-                          <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
-                            {cs.matrix} Matrix
-                          </span>
-                        )}
-                      </div>
+          {/* Country header row */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            {countriesList.map(country => {
+              const cs = countryStats[country];
+              return (
+                <div key={country} style={{ width: COL_W, flexShrink: 0 }}>
+                  <div style={{
+                    background: '#FFFFFF',
+                    border: '1px solid #E0E0E0',
+                    borderTop: '3px solid #E31837',
+                    borderRadius: 8,
+                    padding: '8px 10px 7px',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {country}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666666', marginBottom: 4 }}>
+                      <span><strong style={{ color: '#111111' }}>{cs.total}</strong> proj</span>
+                      <span style={{ color: '#E31837', fontWeight: 700 }}>Wt {cs.weight.toFixed(1)}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                      {cs.retail > 0 && (
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
+                          R:{cs.retail}
+                        </span>
+                      )}
+                      {cs.xscale > 0 && (
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
+                          xS:{cs.xscale}
+                        </span>
+                      )}
+                      {cs.matrix > 0 && (
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
+                          M:{cs.matrix}
+                        </span>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
+          </div>
 
-            {/* Status rows — Approved, then Seeded, then Proposed */}
-            {PROJECT_STATUSES.map(status => {
-              const sm           = statusMeta(status);
-              const statusTotal  = filtered.filter(p => p.status === status).length;
-              if (statusTotal === 0) return null;
+          {/* Status rows — collapsible */}
+          {PROJECT_STATUSES.map(status => {
+            const sm          = statusMeta(status);
+            const statusTotal = filtered.filter(p => p.status === status).length;
+            if (statusTotal === 0) return null;
+            const collapsed   = collapsedStatuses.has(status);
 
-              return (
-                <div key={status} style={{ marginBottom: 20 }}>
+            return (
+              <div key={status} style={{ marginBottom: 10 }}>
 
-                  {/* Status row label */}
-                  <div style={{
+                {/* Clickable status label bar */}
+                <div
+                  onClick={() => toggleStatus(status)}
+                  style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    marginBottom: 8, padding: '6px 12px',
+                    marginBottom: collapsed ? 0 : 8, padding: '5px 10px',
                     background: sm.bg, border: `1px solid ${sm.border}`,
-                    borderRadius: 6,
-                  }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: sm.dot, display: 'inline-block', flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: sm.color, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                      {status}
-                    </span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, color: '#FFFFFF',
-                      background: sm.color, padding: '0px 6px', borderRadius: 8,
-                      lineHeight: '18px',
-                    }}>
-                      {statusTotal}
-                    </span>
-                  </div>
+                    borderRadius: collapsed ? 6 : '6px 6px 0 0',
+                    cursor: 'pointer', userSelect: 'none',
+                  }}
+                >
+                  {/* Chevron */}
+                  <span style={{
+                    fontSize: 9, color: sm.color, fontWeight: 900,
+                    transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.15s',
+                    display: 'inline-block', width: 10, textAlign: 'center',
+                  }}>▼</span>
 
-                  {/* One cell per country, aligned in columns */}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: sm.dot, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: sm.color, textTransform: 'uppercase', letterSpacing: '0.07em', flex: 1 }}>
+                    {status}
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, color: '#FFFFFF',
+                    background: sm.color, padding: '0px 7px', borderRadius: 8, lineHeight: '18px',
+                  }}>
+                    {statusTotal}
+                  </span>
+                </div>
+
+                {/* Cards — hidden when collapsed */}
+                {!collapsed && (
+                  <div style={{
+                    display: 'flex', gap: 8, alignItems: 'flex-start',
+                    padding: '8px', background: `${sm.bg}55`,
+                    border: `1px solid ${sm.border}`, borderTop: 'none',
+                    borderRadius: '0 0 6px 6px',
+                  }}>
                     {countriesList.map(country => {
                       const cards = projectMatrix[country]?.[status] ?? [];
                       return (
                         <div
                           key={country}
-                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 7 }}
+                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
                         >
                           {cards.map(p => (
                             <ProjectCard
@@ -521,23 +559,123 @@ export default function Projects() {
                               onClick={() => openEdit(p)}
                             />
                           ))}
-                          {/* Empty placeholder preserves column width alignment */}
                           {cards.length === 0 && (
                             <div style={{
-                              height: 36,
-                              border: '1px dashed #E4E4E4',
-                              borderRadius: 6,
-                              background: '#FAFAFA',
+                              height: 28,
+                              border: '1px dashed #E0E0E0',
+                              borderRadius: 5,
+                              background: 'rgba(255,255,255,0.6)',
                             }} />
                           )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* ── Totals row ── */}
+          {countriesList.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              {/* Totals header bar */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '5px 10px', marginBottom: 0,
+                background: '#1A1A1A', borderRadius: '6px 6px 0 0',
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.12em', flex: 1 }}>
+                  Totals
+                </span>
+                <span style={{ fontSize: 10, color: '#888' }}>
+                  {filtered.length} projects · Wt {filtered.reduce((s, p) => s + (Number(p.weight) || 1), 0).toFixed(1)}
+                </span>
+              </div>
+
+              {/* Per-country totals tiles */}
+              <div style={{
+                display: 'flex', gap: 8, padding: '8px',
+                background: '#F5F5F5', border: '1px solid #DDDDDD',
+                borderTop: 'none', borderRadius: '0 0 6px 6px',
+              }}>
+                {countriesList.map(country => {
+                  const cs = countryStats[country];
+                  return (
+                    <div key={country} style={{
+                      width: COL_W, flexShrink: 0,
+                      background: '#FFFFFF',
+                      border: '1px solid #E0E0E0',
+                      borderBottom: '3px solid #1A1A1A',
+                      borderRadius: 6,
+                      padding: '7px 9px',
+                    }}>
+                      {/* Total count + weight */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                        <span style={{ fontSize: 17, fontWeight: 800, color: '#111111', lineHeight: 1 }}>{cs.total}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#E31837' }}>Wt {cs.weight.toFixed(1)}</span>
+                      </div>
+
+                      {/* Status breakdown */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 5 }}>
+                        {cs.approved > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 9, color: '#1E8A4A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1E8A4A', display: 'inline-block' }} />
+                              Appr
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#1E8A4A' }}>{cs.approved}</span>
+                          </div>
+                        )}
+                        {cs.seeded > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 9, color: '#B5600A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#D4870A', display: 'inline-block' }} />
+                              Seed
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#B5600A' }}>{cs.seeded}</span>
+                          </div>
+                        )}
+                        {cs.proposed > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 9, color: '#1D4EBB', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4477EE', display: 'inline-block' }} />
+                              Prop
+                            </span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#1D4EBB' }}>{cs.proposed}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Divider */}
+                      <div style={{ height: 1, background: '#F0F0F0', marginBottom: 5 }} />
+
+                      {/* Type breakdown */}
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {cs.retail > 0 && (
+                          <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 6, background: '#E3F2FD', color: '#1565C0', fontWeight: 700 }}>
+                            R {cs.retail}
+                          </span>
+                        )}
+                        {cs.xscale > 0 && (
+                          <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 6, background: '#F3E5F7', color: '#6A1B9A', fontWeight: 700 }}>
+                            xS {cs.xscale}
+                          </span>
+                        )}
+                        {cs.matrix > 0 && (
+                          <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 6, background: '#E0F5F6', color: '#006064', fontWeight: 700 }}>
+                            M {cs.matrix}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
         )}
       </div>
 
