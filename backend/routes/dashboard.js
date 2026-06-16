@@ -4,6 +4,309 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = Router();
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const GEARING_DISCIPLINES = ['Construction', 'Design', 'Commercial', 'Commissioning'];
+
+function buildPipelineRows(projRows) {
+  const byRegion = {};
+  for (const row of projRows) {
+    if (!byRegion[row.region_name]) {
+      byRegion[row.region_name] = {
+        region_name: row.region_name,
+        sort_order: Number(row.sort_order),
+        retail: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0 },
+        xscale: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0 },
+        total_weight: 0,
+      };
+    }
+    const r = byRegion[row.region_name];
+    const w = Number(row.total_weight);
+    const n = Number(row.proj_count);
+    if (row.type === 'xScale') {
+      if (row.status in r.xscale) r.xscale[row.status] += n;
+      r.xscale.weight += w;
+    } else {
+      if (row.status in r.retail) r.retail[row.status] += n;
+      r.retail.weight += w;
+    }
+    r.total_weight += w;
+  }
+  return Object.values(byRegion).sort((a, b) => a.sort_order - b.sort_order);
+}
+
+function buildHeadcountRows(hcRows) {
+  const VP_DIR = new Set(['VP', 'Dr']);
+  const byRegion = {};
+  for (const row of hcRows) {
+    const key = row.region_name;
+    if (!byRegion[key]) {
+      byRegion[key] = {
+        region_name: key, sort_order: Number(row.sort_order),
+        exist_vp_dir: 0, exist_fte: 0, exist_con: 0,
+        appr_fte: 0, appr_con_fte: 0,
+        req_fte: 0, req_con_fte: 0, req_con: 0,
+      };
+    }
+    const r = byRegion[key];
+    const n = Number(row.headcount);
+    const code = row.contract_code;
+    if (VP_DIR.has(code))       r.exist_vp_dir  += n;
+    else if (code === 'CON')    r.exist_con      += n;
+    else if (code === 'A FTE')  r.appr_fte       += n;
+    else if (code === 'A CON>FTE') r.appr_con_fte += n;
+    else if (code === 'R FTE')  r.req_fte        += n;
+    else if (code === 'R CON>FTE') r.req_con_fte  += n;
+    else if (code === 'R CON')  r.req_con        += n;
+    else if (row.category === 'existing') r.exist_fte += n;
+  }
+  return Object.values(byRegion).map(r => ({
+    ...r,
+    existing_heads: r.exist_vp_dir + r.exist_fte + r.exist_con + r.appr_fte + r.appr_con_fte,
+    total_heads:    r.exist_vp_dir + r.exist_fte + r.exist_con + r.appr_fte + r.appr_con_fte +
+                    r.req_fte + r.req_con_fte + r.req_con,
+  }))
+  .filter(r => r.total_heads > 0)
+  .sort((a, b) => a.sort_order - b.sort_order);
+}
+
+function buildGearingRows(projsByRegion, gearingConsts, peopleByDiscRegion) {
+  return GEARING_DISCIPLINES.map(disc => {
+    const consts = gearingConsts.filter(g => g.discipline_name === disc);
+    const regionNames = [...new Set(projsByRegion.map(p => p.region_name))];
+
+    const regionRows = regionNames.map(region => {
+      let minHC = 0, maxHC = 0;
+      for (const c of consts) {
+        const proj = projsByRegion.find(
+          p => p.region_name === region && p.project_type === c.project_type
+        );
+        if (proj && Number(proj.total_weight) > 0) {
+          minHC += Number(proj.total_weight) / Number(c.min_divisor);
+          maxHC += Number(proj.total_weight) / Number(c.max_divisor);
+        }
+      }
+      minHC = Math.round(minHC);
+      maxHC = Math.round(maxHC);
+      if (minHC === 0 && maxHC === 0) return null;
+
+      const optimal  = Math.round((minHC + maxHC) / 2);
+      const proposed = peopleByDiscRegion
+        .filter(p => p.discipline_name === disc && p.region_name === region &&
+                     (p.category === 'existing' || p.category === 'approved'))
+        .reduce((s, p) => s + Number(p.headcount), 0);
+      const variance     = proposed - optimal;
+      const variance_pct = optimal > 0 ? Math.round((variance / optimal) * 1000) / 10 : 0;
+      return { region_name: region, min: minHC, max: maxHC, proposed, optimal, variance, variance_pct };
+    }).filter(Boolean);
+
+    const tot = regionRows.reduce(
+      (a, r) => ({ min: a.min + r.min, max: a.max + r.max, proposed: a.proposed + r.proposed }),
+      { min: 0, max: 0, proposed: 0 }
+    );
+    const totOptimal      = Math.round((tot.min + tot.max) / 2);
+    const totVariance     = tot.proposed - totOptimal;
+    const totVariancePct  = totOptimal > 0 ? Math.round((totVariance / totOptimal) * 1000) / 10 : 0;
+
+    return {
+      discipline: disc,
+      regions: regionRows,
+      totals: { ...tot, optimal: totOptimal, variance: totVariance, variance_pct: totVariancePct },
+    };
+  });
+}
+
+function buildSummary(projRow, hcRows) {
+  const perm       = hcRows.filter(r => r.category === 'existing' && !['VP','Dr','CON'].includes(r.contract_code)).reduce((s, r) => s + Number(r.headcount), 0)
+                   + hcRows.filter(r => ['VP','Dr'].includes(r.contract_code)).reduce((s, r) => s + Number(r.headcount), 0);
+  const contingent = hcRows.filter(r => r.contract_code === 'CON').reduce((s, r) => s + Number(r.headcount), 0);
+  const appr_fte   = hcRows.filter(r => r.contract_code === 'A FTE').reduce((s, r) => s + Number(r.headcount), 0);
+  const appr_con   = hcRows.filter(r => ['A CON', 'A CON>FTE'].includes(r.contract_code)).reduce((s, r) => s + Number(r.headcount), 0);
+  const req_fte    = hcRows.filter(r => ['R FTE', 'R FTE 26'].includes(r.contract_code)).reduce((s, r) => s + Number(r.headcount), 0);
+  const req_con    = hcRows.filter(r => ['R CON', 'R CON>FTE'].includes(r.contract_code)).reduce((s, r) => s + Number(r.headcount), 0);
+  return {
+    projects: {
+      total:        Number(projRow.total_projects  || 0),
+      retail:       Number(projRow.retail_count    || 0),
+      xscale:       Number(projRow.xscale_count    || 0),
+      total_weight: Number(projRow.total_weight    || 0),
+      retail_weight:Number(projRow.retail_weight   || 0),
+      xscale_weight:Number(projRow.xscale_weight   || 0),
+    },
+    exist_hc: { total: perm + contingent, perm, contingent },
+    appr_hc:  { total: appr_fte + appr_con, fte: appr_fte, con: appr_con },
+    req_hc:   { total: req_fte + req_con,   fte: req_fte,  con: req_con  },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Shared queries (year-independent)
+// ---------------------------------------------------------------------------
+
+async function fetchShared() {
+  const [gcRes, hcRes, pdRes] = await Promise.all([
+    pool.query(`
+      SELECT d.name AS discipline_name, gc.project_type,
+             gc.min_divisor::float AS min_divisor,
+             gc.max_divisor::float AS max_divisor
+      FROM gearing_constants gc
+      JOIN disciplines d ON d.id = gc.discipline_id
+    `),
+    pool.query(`
+      SELECT r.name AS region_name, r.sort_order, ct.code AS contract_code,
+             ct.category, COUNT(*)::int AS headcount
+      FROM people pe
+      JOIN person_regions pr  ON pr.person_id  = pe.id
+      JOIN regions r           ON r.id          = pr.region_id
+      JOIN contract_types ct  ON pe.contract_type_id = ct.id
+      WHERE pe.is_active = TRUE
+      GROUP BY r.name, r.sort_order, ct.code, ct.category
+      ORDER BY r.sort_order
+    `),
+    pool.query(`
+      SELECT d.name AS discipline_name, r.name AS region_name,
+             ct.category, COUNT(*)::int AS headcount
+      FROM people pe
+      JOIN disciplines d       ON pe.discipline_id      = d.id
+      JOIN person_regions pr   ON pr.person_id           = pe.id
+      JOIN regions r           ON r.id                   = pr.region_id
+      JOIN contract_types ct   ON pe.contract_type_id    = ct.id
+      WHERE pe.is_active = TRUE
+      GROUP BY d.name, r.name, ct.category
+      ORDER BY d.name, r.name
+    `),
+  ]);
+  return {
+    gearingConsts:        gcRes.rows,
+    hcByRegion:           hcRes.rows,
+    peopleByDiscRegion:   pdRes.rows,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Year-scoped queries
+// ---------------------------------------------------------------------------
+
+async function fetchForYear(year) {
+  const y = parseInt(year, 10);
+  const [projSumRes, pipelineRes, projGearRes, reqRes] = await Promise.all([
+    pool.query(`
+      SELECT COUNT(*)::int AS total_projects,
+             COUNT(*) FILTER (WHERE type = 'Retail')::int AS retail_count,
+             COUNT(*) FILTER (WHERE type = 'xScale')::int AS xscale_count,
+             COALESCE(SUM(weight), 0)::float AS total_weight,
+             COALESCE(SUM(weight) FILTER (WHERE type = 'Retail'), 0)::float AS retail_weight,
+             COALESCE(SUM(weight) FILTER (WHERE type = 'xScale'), 0)::float AS xscale_weight
+      FROM projects
+      WHERE is_active = TRUE AND year = $1
+    `, [y]),
+    pool.query(`
+      SELECT r.name AS region_name, r.sort_order,
+             p.type, p.status,
+             COUNT(*)::int AS proj_count,
+             COALESCE(SUM(p.weight), 0)::float AS total_weight
+      FROM projects p
+      JOIN regions r ON p.region_id = r.id
+      WHERE p.is_active = TRUE AND p.year = $1
+      GROUP BY r.name, r.sort_order, p.type, p.status
+      ORDER BY r.sort_order, p.type, p.status
+    `, [y]),
+    pool.query(`
+      SELECT r.name AS region_name, p.type AS project_type,
+             COALESCE(SUM(p.weight), 0)::float AS total_weight,
+             COUNT(*)::int AS proj_count
+      FROM projects p
+      JOIN regions r ON p.region_id = r.id
+      WHERE p.is_active = TRUE AND p.year = $1
+      GROUP BY r.name, p.type
+    `, [y]),
+    pool.query(`
+      SELECT d.name AS discipline_name,
+             r.name AS region_name,
+             c.name AS country_name,
+             l.short_code AS level_code,
+             ct.code AS contract_code,
+             pe.planning_year,
+             pe.name AS person_name,
+             pe.contracted_fte::float AS contracted_fte
+      FROM people pe
+      JOIN contract_types ct   ON pe.contract_type_id = ct.id
+      JOIN disciplines d       ON pe.discipline_id    = d.id
+      LEFT JOIN levels l       ON pe.level_id         = l.id
+      JOIN person_regions pr   ON pr.person_id        = pe.id
+      JOIN regions r           ON r.id                = pr.region_id
+      LEFT JOIN person_countries pc ON pc.person_id   = pe.id
+      LEFT JOIN countries c    ON c.id                = pc.country_id
+      WHERE pe.is_active = TRUE AND ct.category = 'requested'
+      ORDER BY d.name, r.name, c.name, l.short_code
+    `),
+  ]);
+  return {
+    projSum:      projSumRes.rows[0] || {},
+    pipelineRows: pipelineRes.rows,
+    projsByRegion:projGearRes.rows,
+    requests:     reqRes.rows,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// GET /planning-years
+// ---------------------------------------------------------------------------
+
+router.get('/planning-years', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT year, is_active FROM planning_years ORDER BY year ASC`
+  );
+  res.json({ data: rows });
+});
+
+// ---------------------------------------------------------------------------
+// GET /hub-iq?yearA=2026&yearB=2027
+// ---------------------------------------------------------------------------
+
+router.get('/hub-iq', requireAuth, async (req, res) => {
+  const rawA = req.query.yearA;
+  const rawB = req.query.yearB;
+
+  const yearsReq = await pool.query(`SELECT year FROM planning_years ORDER BY year ASC`);
+  const available = yearsReq.rows.map(r => r.year);
+
+  const yearA = rawA ? parseInt(rawA, 10) : (available[0] ?? 2026);
+  const yearB = rawB ? parseInt(rawB, 10) : (available[1] ?? 2027);
+
+  const [shared, dataA, dataB] = await Promise.all([
+    fetchShared(),
+    fetchForYear(yearA),
+    fetchForYear(yearB),
+  ]);
+
+  function buildYear(d) {
+    return {
+      summary:   buildSummary(d.projSum, shared.hcByRegion),
+      pipeline:  buildPipelineRows(d.pipelineRows),
+      headcount: buildHeadcountRows(shared.hcByRegion),
+      gearing:   buildGearingRows(d.projsByRegion, shared.gearingConsts, shared.peopleByDiscRegion),
+      requests:  d.requests,
+    };
+  }
+
+  res.json({
+    available_years: available,
+    yearA,
+    yearB,
+    years: {
+      [yearA]: buildYear(dataA),
+      [yearB]: buildYear(dataB),
+    },
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Existing endpoints (unchanged)
+// ---------------------------------------------------------------------------
+
 router.get('/summary', requireAuth, async (req, res) => {
   const { rows } = await pool.query(`
     SELECT

@@ -560,4 +560,69 @@ export const dashboardApi = {
   capacity: (month: string) =>
     client.get<ListResponse<CapacityItem>>('/dashboard/capacity', { params: { month } })
       .then((r) => r.data.data),
+
+  planningYears: () =>
+    client.get<ListResponse<{ year: number; is_active: boolean }>>('/dashboard/planning-years')
+      .then((r) => r.data.data),
+
+  hubIq: (yearA: number, yearB: number) =>
+    client.get<HubIqResponse>('/dashboard/hub-iq', { params: { yearA, yearB } })
+      .then((r) => r.data),
 };
+
+// ---------------------------------------------------------------------------
+// HUB IQ dashboard types
+// ---------------------------------------------------------------------------
+
+export interface HubIqProjectSummary {
+  total: number; retail: number; xscale: number;
+  total_weight: number; retail_weight: number; xscale_weight: number;
+}
+export interface HubIqHcGroup   { total: number; fte: number; con: number }
+export interface HubIqExistHc   { total: number; perm: number; contingent: number }
+export interface HubIqSummary   { projects: HubIqProjectSummary; exist_hc: HubIqExistHc; appr_hc: HubIqHcGroup; req_hc: HubIqHcGroup }
+
+export interface HubIqPipelineRow {
+  region_name: string; sort_order: number;
+  retail: { Approved: number; Seeded: number; Proposed: number; weight: number };
+  xscale: { Approved: number; Seeded: number; Proposed: number; weight: number };
+  total_weight: number;
+}
+
+export interface HubIqHeadcountRow {
+  region_name: string; sort_order: number;
+  exist_vp_dir: number; exist_fte: number; exist_con: number;
+  appr_fte: number; appr_con_fte: number; existing_heads: number;
+  req_fte: number; req_con_fte: number; req_con: number; total_heads: number;
+}
+
+export interface HubIqGearingRegion {
+  region_name: string; min: number; max: number;
+  proposed: number; optimal: number; variance: number; variance_pct: number;
+}
+export interface HubIqGearingDisc {
+  discipline: string;
+  regions: HubIqGearingRegion[];
+  totals: HubIqGearingRegion & { region_name?: never };
+}
+
+export interface HubIqRequest {
+  discipline_name: string; region_name: string; country_name: string | null;
+  level_code: string | null; contract_code: string;
+  planning_year: number | null; person_name: string; contracted_fte: number;
+}
+
+export interface HubIqYearData {
+  summary:   HubIqSummary;
+  pipeline:  HubIqPipelineRow[];
+  headcount: HubIqHeadcountRow[];
+  gearing:   HubIqGearingDisc[];
+  requests:  HubIqRequest[];
+}
+
+export interface HubIqResponse {
+  available_years: number[];
+  yearA: number;
+  yearB: number;
+  years: Record<number, HubIqYearData>;
+}

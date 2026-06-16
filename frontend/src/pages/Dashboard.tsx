@@ -1,280 +1,129 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
-  dashboardApi, peopleApi, hireRequestsApi, changeRequestsApi,
-  projectsApi, tbhCodesApi, refDataApi,
-  type DashboardSummary, type CapacityItem, type Person, type HireRequest,
-  type ChangeRequest, type Project, type TbhCode, type Region,
+  dashboardApi,
+  type HubIqResponse, type HubIqYearData, type HubIqGearingDisc, type HubIqGearingRegion,
 } from '../services/api';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Styles / constants
 // ---------------------------------------------------------------------------
 
-function currentMonthISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const diff = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (diff < 60)    return `${diff}m ago`;
-  if (diff < 1440)  return `${Math.floor(diff / 60)}h ago`;
-  if (diff < 10080) return `${Math.floor(diff / 1440)}d ago`;
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-}
-
-// ---------------------------------------------------------------------------
-// Classification helpers
-// ---------------------------------------------------------------------------
-
-const CONTINGENT_CODES = new Set(['CON', 'A CON', 'R CON', 'A FTE', 'R FTE']);
-const VP_CODES          = new Set(['VP', 'Dr']);
-const VP_LEVEL_RE       = /\b(vp|svp|evp|director)\b/i;
-
-function classifyPerson(p: Person): 'vpDir' | 'fte' | 'contingent' {
-  const code = p.contract_type_code ?? '';
-  if (VP_CODES.has(code))                                    return 'vpDir';
-  if (CONTINGENT_CODES.has(code))                            return 'contingent';
-  if (VP_LEVEL_RE.test(p.level_name ?? ''))                  return 'vpDir';
-  return 'fte';
-}
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type ActivityItem =
-  | { kind: 'hire';   id: number; title: string; status: string; date: string; by: string | null }
-  | { kind: 'change'; id: number; title: string; status: string; date: string; by: string | null };
-
-interface DeptCount   { name: string; count: number }
-interface AllocationBands { fullyAllocated: number; partial: number; unallocated: number }
-
-interface PipelineRow {
-  regionName: string;
-  retail:  { Approved: number; Seeded: number; Proposed: number };
-  xScale:  { Approved: number; Seeded: number; Proposed: number };
-  totalWeight: number;
-  total: number;
-}
-
-interface HcRow {
-  regionName: string;
-  vpDir: number;
-  fte: number;
-  contingent: number;
-  approvedTBH: number;
-  requestedTBH: number;
-  total: number;
-}
-
-// ---------------------------------------------------------------------------
-// Styles
-// ---------------------------------------------------------------------------
-
-const C = { accent: '#E31837', bg2: '#FFFFFF', border: '#E8E8E8', muted: '#666666' };
-
-const card: React.CSSProperties = {
-  background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '18px 20px',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+const DISC_COLORS: Record<string, string> = {
+  Construction: '#1565C0', Design: '#1E8A4A', Commercial: '#B5600A', Commissioning: '#7B1FA2',
 };
-
-const sectionTitle: React.CSSProperties = {
-  fontSize: 12, fontWeight: 700, color: C.muted, textTransform: 'uppercase',
-  letterSpacing: '0.09em', marginBottom: 14,
+const ACCENT  = '#E31837';
+const BORDER  = '#E5E5E5';
+const MUTED   = '#777777';
+const BG_CARD: React.CSSProperties = {
+  background: '#FFFFFF', border: `1px solid ${BORDER}`, borderRadius: 8,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
 };
-
-const th: React.CSSProperties = {
-  padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700,
-  letterSpacing: '0.07em', textTransform: 'uppercase', color: C.muted,
-  background: '#F8F9FA', borderBottom: `1px solid ${C.border}`, whiteSpace: 'nowrap',
+const TH: React.CSSProperties = {
+  padding: '7px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+  textTransform: 'uppercase', color: MUTED, background: '#F8F9FA',
+  borderBottom: `1px solid ${BORDER}`, whiteSpace: 'nowrap',
 };
-const thR: React.CSSProperties = { ...th, textAlign: 'right' };
-const td0: React.CSSProperties = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #F0F0F0', color: '#333333', fontWeight: 500 };
-const tdN: React.CSSProperties = { ...td0, textAlign: 'right', fontWeight: 700, color: '#111111' };
-const tdM: React.CSSProperties = { ...td0, textAlign: 'right', color: '#666666' };
+const THR: React.CSSProperties = { ...TH, textAlign: 'right' };
+const TD: React.CSSProperties  = { padding: '7px 10px', fontSize: 12, color: '#333333', borderBottom: `1px solid #F3F3F3` };
+const TDR: React.CSSProperties = { ...TD, textAlign: 'right', fontWeight: 600, color: '#111111' };
+const TDM: React.CSSProperties = { ...TD, textAlign: 'right', color: MUTED };
+
+function secTitle(label: string, color = ACCENT): React.CSSProperties {
+  return { fontSize: 11, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.09em' };
+}
 
 // ---------------------------------------------------------------------------
-// SVG icons
+// Delta helper
 // ---------------------------------------------------------------------------
 
-const IconPeople  = () => <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>;
-const IconProject = () => <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v2H3zm0 4h18v2H3zm0 4h12v2H3zm0 4h12v2H3z"/></svg>;
-const IconHire    = () => <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>;
-const IconPct     = () => <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 7c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm6 10H9l6-10h1.8L9.8 17H15zm0-6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>;
+function Delta({ a, b, invert = false }: { a: number; b: number; invert?: boolean }) {
+  const diff = b - a;
+  if (diff === 0) return <span style={{ fontSize: 11, color: '#AAAAAA' }}>●</span>;
+  const up   = diff > 0;
+  const good = invert ? !up : up;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 700, color: good ? '#1E8A4A' : '#C0392B' }}>
+      {up ? '▲' : '▼'} {Math.abs(diff)}
+    </span>
+  );
+}
+
+function DeltaPct({ pct }: { pct: number }) {
+  if (pct === 0) return <span style={{ fontSize: 11, color: '#AAAAAA' }}>●</span>;
+  const color = pct > 0 ? '#1E8A4A' : '#C0392B';
+  return <span style={{ fontSize: 11, fontWeight: 700, color }}>{pct > 0 ? '+' : ''}{pct}%</span>;
+}
 
 // ---------------------------------------------------------------------------
-// KPI card (generic)
+// Year tab buttons
 // ---------------------------------------------------------------------------
 
-function KpiCard({ label, value, sub, accent, icon, loading: ld }: {
-  label: string; value: string | number; sub?: string; accent: string;
-  icon: React.ReactNode; loading?: boolean;
+function YearTabs({ yearA, yearB, active, onChange }: {
+  yearA: number; yearB: number; active: number; onChange: (y: number) => void;
 }) {
   return (
-    <div style={{ ...card, borderTop: `3px solid ${accent}`, display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ fontSize: 30, fontWeight: 800, color: ld ? '#BBBBBB' : '#111111', lineHeight: 1 }}>
-          {ld ? '—' : value}
-        </div>
-        <div style={{ width: 36, height: 36, borderRadius: 7, background: `${accent}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent, flexShrink: 0 }}>
-          {icon}
-        </div>
-      </div>
-      <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: '#888888', marginTop: 2 }}>{sub}</div>}
+    <div style={{ display: 'flex', gap: 4 }}>
+      {[yearA, yearB].map(y => (
+        <button key={y} onClick={() => onChange(y)} style={{
+          padding: '4px 12px', borderRadius: 4, fontSize: 12, fontWeight: 600,
+          border: `1px solid ${active === y ? ACCENT : BORDER}`,
+          background: active === y ? ACCENT : '#FFFFFF',
+          color: active === y ? '#FFFFFF' : '#555555',
+          cursor: 'pointer',
+        }}>{y}</button>
+      ))}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Dept bar chart
+// Section 1: KPI Banner
 // ---------------------------------------------------------------------------
 
-function DeptChart({ data, loading }: { data: DeptCount[]; loading: boolean }) {
-  const max = data[0]?.count || 1;
-  return (
-    <div style={card}>
-      <div style={sectionTitle}>Headcount by Discipline</div>
-      {loading ? <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>Loading…</div>
-       : data.length === 0 ? <p style={{ color: '#444', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No data</p>
-       : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {data.map(({ name, count }) => (
-            <div key={name}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                <span style={{ fontSize: 12, color: '#555555' }}>{name}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#111111' }}>{count}</span>
-              </div>
-              <div style={{ height: 5, background: '#EEEEEE', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${Math.round((count / max) * 100)}%`, background: 'linear-gradient(90deg,#E31837,#ff4d6a)', borderRadius: 3, transition: 'width .4s' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Allocation summary
-// ---------------------------------------------------------------------------
-
-function AllocationSummary({ bands, total, loading }: { bands: AllocationBands; total: number; loading: boolean }) {
-  const items = [
-    { label: 'Fully Allocated',    count: bands.fullyAllocated, color: '#33CC77' },
-    { label: 'Partially Allocated', count: bands.partial,       color: '#FFAA33' },
-    { label: 'Available',           count: bands.unallocated,   color: '#5599FF' },
+function KpiBanner({ yearA, yearB, dataA, dataB }: {
+  yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData;
+}) {
+  const rows: { label: string; a: number; b: number; sub?: string }[] = [
+    { label: 'Total Projects',  a: dataA.summary.projects.total,        b: dataB.summary.projects.total },
+    { label: 'Retail Projects', a: dataA.summary.projects.retail,       b: dataB.summary.projects.retail },
+    { label: 'xScale Projects', a: dataA.summary.projects.xscale,       b: dataB.summary.projects.xscale },
+    { label: 'Exist HC Total',  a: dataA.summary.exist_hc.total,        b: dataB.summary.exist_hc.total },
+    { label: 'Perm FTE',        a: dataA.summary.exist_hc.perm,         b: dataB.summary.exist_hc.perm },
+    { label: 'Contingent',      a: dataA.summary.exist_hc.contingent,   b: dataB.summary.exist_hc.contingent },
+    { label: 'Approved TBH',    a: dataA.summary.appr_hc.total,         b: dataB.summary.appr_hc.total },
+    { label: 'Requested TBH',   a: dataA.summary.req_hc.total,          b: dataB.summary.req_hc.total },
   ];
-  const pcts = items.map(i => total ? Math.round((i.count / total) * 100) : 0);
-  return (
-    <div style={card}>
-      <div style={sectionTitle}>Allocation Status — This Month</div>
-      {loading ? <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>Loading…</div>
-       : total === 0 ? <p style={{ color: '#444', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No capacity data</p>
-       : (
-        <>
-          <div style={{ height: 7, borderRadius: 3, overflow: 'hidden', display: 'flex', marginBottom: 18 }}>
-            {items.map((it, i) => (
-              <div key={it.label} style={{ width: `${pcts[i]}%`, background: it.color, transition: 'width .4s' }} />
-            ))}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {items.map((it, i) => (
-              <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 9, height: 9, borderRadius: '50%', background: it.color, flexShrink: 0 }} />
-                <div style={{ flex: 1, fontSize: 12, color: '#555555' }}>{it.label}</div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#111111', minWidth: 28, textAlign: 'right' }}>{it.count}</div>
-                <div style={{ fontSize: 10, color: '#888888', minWidth: 30, textAlign: 'right' }}>{pcts[i]}%</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #EEEEEE', fontSize: 11, color: '#888888' }}>
-            {total} active employees tracked
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Pipeline summary table
-// ---------------------------------------------------------------------------
-
-function PipelineTable({ rows, loading }: { rows: PipelineRow[]; loading: boolean }) {
-  const STATUS_COLS = ['Approved', 'Seeded', 'Proposed'] as const;
-  const STATUS_COLOR: Record<string, string> = { Approved: '#33CC77', Seeded: '#FFAA33', Proposed: '#4499FF' };
 
   return (
-    <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 18px 10px', borderBottom: `1px solid ${C.border}` }}>
-        <div style={sectionTitle}>Project Pipeline by Region</div>
+    <div style={{ ...BG_CARD, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '12px 16px 8px', borderBottom: `1px solid ${BORDER}` }}>
+        <span style={secTitle('')}>Summary Comparison</span>
       </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr>
-              <th style={{ ...th, minWidth: 120 }}>Region</th>
-              {STATUS_COLS.map(s => (
-                <th key={`r-${s}`} style={{ ...thR, color: STATUS_COLOR[s] }}>Retail {s.slice(0,4)}</th>
-              ))}
-              {STATUS_COLS.map(s => (
-                <th key={`x-${s}`} style={{ ...thR, color: STATUS_COLOR[s] }}>xScale {s.slice(0,4)}</th>
-              ))}
-              <th style={{ ...thR }}>Total</th>
-              <th style={{ ...thR }}>Weight</th>
+              <th style={{ ...TH, minWidth: 130 }}>Metric</th>
+              <th style={{ ...THR, color: ACCENT }}>{yearA}</th>
+              <th style={{ ...THR, color: '#1565C0' }}>{yearB}</th>
+              <th style={{ ...THR }}>Change</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan={9} style={{ ...td0, textAlign: 'center', color: '#333', padding: '28px 0' }}>Loading…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={9} style={{ ...td0, textAlign: 'center', color: '#444', padding: '28px 0' }}>No projects found</td></tr>
-            ) : rows.map((row, i) => (
-              <tr key={row.regionName} style={{ background: i % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
-                <td style={td0}>{row.regionName}</td>
-                {STATUS_COLS.map(s => (
-                  <td key={`r-${s}`} style={{ ...tdM, color: row.retail[s] > 0 ? STATUS_COLOR[s] : '#CCCCCC' }}>
-                    {row.retail[s] || '—'}
+            {rows.map((row, i) => {
+              const isGroup = ['Total Projects', 'Exist HC Total', 'Approved TBH', 'Requested TBH'].includes(row.label);
+              return (
+                <tr key={row.label} style={{ background: isGroup ? '#FAFAFA' : '#FFFFFF' }}>
+                  <td style={{ ...TD, fontWeight: isGroup ? 700 : 400, paddingLeft: isGroup ? 10 : 22, color: isGroup ? '#111111' : '#444444' }}>
+                    {row.label}
                   </td>
-                ))}
-                {STATUS_COLS.map(s => (
-                  <td key={`x-${s}`} style={{ ...tdM, color: row.xScale[s] > 0 ? STATUS_COLOR[s] : '#CCCCCC' }}>
-                    {row.xScale[s] || '—'}
-                  </td>
-                ))}
-                <td style={{ ...tdN, color: '#FFF' }}>{row.total}</td>
-                <td style={{ ...tdM }}>{row.totalWeight > 0 ? Number(row.totalWeight).toFixed(1) : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-          {rows.length > 0 && (() => {
-            const totals = rows.reduce((acc, r) => ({
-              rA: acc.rA + r.retail.Approved,
-              rS: acc.rS + r.retail.Seeded,
-              rP: acc.rP + r.retail.Proposed,
-              xA: acc.xA + r.xScale.Approved,
-              xS: acc.xS + r.xScale.Seeded,
-              xP: acc.xP + r.xScale.Proposed,
-              total: acc.total + r.total,
-              weight: acc.weight + r.totalWeight,
-            }), { rA: 0, rS: 0, rP: 0, xA: 0, xS: 0, xP: 0, total: 0, weight: 0 });
-            return (
-              <tfoot>
-                <tr style={{ background: '#F5F5F5', borderTop: '2px solid #E0E0E0' }}>
-                  <td style={{ ...td0, color: '#888888', fontSize: 11, fontStyle: 'italic' }}>Total</td>
-                  {[totals.rA, totals.rS, totals.rP, totals.xA, totals.xS, totals.xP].map((v, i) => (
-                    <td key={i} style={{ ...tdN, fontSize: 12 }}>{v || '—'}</td>
-                  ))}
-                  <td style={{ ...tdN }}>{totals.total}</td>
-                  <td style={{ ...tdM }}>{totals.weight > 0 ? Number(totals.weight).toFixed(1) : '—'}</td>
+                  <td style={{ ...TDR, color: ACCENT }}>{row.a}</td>
+                  <td style={{ ...TDR, color: '#1565C0' }}>{row.b}</td>
+                  <td style={{ ...TDM }}><Delta a={row.a} b={row.b} /></td>
                 </tr>
-              </tfoot>
-            );
-          })()}
+              );
+            })}
+          </tbody>
         </table>
       </div>
     </div>
@@ -282,67 +131,74 @@ function PipelineTable({ rows, loading }: { rows: PipelineRow[]; loading: boolea
 }
 
 // ---------------------------------------------------------------------------
-// Headcount table by region
+// Section 2: Pipeline
 // ---------------------------------------------------------------------------
 
-function HeadcountTable({ rows, loading }: { rows: HcRow[]; loading: boolean }) {
+function PipelineSection({ yearA, yearB, dataA, dataB }: {
+  yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData;
+}) {
+  const [activeYear, setActiveYear] = useState(yearA);
+  const data = activeYear === yearA ? dataA : dataB;
+  const S = ['Approved', 'Seeded', 'Proposed'] as const;
+  const SC: Record<string, string> = { Approved: '#1E8A4A', Seeded: '#B5600A', Proposed: '#1565C0' };
+
+  const totalRow = data.pipeline.reduce(
+    (a, r) => ({
+      rAppr: a.rAppr + r.retail.Approved, rSeed: a.rSeed + r.retail.Seeded, rProp: a.rProp + r.retail.Proposed, rW: a.rW + r.retail.weight,
+      xAppr: a.xAppr + r.xscale.Approved, xSeed: a.xSeed + r.xscale.Seeded, xProp: a.xProp + r.xscale.Proposed, xW: a.xW + r.xscale.weight,
+      tw: a.tw + r.total_weight,
+    }),
+    { rAppr: 0, rSeed: 0, rProp: 0, rW: 0, xAppr: 0, xSeed: 0, xProp: 0, xW: 0, tw: 0 }
+  );
+
   return (
-    <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 18px 10px', borderBottom: `1px solid ${C.border}` }}>
-        <div style={sectionTitle}>Headcount by Region</div>
+    <div style={{ ...BG_CARD, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '12px 16px 8px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={secTitle('')}>Project Pipeline by Region (Weight)</span>
+        <YearTabs yearA={yearA} yearB={yearB} active={activeYear} onChange={setActiveYear} />
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr>
-              <th style={{ ...th, minWidth: 120 }}>Region</th>
-              <th style={thR}>VP / Dir</th>
-              <th style={thR}>Perm FTE</th>
-              <th style={thR}>Contingent</th>
-              <th style={{ ...thR, color: '#33CC77' }}>Appr TBH</th>
-              <th style={{ ...thR, color: '#FFAA33' }}>Req TBH</th>
-              <th style={thR}>Total HC</th>
+              <th style={{ ...TH, minWidth: 120 }}>Region</th>
+              {S.map(s => <th key={`r-${s}`} style={{ ...THR, color: SC[s] }}>Retail {s.slice(0,4)}</th>)}
+              <th style={{ ...THR }}>Retail Wt</th>
+              {S.map(s => <th key={`x-${s}`} style={{ ...THR, color: SC[s] }}>xScale {s.slice(0,4)}</th>)}
+              <th style={{ ...THR }}>xScale Wt</th>
+              <th style={{ ...THR, fontWeight: 800 }}>Total Wt</th>
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr><td colSpan={7} style={{ ...td0, textAlign: 'center', color: '#333', padding: '28px 0' }}>Loading region data…</td></tr>
-            ) : rows.length === 0 ? (
-              <tr><td colSpan={7} style={{ ...td0, textAlign: 'center', color: '#444', padding: '28px 0' }}>No data</td></tr>
-            ) : rows.map((row, i) => (
-              <tr key={row.regionName} style={{ background: i % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
-                <td style={td0}>{row.regionName}</td>
-                <td style={{ ...tdM, color: row.vpDir > 0 ? '#CC88FF' : '#2A2A2A' }}>{row.vpDir || '—'}</td>
-                <td style={{ ...tdM, color: row.fte > 0 ? '#AAA' : '#2A2A2A' }}>{row.fte || '—'}</td>
-                <td style={{ ...tdM, color: row.contingent > 0 ? '#FFAA33' : '#2A2A2A' }}>{row.contingent || '—'}</td>
-                <td style={{ ...tdM, color: row.approvedTBH > 0 ? '#33CC77' : '#2A2A2A' }}>{row.approvedTBH || '—'}</td>
-                <td style={{ ...tdM, color: row.requestedTBH > 0 ? '#FFAA33' : '#2A2A2A' }}>{row.requestedTBH || '—'}</td>
-                <td style={{ ...tdN }}>{row.total}</td>
+            {data.pipeline.length === 0 ? (
+              <tr><td colSpan={9} style={{ ...TD, textAlign: 'center', color: MUTED, padding: '20px 0' }}>No project data for {activeYear}</td></tr>
+            ) : data.pipeline.map((row, i) => (
+              <tr key={row.region_name} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
+                <td style={TD}>{row.region_name}</td>
+                {S.map(s => <td key={`r-${s}`} style={{ ...TDM, color: row.retail[s] > 0 ? SC[s] : '#DDDDDD' }}>{row.retail[s] || '—'}</td>)}
+                <td style={TDM}>{row.retail.weight > 0 ? row.retail.weight.toFixed(1) : '—'}</td>
+                {S.map(s => <td key={`x-${s}`} style={{ ...TDM, color: row.xscale[s] > 0 ? SC[s] : '#DDDDDD' }}>{row.xscale[s] || '—'}</td>)}
+                <td style={TDM}>{row.xscale.weight > 0 ? row.xscale.weight.toFixed(1) : '—'}</td>
+                <td style={{ ...TDR }}>{row.total_weight > 0 ? row.total_weight.toFixed(1) : '—'}</td>
               </tr>
             ))}
           </tbody>
-          {rows.length > 0 && (() => {
-            const t = rows.reduce((a, r) => ({
-              vpDir: a.vpDir + r.vpDir, fte: a.fte + r.fte,
-              contingent: a.contingent + r.contingent,
-              approvedTBH: a.approvedTBH + r.approvedTBH,
-              requestedTBH: a.requestedTBH + r.requestedTBH,
-              total: a.total + r.total,
-            }), { vpDir: 0, fte: 0, contingent: 0, approvedTBH: 0, requestedTBH: 0, total: 0 });
-            return (
-              <tfoot>
-                <tr style={{ background: '#F5F5F5', borderTop: '2px solid #E0E0E0' }}>
-                  <td style={{ ...td0, color: '#888888', fontSize: 11, fontStyle: 'italic' }}>Total</td>
-                  <td style={{ ...tdN, fontSize: 12 }}>{t.vpDir || '—'}</td>
-                  <td style={{ ...tdN, fontSize: 12 }}>{t.fte || '—'}</td>
-                  <td style={{ ...tdN, fontSize: 12 }}>{t.contingent || '—'}</td>
-                  <td style={{ ...tdN, fontSize: 12, color: '#33CC77' }}>{t.approvedTBH || '—'}</td>
-                  <td style={{ ...tdN, fontSize: 12, color: '#FFAA33' }}>{t.requestedTBH || '—'}</td>
-                  <td style={{ ...tdN }}>{t.total}</td>
-                </tr>
-              </tfoot>
-            );
-          })()}
+          {data.pipeline.length > 0 && (
+            <tfoot>
+              <tr style={{ background: '#F5F5F5', borderTop: `2px solid ${BORDER}` }}>
+                <td style={{ ...TD, fontWeight: 700, fontSize: 11, color: MUTED, fontStyle: 'italic' }}>Total</td>
+                {[totalRow.rAppr, totalRow.rSeed, totalRow.rProp].map((v, i) => (
+                  <td key={i} style={{ ...TDR, fontSize: 11 }}>{v || '—'}</td>
+                ))}
+                <td style={{ ...TDR, fontSize: 11 }}>{totalRow.rW.toFixed(1)}</td>
+                {[totalRow.xAppr, totalRow.xSeed, totalRow.xProp].map((v, i) => (
+                  <td key={i} style={{ ...TDR, fontSize: 11 }}>{v || '—'}</td>
+                ))}
+                <td style={{ ...TDR, fontSize: 11 }}>{totalRow.xW.toFixed(1)}</td>
+                <td style={{ ...TDR }}>{totalRow.tw.toFixed(1)}</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </div>
@@ -350,371 +206,371 @@ function HeadcountTable({ rows, loading }: { rows: HcRow[]; loading: boolean }) 
 }
 
 // ---------------------------------------------------------------------------
-// Activity feed
+// Section 3: Headcount Matrix
 // ---------------------------------------------------------------------------
 
-const STATUS_COLOR: Record<string, string> = {
-  Pending: '#FFAA33', Approved: '#33CC77', Rejected: '#E31837',
-  'Auto-Approved': '#5599FF', Default: '#888888',
-};
+function HeadcountSection({ yearA, yearB, dataA, dataB }: {
+  yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData;
+}) {
+  const [activeYear, setActiveYear] = useState(yearA);
+  const data = activeYear === yearA ? dataA : dataB;
 
-function ActivityFeed({ items, loading }: { items: ActivityItem[]; loading: boolean }) {
+  const tot = data.headcount.reduce((a, r) => ({
+    vp: a.vp + r.exist_vp_dir, fte: a.fte + r.exist_fte, con: a.con + r.exist_con,
+    aft: a.aft + r.appr_fte, acf: a.acf + r.appr_con_fte, eh: a.eh + r.existing_heads,
+    rft: a.rft + r.req_fte, rcf: a.rcf + r.req_con_fte, rc: a.rc + r.req_con, th: a.th + r.total_heads,
+  }), { vp: 0, fte: 0, con: 0, aft: 0, acf: 0, eh: 0, rft: 0, rcf: 0, rc: 0, th: 0 });
+
   return (
-    <div style={card}>
-      <div style={sectionTitle}>Recent Activity</div>
-      {loading ? <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>Loading…</div>
-       : items.length === 0 ? <p style={{ color: '#444', fontSize: 13, textAlign: 'center', padding: '16px 0' }}>No recent activity</p>
-       : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {items.map((item, idx) => {
-            const isHire = item.kind === 'hire';
-            const dot  = isHire ? C.accent : '#5599FF';
-            const sc   = STATUS_COLOR[item.status] ?? STATUS_COLOR.Default;
-            const last = idx === items.length - 1;
-            return (
-              <div key={`${item.kind}-${item.id}`} style={{ display: 'flex', gap: 12, paddingBottom: last ? 0 : 14, borderBottom: last ? 'none' : '1px solid #181818', marginBottom: last ? 0 : 14 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: dot, marginTop: 3, flexShrink: 0 }} />
-                  {!last && <div style={{ width: 1, flex: 1, background: '#1E1E1E', marginTop: 4 }} />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 }}>
-                    <div>
-                      <span style={{ fontSize: 9, fontWeight: 700, color: dot, textTransform: 'uppercase', letterSpacing: '0.08em', marginRight: 5 }}>
-                        {isHire ? 'Hire' : 'Change'}
-                      </span>
-                      <span style={{ display: 'inline-block', padding: '1px 6px', borderRadius: 9, fontSize: 9, fontWeight: 600, background: `${sc}22`, color: sc, border: `1px solid ${sc}44` }}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: 10, color: '#444', whiteSpace: 'nowrap', flexShrink: 0 }}>{formatDate(item.date)}</span>
-                  </div>
-                  <div style={{ fontSize: 13, color: '#EEE', marginTop: 3, fontWeight: 500 }}>{item.title}</div>
-                  {item.by && <div style={{ fontSize: 11, color: '#555', marginTop: 1 }}>by {item.by}</div>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+    <div style={{ ...BG_CARD, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '12px 16px 8px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={secTitle('')}>Headcount by Region</span>
+        <YearTabs yearA={yearA} yearB={yearB} active={activeYear} onChange={setActiveYear} />
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={{ ...TH, minWidth: 120 }}>Region</th>
+              <th style={THR}>VP/Dir</th>
+              <th style={THR}>Perm FTE</th>
+              <th style={THR}>Contingent</th>
+              <th style={{ ...THR, color: '#1E8A4A' }}>Appr FTE</th>
+              <th style={{ ...THR, color: '#1E8A4A' }}>Appr CON→FTE</th>
+              <th style={{ ...THR, background: '#EBF7EF', color: '#1E8A4A' }}>Exist Heads</th>
+              <th style={{ ...THR, color: '#B5600A' }}>Req FTE</th>
+              <th style={{ ...THR, color: '#B5600A' }}>Req CON→FTE</th>
+              <th style={{ ...THR, color: '#B5600A' }}>Req CON</th>
+              <th style={{ ...THR, background: '#FFF8E1' }}>Total Heads</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.headcount.length === 0 ? (
+              <tr><td colSpan={11} style={{ ...TD, textAlign: 'center', color: MUTED, padding: '20px 0' }}>No headcount data</td></tr>
+            ) : data.headcount.map((row, i) => (
+              <tr key={row.region_name} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
+                <td style={TD}>{row.region_name}</td>
+                <td style={TDM}>{row.exist_vp_dir   || '—'}</td>
+                <td style={TDM}>{row.exist_fte       || '—'}</td>
+                <td style={TDM}>{row.exist_con       || '—'}</td>
+                <td style={{ ...TDM, color: row.appr_fte > 0 ? '#1E8A4A' : '#DDDDDD' }}>{row.appr_fte     || '—'}</td>
+                <td style={{ ...TDM, color: row.appr_con_fte > 0 ? '#1E8A4A' : '#DDDDDD' }}>{row.appr_con_fte || '—'}</td>
+                <td style={{ ...TDR, background: '#EBF7EF', color: '#1E8A4A' }}>{row.existing_heads || '—'}</td>
+                <td style={{ ...TDM, color: row.req_fte > 0 ? '#B5600A' : '#DDDDDD' }}>{row.req_fte     || '—'}</td>
+                <td style={{ ...TDM, color: row.req_con_fte > 0 ? '#B5600A' : '#DDDDDD' }}>{row.req_con_fte || '—'}</td>
+                <td style={{ ...TDM, color: row.req_con > 0 ? '#B5600A' : '#DDDDDD' }}>{row.req_con     || '—'}</td>
+                <td style={{ ...TDR, background: '#FFF8E1' }}>{row.total_heads || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+          {data.headcount.length > 0 && (
+            <tfoot>
+              <tr style={{ background: '#F5F5F5', borderTop: `2px solid ${BORDER}` }}>
+                <td style={{ ...TD, fontWeight: 700, fontSize: 11, color: MUTED, fontStyle: 'italic' }}>Total</td>
+                {[tot.vp, tot.fte, tot.con].map((v, i) => <td key={i} style={{ ...TDR, fontSize: 11 }}>{v || '—'}</td>)}
+                <td style={{ ...TDR, fontSize: 11, color: '#1E8A4A' }}>{tot.aft || '—'}</td>
+                <td style={{ ...TDR, fontSize: 11, color: '#1E8A4A' }}>{tot.acf || '—'}</td>
+                <td style={{ ...TDR, background: '#EBF7EF', color: '#1E8A4A' }}>{tot.eh || '—'}</td>
+                {[tot.rft, tot.rcf, tot.rc].map((v, i) => <td key={i} style={{ ...TDR, fontSize: 11, color: '#B5600A' }}>{v || '—'}</td>)}
+                <td style={{ ...TDR, background: '#FFF8E1' }}>{tot.th || '—'}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Dashboard
+// Section 4: Gearing
+// ---------------------------------------------------------------------------
+
+function gearingColor(pct: number): string {
+  if (pct === 0) return '#777777';
+  if (pct > 20)  return '#C0392B';
+  if (pct > 5)   return '#B5600A';
+  if (pct < -20) return '#1565C0';
+  if (pct < -5)  return '#1565C090';
+  return '#1E8A4A';
+}
+
+function GearingTable({ disc, data }: { disc: HubIqGearingDisc; data: HubIqYearData }) {
+  const color = DISC_COLORS[disc.discipline] ?? ACCENT;
+  const allRows: (HubIqGearingRegion & { isTotal?: boolean })[] = [
+    ...disc.regions,
+    { ...disc.totals, region_name: 'Grand Total', isTotal: true },
+  ];
+
+  return (
+    <div style={{ ...BG_CARD, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 14px 7px', borderBottom: `1px solid ${BORDER}`, borderTop: `3px solid ${color}` }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color }}>{disc.discipline}</span>
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+          <thead>
+            <tr>
+              <th style={{ ...TH, minWidth: 100, fontSize: 9 }}>Region</th>
+              <th style={{ ...THR, fontSize: 9 }}>Min</th>
+              <th style={{ ...THR, fontSize: 9 }}>Max</th>
+              <th style={{ ...THR, fontSize: 9, color }}>Proposed</th>
+              <th style={{ ...THR, fontSize: 9 }}>Optimal</th>
+              <th style={{ ...THR, fontSize: 9 }}>Var</th>
+              <th style={{ ...THR, fontSize: 9 }}>Var %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allRows.length === 1 ? (
+              <tr><td colSpan={7} style={{ ...TD, textAlign: 'center', color: MUTED, padding: '12px 0', fontSize: 11 }}>No project data</td></tr>
+            ) : allRows.map((row, i) => {
+              const isTotal = (row as any).isTotal;
+              const gc = gearingColor(row.variance_pct);
+              return (
+                <tr key={row.region_name} style={{ background: isTotal ? '#F5F5F5' : i % 2 === 0 ? '#FFF' : '#FAFAFA', borderTop: isTotal ? `2px solid ${BORDER}` : 'none' }}>
+                  <td style={{ ...TD, fontSize: 11, fontWeight: isTotal ? 700 : 400, color: isTotal ? '#555' : '#333' }}>{row.region_name}</td>
+                  <td style={TDM}>{row.min || '—'}</td>
+                  <td style={TDM}>{row.max || '—'}</td>
+                  <td style={{ ...TDR, color }}>{row.proposed || '—'}</td>
+                  <td style={TDM}>{row.optimal || '—'}</td>
+                  <td style={{ ...TDM, color: row.variance !== 0 ? gc : MUTED }}>{row.variance > 0 ? `+${row.variance}` : row.variance || '—'}</td>
+                  <td style={{ ...TDM, fontWeight: 700 }}><DeltaPct pct={row.variance_pct} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function GearingSection({ yearA, yearB, dataA, dataB }: {
+  yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData;
+}) {
+  const [activeYear, setActiveYear] = useState(yearA);
+  const data = activeYear === yearA ? dataA : dataB;
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.09em' }}>
+          Gearing Ratios by Discipline & Region
+        </span>
+        <YearTabs yearA={yearA} yearB={yearB} active={activeYear} onChange={setActiveYear} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {data.gearing.map(disc => (
+          <GearingTable key={disc.discipline} disc={disc} data={data} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section 5: Request Detail
+// ---------------------------------------------------------------------------
+
+function RequestsSection({ yearA, yearB, dataA, dataB }: {
+  yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData;
+}) {
+  const [activeYear, setActiveYear] = useState(yearA);
+  const data = activeYear === yearA ? dataA : dataB;
+
+  const TYPE_COLOR: Record<string, { bg: string; color: string }> = {
+    'R FTE':     { bg: '#FFF8E1', color: '#B5600A' },
+    'R CON':     { bg: '#FEF3F2', color: '#C0392B' },
+    'R CON>FTE': { bg: '#EBF2FB', color: '#1565C0' },
+  };
+
+  return (
+    <div style={{ ...BG_CARD, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '12px 16px 8px', borderBottom: `1px solid ${BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={secTitle('')}>Request Detail (R FTE / R CON)</span>
+        <YearTabs yearA={yearA} yearB={yearB} active={activeYear} onChange={setActiveYear} />
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr>
+              <th style={TH}>Discipline</th>
+              <th style={TH}>Region</th>
+              <th style={TH}>Country</th>
+              <th style={TH}>Level</th>
+              <th style={TH}>Type</th>
+              <th style={THR}>FTE</th>
+              <th style={TH}>Name / TBH</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.requests.length === 0 ? (
+              <tr><td colSpan={7} style={{ ...TD, textAlign: 'center', color: MUTED, padding: '20px 0' }}>No requests for {activeYear}</td></tr>
+            ) : data.requests.map((r, i) => {
+              const tc = TYPE_COLOR[r.contract_code] ?? { bg: '#F5F5F5', color: '#555' };
+              return (
+                <tr key={i} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
+                  <td style={{ ...TD, color: DISC_COLORS[r.discipline_name] ?? '#333', fontWeight: 600 }}>{r.discipline_name}</td>
+                  <td style={TD}>{r.region_name}</td>
+                  <td style={TD}>{r.country_name ?? '—'}</td>
+                  <td style={TD}>{r.level_code ?? '—'}</td>
+                  <td style={TD}>
+                    <span style={{ padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: tc.bg, color: tc.color }}>
+                      {r.contract_code}
+                    </span>
+                  </td>
+                  <td style={TDR}>{r.contracted_fte}</td>
+                  <td style={{ ...TD, color: MUTED }}>{r.person_name}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Dashboard
 // ---------------------------------------------------------------------------
 
 export default function Dashboard() {
-  const [summary,      setSummary]      = useState<DashboardSummary | null>(null);
-  const [capacity,     setCapacity]     = useState<CapacityItem[]>([]);
-  const [people,       setPeople]       = useState<Person[]>([]);
-  const [projects,     setProjects]     = useState<Project[]>([]);
-  const [regions,      setRegions]      = useState<Region[]>([]);
-  const [tbhCodes,     setTbhCodes]     = useState<TbhCode[]>([]);
-  const [hireReqs,     setHireReqs]     = useState<HireRequest[]>([]);
-  const [regionPeople, setRegionPeople] = useState<{ regionId: number; people: Person[] }[]>([]);
-  const [activity,     setActivity]     = useState<ActivityItem[]>([]);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [yearA, setYearA] = useState<number | null>(null);
+  const [yearB, setYearB] = useState<number | null>(null);
+  const [hubData, setHubData] = useState<HubIqResponse | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
+  const [backendOk, setBackendOk] = useState<boolean | null>(null);
 
-  const [loading,        setLoading]        = useState(true);
-  const [activityLoading, setActivityLoading] = useState(true);
-  const [regionLoading,  setRegionLoading]  = useState(false);
-  const [backendOk,      setBackendOk]      = useState<boolean | null>(null);
-
-  const [month] = useState(currentMonthISO);
-
+  // Load available years once
   useEffect(() => {
-    let alive = true;
-
-    (async () => {
-      // Phase 1 — main data
-      const [sum, cap, ppl, prj, regs, tbh, hrs, crs] = await Promise.all([
-        dashboardApi.summary().then(data => { setBackendOk(true); return data; }).catch(() => { setBackendOk(false); return null; }),
-        dashboardApi.capacity(month).catch(() => [] as CapacityItem[]),
-        peopleApi.list({ is_active: 'true', limit: 500 }).catch(() => [] as Person[]),
-        projectsApi.list({ is_active: 'true', limit: 500 }).catch(() => [] as Project[]),
-        refDataApi.regions().catch(() => [] as typeof regions),
-        tbhCodesApi.list({ limit: 500 }).catch(() => [] as TbhCode[]),
-        hireRequestsApi.list({ limit: 500 }).catch(() => [] as HireRequest[]),
-        changeRequestsApi.list({ limit: 500 }).catch(() => [] as ChangeRequest[]),
-      ]);
-
-      if (!alive) return;
-
-      setSummary(sum);
-      setCapacity(cap);
-      setPeople(ppl);
-      setProjects(prj);
-      setRegions(regs);
-      setTbhCodes(tbh);
-      setHireReqs(hrs);
-      setLoading(false);
-
-      // Build activity feed
-      const hireItems: ActivityItem[] = hrs.slice(0, 8).map(h => ({
-        kind: 'hire',
-        id: h.id,
-        title: [h.request_type, h.level_name, h.discipline_name].filter(Boolean).join(' · ') || `Request #${h.id}`,
-        status: h.status,
-        date: h.created_at,
-        by: h.submitted_by_name,
-      }));
-      const changeItems: ActivityItem[] = crs.slice(0, 8).map(c => ({
-        kind: 'change',
-        id: c.id,
-        title: [c.change_type, c.tbh_id && `TBH ${c.tbh_id}`].filter(Boolean).join(' · ') || `Change #${c.id}`,
-        status: c.status,
-        date: c.created_at,
-        by: c.submitted_by_name,
-      }));
-      setActivity(
-        [...hireItems, ...changeItems]
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, 10)
-      );
-      setActivityLoading(false);
-
-      // Phase 2 — per-region headcount (parallel, non-blocking)
-      if (regs.length > 0 && alive) {
-        setRegionLoading(true);
-        const regionData = await Promise.all(
-          regs.map(r =>
-            peopleApi.list({ region_id: r.id, is_active: 'true', limit: 500 })
-              .then(p => ({ regionId: r.id, people: p }))
-              .catch(() => ({ regionId: r.id, people: [] as Person[] }))
-          )
-        );
-        if (alive) {
-          setRegionPeople(regionData);
-          setRegionLoading(false);
+    dashboardApi.planningYears()
+      .then(rows => {
+        const years = rows.map(r => r.year);
+        setAvailableYears(years);
+        if (years.length >= 2) {
+          setYearA(years[0]);
+          setYearB(years[1]);
+        } else if (years.length === 1) {
+          setYearA(years[0]);
+          setYearB(years[0]);
+        } else {
+          setYearA(2026);
+          setYearB(2027);
         }
-      }
-    })();
+      })
+      .catch(() => { setYearA(2026); setYearB(2027); });
+  }, []);
 
-    return () => { alive = false; };
-  }, [month]);
-
-  // ── Derived ─────────────────────────────────────────────────────────────────
-
-  const projByStatus = useMemo(() => {
-    const c = { Approved: 0, Seeded: 0, Proposed: 0 };
-    for (const p of projects) {
-      if (p.status === 'Approved')  c.Approved++;
-      else if (p.status === 'Seeded')   c.Seeded++;
-      else if (p.status === 'Proposed') c.Proposed++;
+  const loadData = useCallback(async () => {
+    if (yearA === null || yearB === null) return;
+    setLoading(true); setError(null);
+    try {
+      const d = await dashboardApi.hubIq(yearA, yearB);
+      setHubData(d);
+      setBackendOk(true);
+    } catch (e: unknown) {
+      setError((e as Error).message);
+      setBackendOk(false);
+    } finally {
+      setLoading(false);
     }
-    return c;
-  }, [projects]);
+  }, [yearA, yearB]);
 
-  const projByType = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const p of projects) c[p.type] = (c[p.type] || 0) + 1;
-    return c;
-  }, [projects]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const hcBreakdown = useMemo(() => {
-    let perm = 0, contingent = 0;
-    for (const p of people) {
-      if (CONTINGENT_CODES.has(p.contract_type_code ?? '')) contingent++;
-      else perm++;
-    }
-    return { perm, contingent };
-  }, [people]);
-
-  const deptCounts: DeptCount[] = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of people) { const d = p.discipline_name ?? 'Unknown'; counts[d] = (counts[d] || 0) + 1; }
-    return Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 10);
-  }, [people]);
-
-  const bands: AllocationBands = useMemo(() => {
-    let fullyAllocated = 0, partial = 0, unallocated = 0;
-    for (const item of capacity) {
-      const r = item.utilisation_ratio ?? 0;
-      if (r >= 0.99) fullyAllocated++;
-      else if (r > 0.01) partial++;
-      else unallocated++;
-    }
-    return { fullyAllocated, partial, unallocated };
-  }, [capacity]);
-
-  const pipelineRows: PipelineRow[] = useMemo(() => {
-    const byRegion: Record<string, PipelineRow> = {};
-    for (const p of projects) {
-      const rn = p.region_name ?? 'Other';
-      if (!byRegion[rn]) byRegion[rn] = {
-        regionName: rn,
-        retail:  { Approved: 0, Seeded: 0, Proposed: 0 },
-        xScale:  { Approved: 0, Seeded: 0, Proposed: 0 },
-        totalWeight: 0, total: 0,
-      };
-      const row = byRegion[rn];
-      const grp = p.type === 'xScale' ? row.xScale : row.retail;
-      if (p.status === 'Approved' || p.status === 'Seeded' || p.status === 'Proposed') {
-        grp[p.status as 'Approved' | 'Seeded' | 'Proposed']++;
-      }
-      row.totalWeight += Number(p.weight) || 0;
-      row.total++;
-    }
-    return Object.values(byRegion).sort((a, b) => a.regionName.localeCompare(b.regionName));
-  }, [projects]);
-
-  const hcRows: HcRow[] = useMemo(() => {
-    if (regionPeople.length === 0) return [];
-    return regionPeople.map(({ regionId, people: rp }) => {
-      const region = regions.find(r => r.id === regionId);
-      let vpDir = 0, fte = 0, contingent = 0;
-      for (const p of rp) {
-        const cls = classifyPerson(p);
-        if (cls === 'vpDir') vpDir++;
-        else if (cls === 'contingent') contingent++;
-        else fte++;
-      }
-      const approvedTBH   = tbhCodes.filter(t => t.region_id === regionId).length;
-      const requestedTBH  = hireReqs.filter(h => h.region_name === region?.name && h.status === 'Pending').length;
-      return { regionName: region?.name ?? `Region ${regionId}`, vpDir, fte, contingent, approvedTBH, requestedTBH, total: rp.length };
-    }).filter(r => r.total > 0).sort((a, b) => a.regionName.localeCompare(b.regionName));
-  }, [regionPeople, regions, tbhCodes, hireReqs]);
-
-  // ── Render ───────────────────────────────────────────────────────────────────
-
-  const v = (n: number | undefined) => loading ? '—' : (n ?? 0);
+  const dataA = hubData?.years[yearA ?? 0];
+  const dataB = hubData?.years[yearB ?? 0];
+  const ready = !loading && !!dataA && !!dataB;
 
   return (
-    <div style={{ color: '#FFF' }}>
+    <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Dashboard</h1>
-        <div style={{ width: 40, height: 3, background: C.accent, borderRadius: 2, marginTop: 6 }} />
-        <p style={{ fontSize: 12, color: '#444', marginTop: 6 }}>
-          {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
-      </div>
-
-      {/* ── Backend status banner ── */}
-      {backendOk === false && (
-        <div style={{
-          marginBottom: 16, padding: '12px 16px',
-          background: '#2B0D0D', border: '1px solid #5E1A1A',
-          borderRadius: 6, color: '#FF6B6B', fontSize: 13,
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span>⚠</span>
-          <span>
-            Backend not connected — data cannot load.
-            Start the server: <code style={{ background: '#1A0000', padding: '2px 6px', borderRadius: 3, fontSize: 12 }}>cd backend && npm start</code>
-          </span>
-        </div>
-      )}
-      {backendOk === true && (
-        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#33CC77', display: 'inline-block' }} />
-          <span style={{ fontSize: 12, color: '#555' }}>Backend connected</span>
-        </div>
-      )}
-
-      {/* ── KPI Banner ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 12, marginBottom: 20 }}>
-
-        {/* 1. Total Projects */}
-        <KpiCard
-          label="Total Projects"
-          value={v(summary?.total_projects)}
-          sub={loading ? undefined : `${projByStatus.Approved} Appr · ${projByStatus.Seeded} Seed · ${projByStatus.Proposed} Prop`}
-          accent="#5599FF"
-          icon={<IconProject />}
-          loading={loading}
-        />
-
-        {/* 2. Retail / xScale (split card) */}
-        <div style={{ ...card, borderTop: '3px solid #9966FF' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 6 }}>
-            <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: loading ? '#333' : '#FFF', lineHeight: 1 }}>
-                {loading ? '—' : (projByType['Retail'] ?? 0)}
-              </div>
-              <div style={{ fontSize: 10, color: '#666', marginTop: 3 }}>Retail</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: loading ? '#333' : '#FFF', lineHeight: 1 }}>
-                {loading ? '—' : (projByType['xScale'] ?? 0)}
-              </div>
-              <div style={{ fontSize: 10, color: '#666', marginTop: 3 }}>xScale</div>
-            </div>
+      <div style={{ padding: '14px 20px 12px', background: '#FFFFFF', borderBottom: `1px solid ${BORDER}`, flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>HUB IQ Dashboard</h1>
+            <div style={{ width: 36, height: 3, background: ACCENT, borderRadius: 2, marginTop: 4 }} />
+            <p style={{ fontSize: 11, color: MUTED, marginTop: 4, marginBottom: 0 }}>
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
           </div>
-          <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Projects by Type</div>
-        </div>
 
-        {/* 3. Existing HC */}
-        <div style={{ ...card, borderTop: '3px solid #33CC77' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ fontSize: 30, fontWeight: 800, color: loading ? '#333' : '#FFF', lineHeight: 1 }}>
-              {loading ? '—' : people.length}
+          {/* Year selectors */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT }}>Year A</span>
+              <select
+                value={yearA ?? ''}
+                onChange={e => setYearA(Number(e.target.value))}
+                style={{ padding: '5px 10px', border: `1px solid ${ACCENT}`, borderRadius: 5, fontSize: 13, color: ACCENT, fontWeight: 700, background: '#FFF8F8', cursor: 'pointer' }}
+              >
+                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
             </div>
-            <div style={{ width: 36, height: 36, borderRadius: 7, background: '#33CC7720', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#33CC77' }}>
-              <IconPeople />
+            <span style={{ fontSize: 16, color: MUTED }}>vs</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#1565C0' }}>Year B</span>
+              <select
+                value={yearB ?? ''}
+                onChange={e => setYearB(Number(e.target.value))}
+                style={{ padding: '5px 10px', border: '1px solid #1565C0', borderRadius: 5, fontSize: 13, color: '#1565C0', fontWeight: 700, background: '#F0F5FF', cursor: 'pointer' }}
+              >
+                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
             </div>
+            <button onClick={loadData} disabled={loading} style={{
+              padding: '5px 14px', border: `1px solid ${BORDER}`, borderRadius: 5,
+              fontSize: 12, cursor: 'pointer', background: '#FFFFFF', color: '#555',
+            }}>
+              {loading ? 'Loading…' : '↻ Refresh'}
+            </button>
           </div>
-          <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginTop: 4 }}>Existing Headcount</div>
-          {!loading && (
-            <div style={{ fontSize: 11, color: '#484848', marginTop: 4 }}>
-              {hcBreakdown.perm} Perm · {hcBreakdown.contingent} Contingent
-            </div>
-          )}
         </div>
 
-        {/* 4. Approved TBH HC */}
-        <KpiCard
-          label="Approved TBH HC"
-          value={v(summary?.open_tbh_codes)}
-          sub={loading ? undefined : 'Open positions (budgeted)'}
-          accent="#33CC77"
-          icon={<IconHire />}
-          loading={loading}
-        />
-
-        {/* 5. Requested TBH HC */}
-        <KpiCard
-          label="Requested TBH HC"
-          value={v(summary?.pending_hire_requests)}
-          sub={loading ? undefined : 'Awaiting approval'}
-          accent="#FFAA33"
-          icon={<IconHire />}
-          loading={loading}
-        />
-
-        {/* 6. Gearing Variance */}
-        <div style={{ ...card, borderTop: `3px solid ${C.accent}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ fontSize: 30, fontWeight: 800, color: '#33CC77', lineHeight: 1 }}>0%</div>
-            <div style={{ width: 36, height: 36, borderRadius: 7, background: `${C.accent}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent }}>
-              <IconPct />
-            </div>
+        {/* Backend status */}
+        {backendOk === false && (
+          <div style={{ marginTop: 10, padding: '8px 12px', background: '#FEF3F2', border: `1px solid #FBBDBA`, borderRadius: 5, fontSize: 12, color: '#C0392B' }}>
+            ⚠ Backend not connected — data cannot load.
           </div>
-          <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginTop: 4 }}>Gearing Variance</div>
-          <div style={{ fontSize: 11, color: '#484848', marginTop: 4 }}>vs target headcount</div>
-        </div>
+        )}
+        {backendOk === true && (
+          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#1E8A4A', display: 'inline-block' }} />
+            <span style={{ fontSize: 11, color: MUTED }}>Connected</span>
+          </div>
+        )}
       </div>
 
-      {/* ── Pipeline Table ── */}
-      <div style={{ marginBottom: 16 }}>
-        <PipelineTable rows={pipelineRows} loading={loading} />
-      </div>
+      {/* Body */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
 
-      {/* ── Headcount Table ── */}
-      <div style={{ marginBottom: 20 }}>
-        <HeadcountTable rows={hcRows} loading={regionLoading || loading} />
-      </div>
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+            <div style={{ fontSize: 14, color: MUTED }}>Loading dashboard data…</div>
+          </div>
+        )}
 
-      {/* ── Charts row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 14, marginBottom: 16 }}>
-        <DeptChart data={deptCounts} loading={loading} />
-        <AllocationSummary bands={bands} total={capacity.length} loading={loading} />
-      </div>
+        {error && !loading && (
+          <div style={{ padding: '20px 24px', background: '#FEF3F2', border: `1px solid #FBBDBA`, borderRadius: 8, color: '#C0392B', fontSize: 13 }}>
+            Failed to load: {error}
+            <button onClick={loadData} style={{ marginLeft: 12, fontSize: 12, cursor: 'pointer', padding: '3px 10px', border: `1px solid #FBBDBA`, borderRadius: 4, background: '#FFF', color: '#C0392B' }}>Retry</button>
+          </div>
+        )}
 
-      {/* ── Activity Feed ── */}
-      <ActivityFeed items={activity} loading={activityLoading} />
+        {ready && yearA !== null && yearB !== null && dataA && dataB && (
+          <>
+            <KpiBanner    yearA={yearA} yearB={yearB} dataA={dataA} dataB={dataB} />
+            <PipelineSection yearA={yearA} yearB={yearB} dataA={dataA} dataB={dataB} />
+            <HeadcountSection yearA={yearA} yearB={yearB} dataA={dataA} dataB={dataB} />
+            <GearingSection yearA={yearA} yearB={yearB} dataA={dataA} dataB={dataB} />
+            <RequestsSection yearA={yearA} yearB={yearB} dataA={dataA} dataB={dataB} />
+          </>
+        )}
+      </div>
     </div>
   );
 }
