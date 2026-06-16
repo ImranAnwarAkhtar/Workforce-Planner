@@ -102,7 +102,7 @@ INSERT INTO levels (level_number, level_name, short_code) VALUES
     (11,   'Entry',           'En'),
     (3,    'Career',          'Ca'),
     (0,    'Temp',            'Te'),
-    (NULL, 'Consultant',      'Cons'),
+    (NULL, 'Contingent',      'Cons'),
     (NULL, 'Administration',  'Ad');
 
 -- =============================================================================

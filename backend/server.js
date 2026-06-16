@@ -63,6 +63,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().
 const pool = require('./db/pool');
 pool.query(`
   ALTER TABLE people ADD COLUMN IF NOT EXISTS notes TEXT;
+  UPDATE levels SET level_name = 'Contingent' WHERE short_code = 'Cons' AND level_name = 'Consultant';
 `).catch(err => logger.error('Startup migration failed', { error: err.message }));
 
 app.use('/api/projects',        wrapAsync(projectsRouter));
