@@ -241,7 +241,6 @@ export default function Allocations() {
         .sort(([a], [b]) => (LEVEL_ORDER[a] ?? 99) - (LEVEL_ORDER[b] ?? 99))
         .map(([code, { levelName, people: ppl }]) => ({
           code, levelName, people: ppl,
-          levelId: ppl[0]?.level_id ?? undefined,
         }));
       const discId = discPeople[0]?.discipline_id ?? undefined;
       return { discipline: disc, disciplineId: discId, levels, allPeople: discPeople };
@@ -737,7 +736,7 @@ export default function Allocations() {
                     </tr>
 
                     {/* Level groups */}
-                    {!isDiscCollapsed && levels.map(({ code, levelName, people: levelPeople, levelId }) => {
+                    {!isDiscCollapsed && levels.map(({ code, levelName, people: levelPeople }) => {
                       const levelKey       = `${discipline}::${code}`;
                       const isLvlCollapsed = collapsedLevels.has(levelKey);
                       const levelTotal     = getGroupGrandTotal(levelPeople);
@@ -762,26 +761,6 @@ export default function Allocations() {
                               <span style={{ marginLeft: 10, color: '#888888', fontWeight: 400, fontSize: 11 }}>
                                 {levelPeople.length} {levelPeople.length === 1 ? 'person' : 'people'}
                               </span>
-                              <button
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  setRequestModal({ discipline, disciplineId });
-                                  setRequestForm({
-                                    name: `TBH – ${discipline} ${levelName}`,
-                                    contract_type_code: 'R FTE',
-                                    level_id: levelId ? String(levelId) : '',
-                                    country_id: '',
-                                    notes: '',
-                                  });
-                                }}
-                                title={`Request headcount at ${levelName} level`}
-                                style={{
-                                  marginLeft: 12, padding: '1px 7px',
-                                  background: '#FFFFFF', border: '1px solid #1565C055',
-                                  borderRadius: 3, fontSize: 11, color: '#1565C0',
-                                  cursor: 'pointer', fontWeight: 700, lineHeight: 1.4,
-                                }}
-                              >+</button>
                             </td>
                             <td style={{
                               position: 'sticky', right: 0, zIndex: 2,
