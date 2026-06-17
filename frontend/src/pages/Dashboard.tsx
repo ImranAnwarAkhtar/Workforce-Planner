@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import equinixFortressWhite from '../assets/equinix-fortress-white.svg';
+import equinixFortressRed from '../assets/equinix-fortress-red.svg';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -87,25 +87,25 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
     {
       label: 'EXIST HC',
       items: [
-        { name: 'TOTAL',   vA: sA.exist_hc.total,       vB: sB.exist_hc.total },
-        { name: 'PERM',    dotColor: C.fte,   vA: sA.exist_hc.perm,        vB: sB.exist_hc.perm },
-        { name: 'CONTI',   dotColor: C.con,   vA: sA.exist_hc.contingent,  vB: sB.exist_hc.contingent },
+        { name: 'TOTAL',       vA: sA.exist_hc.total,       vB: sB.exist_hc.total },
+        { name: 'PERM',        dotColor: C.fte,   vA: sA.exist_hc.perm,        vB: sB.exist_hc.perm },
+        { name: 'CONTINGENT',  dotColor: C.con,   vA: sA.exist_hc.contingent,  vB: sB.exist_hc.contingent },
       ],
     },
     {
-      label: 'APPR HC',
+      label: 'APPROVED HC',
       items: [
-        { name: 'TOTAL',   vA: sA.appr_hc.total, vB: sB.appr_hc.total },
-        { name: 'PERM',    dotColor: C.apprFte, vA: sA.appr_hc.fte, vB: sB.appr_hc.fte },
-        { name: 'CONVE',   dotColor: C.apprCon, vA: sA.appr_hc.con, vB: sB.appr_hc.con },
+        { name: 'TOTAL',      vA: sA.appr_hc.total, vB: sB.appr_hc.total },
+        { name: 'PERM',       dotColor: C.apprFte, vA: sA.appr_hc.fte, vB: sB.appr_hc.fte },
+        { name: 'CONVERSION', dotColor: C.apprCon, vA: sA.appr_hc.con, vB: sB.appr_hc.con },
       ],
     },
     {
       label: 'REQUESTS',
       items: [
-        { name: 'TOTAL',   vA: sA.req_hc.total, vB: sB.req_hc.total },
-        { name: 'PERM',    dotColor: C.reqFte,  vA: sA.req_hc.fte,   vB: sB.req_hc.fte },
-        { name: 'CONVE',   dotColor: C.reqCon,  vA: sA.req_hc.con,   vB: sB.req_hc.con, isFloat: true },
+        { name: 'TOTAL',      vA: sA.req_hc.total, vB: sB.req_hc.total },
+        { name: 'PERM',       dotColor: C.reqFte,  vA: sA.req_hc.fte,   vB: sB.req_hc.fte },
+        { name: 'CONVERSION', dotColor: C.reqCon,  vA: sA.req_hc.con,   vB: sB.req_hc.con, isFloat: true },
       ],
     },
   ];
@@ -119,9 +119,9 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: 20, borderRight: '1px solid #333', marginRight: 16, flexShrink: 0 }}>
-        <img src={equinixFortressWhite} alt="Equinix" style={{ height: 30, width: 'auto', display: 'block' }} />
+        <img src={equinixFortressRed} alt="Equinix" style={{ height: 30, width: 'auto', display: 'block' }} />
         <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.15em', marginTop: 4 }}>HUB IQ</div>
-        <div style={{ fontSize: 9, color: '#555', marginTop: 2 }}>{yearA} vs {yearB}</div>
+        <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>{yearA} vs {yearB}</div>
       </div>
 
       {/* KPI groups */}
@@ -131,9 +131,9 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
           paddingRight: 16, marginRight: 16,
           borderRight: gi < groups.length - 1 ? '1px solid #2A2A2A' : 'none',
         }}>
-          {/* Group label */}
+          {/* Group label — vertical, upright (no rotation), white */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', marginRight: 12, flexShrink: 0 }}>
-            <span style={{ fontSize: 8, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.12em', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.12em', writingMode: 'vertical-rl' }}>
               {grp.label}
             </span>
           </div>
@@ -141,12 +141,12 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
           {/* Items */}
           {grp.items.map(item => (
             <div key={item.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginRight: 14, minWidth: 52 }}>
-              {/* Badge row */}
+              {/* Sub-metric label row */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
                 {item.dotColor && (
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.dotColor, flexShrink: 0 }} />
                 )}
-                <span style={{ fontSize: 8, fontWeight: 700, color: '#777', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.name}</span>
+                <span style={{ fontSize: 8, fontWeight: 700, color: '#CCCCCC', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.name}</span>
               </div>
               {/* Year A value */}
               <div style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', lineHeight: 1 }}>
@@ -161,7 +161,7 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
               </div>
               {/* Year labels */}
               <div style={{ display: 'flex', gap: 6, marginTop: 1 }}>
-                <span style={{ fontSize: 8, color: '#444' }}>{yearA}</span>
+                <span style={{ fontSize: 8, color: '#666' }}>{yearA}</span>
                 <span style={{ fontSize: 8, color: '#4A8CFF' }}>{yearB}</span>
               </div>
             </div>

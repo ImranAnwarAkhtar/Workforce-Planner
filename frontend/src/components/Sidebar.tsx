@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, getUser } from '../hooks/useAuth';
-import equinixFortressWhite from '../assets/equinix-fortress-white.svg';
+import equinixFortressRed from '../assets/equinix-fortress-red.svg';
 
 const ICONS: Record<string, string> = {
   dashboard:  'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
@@ -85,7 +85,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       }}>
         {/* Equinix fortress mark — always visible */}
         <img
-          src={equinixFortressWhite}
+          src={equinixFortressRed}
           alt="Equinix"
           style={{ height: 28, width: 'auto', flexShrink: 0, display: 'block' }}
         />
