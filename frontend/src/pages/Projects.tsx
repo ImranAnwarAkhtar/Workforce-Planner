@@ -18,10 +18,10 @@ const COL_W            = 120; // column / card width in px
 type ProjectType   = typeof PROJECT_TYPES[number];
 type ProjectStatus = typeof PROJECT_STATUSES[number];
 
-const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string }> = {
-  'Approved': { color: '#1E8A4A', bg: '#E8F5EE', border: '#A8D8BF', dot: '#1E8A4A' },
-  'Seeded':   { color: '#B5600A', bg: '#FFF3DC', border: '#F0C060', dot: '#D4870A' },
-  'Proposed': { color: '#1D4EBB', bg: '#EBF0FF', border: '#BDD0FF', dot: '#4477EE' },
+const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string; barBg: string; pill: string }> = {
+  'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#0D3321', pill: '#2A9D5C' },
+  'Seeded':   { color: '#FFFFFF', bg: '#FFF3DC', border: '#F0C060', dot: '#E8A840', barBg: '#2E1C04', pill: '#C47800' },
+  'Proposed': { color: '#FFFFFF', bg: '#EBF0FF', border: '#BDD0FF', dot: '#6699FF', barBg: '#0C1E40', pill: '#3366DD' },
 };
 
 const TYPE_META: Record<ProjectType, { color: string; bg: string; border: string }> = {
@@ -31,7 +31,7 @@ const TYPE_META: Record<ProjectType, { color: string; bg: string; border: string
 };
 
 function statusMeta(s: string) {
-  return STATUS_META[s] ?? { color: '#888888', bg: '#F5F5F5', border: '#DDDDDD', dot: '#AAAAAA' };
+  return STATUS_META[s] ?? { color: '#FFFFFF', bg: '#F5F5F5', border: '#DDDDDD', dot: '#AAAAAA', barBg: '#333333', pill: '#666666' };
 }
 function typeMeta(t: string) {
   return TYPE_META[t as ProjectType] ?? { color: '#555555', bg: '#F0F0F0', border: '#D5D5D5' };
@@ -361,12 +361,20 @@ export default function Projects() {
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div style={S.statsRow}>
-          {statItems.map(({ label, value, color }) => (
-            <div key={label} style={S.statCard(color)}>
-              <div style={S.statNum}>{value}</div>
-              <div style={S.statLabel}>{label}</div>
+        {/* Stats banner — dark compact strip */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          background: '#181A1E', borderRadius: 8, marginBottom: 16,
+          border: '1px solid #2A2C32', overflow: 'hidden',
+        }}>
+          {statItems.map(({ label, value, color }, i) => (
+            <div key={label} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 16px', flex: '1 1 auto',
+              borderRight: i < statItems.length - 1 ? '1px solid #2A2C32' : 'none',
+            }}>
+              <span style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
             </div>
           ))}
         </div>
@@ -428,10 +436,25 @@ export default function Projects() {
             </button>
           )}
 
-          {/* Add Project — compact, right-most item */}
-          <button style={{ ...S.btnCompact, marginLeft: 'auto' }} onClick={openAdd}>
-            + Add Project
-          </button>
+          {/* Right side: collapse-all toggle + add project */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+            <button
+              title={collapsedStatuses.size > 0 ? 'Expand all sections' : 'Collapse all sections'}
+              onClick={() => {
+                const vis = PROJECT_STATUSES.filter(s => filtered.some(p => p.status === s));
+                setCollapsedStatuses(collapsedStatuses.size > 0 ? new Set() : new Set(vis));
+              }}
+              style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #D5D5D5', borderRadius: 5, cursor: 'pointer', color: '#666666', display: 'flex', alignItems: 'center' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                {collapsedStatuses.size > 0
+                  ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                  : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                }
+              </svg>
+            </button>
+            <button style={S.btnCompact} onClick={openAdd}>+ Add Project</button>
+          </div>
         </div>
       </div>
 
@@ -459,33 +482,31 @@ export default function Projects() {
               return (
                 <div key={country} style={{ width: COL_W, flexShrink: 0 }}>
                   <div style={{
-                    background: '#FFFFFF',
-                    border: '1px solid #E0E0E0',
-                    borderTop: '3px solid #E31837',
+                    background: '#252830',
+                    border: '1px solid #353840',
                     borderRadius: 8,
                     padding: '8px 10px 7px',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {country}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666666', marginBottom: 4 }}>
-                      <span><strong style={{ color: '#111111' }}>{cs.total}</strong> proj</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#AAAAAA', marginBottom: 4 }}>
+                      <span><strong style={{ color: '#FFFFFF' }}>{cs.total}</strong> proj</span>
                       <span style={{ color: '#E31837', fontWeight: 700 }}>Wt {cs.weight.toFixed(1)}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                       {cs.retail > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: 'rgba(21,101,192,0.3)', color: '#90CAF9', border: '1px solid rgba(21,101,192,0.5)', fontWeight: 600 }}>
                           R:{cs.retail}
                         </span>
                       )}
                       {cs.xscale > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: 'rgba(106,27,154,0.3)', color: '#CE93D8', border: '1px solid rgba(106,27,154,0.5)', fontWeight: 600 }}>
                           xS:{cs.xscale}
                         </span>
                       )}
                       {cs.matrix > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: 'rgba(0,96,100,0.3)', color: '#80CBC4', border: '1px solid rgba(0,96,100,0.5)', fontWeight: 600 }}>
                           M:{cs.matrix}
                         </span>
                       )}
@@ -511,8 +532,8 @@ export default function Projects() {
                   onClick={() => toggleStatus(status)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    marginBottom: collapsed ? 0 : 8, padding: '5px 10px',
-                    background: sm.bg, border: `1px solid ${sm.border}`,
+                    marginBottom: collapsed ? 0 : 8, padding: '6px 10px',
+                    background: sm.barBg, border: `1px solid ${sm.border}`,
                     borderRadius: collapsed ? 6 : '6px 6px 0 0',
                     cursor: 'pointer', userSelect: 'none',
                   }}
@@ -531,7 +552,7 @@ export default function Projects() {
                   </span>
                   <span style={{
                     fontSize: 11, fontWeight: 700, color: '#FFFFFF',
-                    background: sm.color, padding: '0px 7px', borderRadius: 8, lineHeight: '18px',
+                    background: sm.pill, padding: '0px 7px', borderRadius: 8, lineHeight: '18px',
                   }}>
                     {statusTotal}
                   </span>
