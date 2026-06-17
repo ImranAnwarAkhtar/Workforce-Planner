@@ -20,7 +20,7 @@ type ProjectStatus = typeof PROJECT_STATUSES[number];
 
 const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string; barBg: string; pill: string }> = {
   'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#1A6B3A', pill: '#2A9D5C' },
-  'Seeded':   { color: '#FFFFFF', bg: '#FFF3DC', border: '#F0C060', dot: '#E8A840', barBg: '#8B5A00', pill: '#C47800' },
+  'Seeded':   { color: '#FFFFFF', bg: '#FFF3DC', border: '#F0C060', dot: '#E8A840', barBg: '#C25C00', pill: '#E06C00' },
   'Proposed': { color: '#FFFFFF', bg: '#EBF0FF', border: '#BDD0FF', dot: '#6699FF', barBg: '#1A3A8C', pill: '#3366DD' },
 };
 
@@ -374,7 +374,7 @@ export default function Projects() {
               borderRight: i < statItems.length - 1 ? '1px solid #2A2C32' : 'none',
             }}>
               <span style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
             </div>
           ))}
         </div>
@@ -483,15 +483,15 @@ export default function Projects() {
               return (
                 <div key={country} style={{ width: COL_W, flexShrink: 0 }}>
                   <div style={{
-                    background: '#ECEEF2',
-                    border: '1px solid #D0D3D8',
+                    background: '#D0D3DA',
+                    border: '1px solid #B8BBC2',
                     borderRadius: 8,
                     padding: '8px 10px 7px',
                   }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {country}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666666', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#555555', marginBottom: 4 }}>
                       <span><strong style={{ color: '#111111' }}>{cs.total}</strong> proj</span>
                       <span style={{ color: '#E31837', fontWeight: 700 }}>Wt {cs.weight.toFixed(1)}</span>
                     </div>
@@ -533,7 +533,7 @@ export default function Projects() {
                   onClick={() => toggleStatus(status)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    marginBottom: collapsed ? 0 : 8, padding: '6px 10px',
+                    marginBottom: collapsed ? 0 : 8, padding: '4px 10px',
                     background: sm.barBg, border: `1px solid ${sm.border}`,
                     borderRadius: collapsed ? 6 : '6px 6px 0 0',
                     cursor: 'pointer', userSelect: 'none',
@@ -626,9 +626,8 @@ export default function Projects() {
                   return (
                     <div key={country} style={{
                       width: COL_W, flexShrink: 0,
-                      background: '#FFFFFF',
-                      border: '1px solid #E0E0E0',
-                      borderBottom: '3px solid #1A1A1A',
+                      background: '#D0D3DA',
+                      border: '1px solid #B8BBC2',
                       borderRadius: 6,
                       padding: '7px 9px',
                     }}>
