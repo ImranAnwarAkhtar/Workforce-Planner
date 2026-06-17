@@ -19,9 +19,9 @@ type ProjectType   = typeof PROJECT_TYPES[number];
 type ProjectStatus = typeof PROJECT_STATUSES[number];
 
 const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string; barBg: string; pill: string }> = {
-  'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#0D3321', pill: '#2A9D5C' },
-  'Seeded':   { color: '#FFFFFF', bg: '#FFF3DC', border: '#F0C060', dot: '#E8A840', barBg: '#2E1C04', pill: '#C47800' },
-  'Proposed': { color: '#FFFFFF', bg: '#EBF0FF', border: '#BDD0FF', dot: '#6699FF', barBg: '#0C1E40', pill: '#3366DD' },
+  'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#1A6B3A', pill: '#2A9D5C' },
+  'Seeded':   { color: '#FFFFFF', bg: '#FFF3DC', border: '#F0C060', dot: '#E8A840', barBg: '#8B5A00', pill: '#C47800' },
+  'Proposed': { color: '#FFFFFF', bg: '#EBF0FF', border: '#BDD0FF', dot: '#6699FF', barBg: '#1A3A8C', pill: '#3366DD' },
 };
 
 const TYPE_META: Record<ProjectType, { color: string; bg: string; border: string }> = {
@@ -373,7 +373,7 @@ export default function Projects() {
               padding: '10px 16px', flex: '1 1 auto',
               borderRight: i < statItems.length - 1 ? '1px solid #2A2C32' : 'none',
             }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
+              <span style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
               <span style={{ fontSize: 9, fontWeight: 700, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
             </div>
           ))}
@@ -444,16 +444,17 @@ export default function Projects() {
                 const vis = PROJECT_STATUSES.filter(s => filtered.some(p => p.status === s));
                 setCollapsedStatuses(collapsedStatuses.size > 0 ? new Set() : new Set(vis));
               }}
-              style={{ padding: '5px 8px', background: 'transparent', border: '1px solid #D5D5D5', borderRadius: 5, cursor: 'pointer', color: '#666666', display: 'flex', alignItems: 'center' }}
+              style={{ ...S.btnCompact, display: 'flex', alignItems: 'center', gap: 4 }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 {collapsedStatuses.size > 0
                   ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
                   : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
                 }
               </svg>
+              All
             </button>
-            <button style={S.btnCompact} onClick={openAdd}>+ Add Project</button>
+            <button style={S.btnCompact} onClick={openAdd}>+ Project</button>
           </div>
         </div>
       </div>
@@ -482,31 +483,31 @@ export default function Projects() {
               return (
                 <div key={country} style={{ width: COL_W, flexShrink: 0 }}>
                   <div style={{
-                    background: '#252830',
-                    border: '1px solid #353840',
+                    background: '#ECEEF2',
+                    border: '1px solid #D0D3D8',
                     borderRadius: 8,
                     padding: '8px 10px 7px',
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {country}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#AAAAAA', marginBottom: 4 }}>
-                      <span><strong style={{ color: '#FFFFFF' }}>{cs.total}</strong> proj</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#666666', marginBottom: 4 }}>
+                      <span><strong style={{ color: '#111111' }}>{cs.total}</strong> proj</span>
                       <span style={{ color: '#E31837', fontWeight: 700 }}>Wt {cs.weight.toFixed(1)}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                       {cs.retail > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: 'rgba(21,101,192,0.3)', color: '#90CAF9', border: '1px solid rgba(21,101,192,0.5)', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
                           R:{cs.retail}
                         </span>
                       )}
                       {cs.xscale > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: 'rgba(106,27,154,0.3)', color: '#CE93D8', border: '1px solid rgba(106,27,154,0.5)', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
                           xS:{cs.xscale}
                         </span>
                       )}
                       {cs.matrix > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: 'rgba(0,96,100,0.3)', color: '#80CBC4', border: '1px solid rgba(0,96,100,0.5)', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
                           M:{cs.matrix}
                         </span>
                       )}
