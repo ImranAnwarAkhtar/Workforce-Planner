@@ -88,7 +88,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <img
           src={equinixFortressRed}
           alt="Equinix"
-          style={{ height: 24, width: 'auto', flexShrink: 0, display: 'block' }}
+          style={{ height: 20, width: 'auto', flexShrink: 0, display: 'block' }}
         />
 
         {/* Brand text — shrinks to zero width when collapsed so logo stays centred */}
