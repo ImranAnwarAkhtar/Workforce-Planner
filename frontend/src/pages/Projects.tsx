@@ -4,6 +4,7 @@ import {
   type Project, type Region, type Country,
   type CreateProjectBody,
 } from '../services/api';
+import { usePlanningCycle } from '../context/PlanningCycleContext';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -134,10 +135,11 @@ export default function Projects() {
 
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
+  const { cycles, selectedCycleId, setSelectedCycleId, selectedRegionId, setSelectedRegionId } = usePlanningCycle();
+
   const [search,         setSearch]         = useState('');
   const [statusFilter,   setStatusFilter]   = useState('');
   const [typeFilter,     setTypeFilter]     = useState('');
-  const [regionFilter,   setRegionFilter]   = useState('');
   const [countryFilter,  setCountryFilter]  = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'true' | 'false' | 'all'>('true');
 
@@ -169,24 +171,23 @@ export default function Projects() {
   const loadProjects = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      setProjects(await projectsApi.list({ is_active: isActiveFilter, limit: 500 }));
+      setProjects(await projectsApi.list({
+        is_active: isActiveFilter,
+        limit: 500,
+        ...(selectedCycleId ? { planning_cycle_id: selectedCycleId } : {}),
+      }));
     } catch (err: unknown) {
       setError((err as Error).message ?? 'Failed to load');
     } finally {
       setLoading(false);
     }
-  }, [isActiveFilter]);
+  }, [isActiveFilter, selectedCycleId]);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
 
-  const allRegions = useMemo(() => {
-    const names = Array.from(new Set(projects.map(p => p.region_name ?? '').filter(Boolean)));
-    return names.sort();
-  }, [projects]);
-
   const allCountries = useMemo(() => {
-    const source = regionFilter
-      ? projects.filter(p => (p.region_name ?? '') === regionFilter)
+    const source = selectedRegionId
+      ? projects.filter(p => p.region_id === selectedRegionId)
       : projects;
     const names = Array.from(new Set(source.map(p => p.country_name ?? 'Unassigned')));
     return names.sort((a, b) => {
@@ -194,7 +195,7 @@ export default function Projects() {
       if (b === 'Unassigned') return -1;
       return a.localeCompare(b);
     });
-  }, [projects, regionFilter]);
+  }, [projects, selectedRegionId]);
 
   const filtered = useMemo(() => {
     let list = projects;
@@ -208,12 +209,12 @@ export default function Projects() {
         (p.metro         ?? '').toLowerCase().includes(q)
       );
     }
-    if (statusFilter)  list = list.filter(p => p.status === statusFilter);
-    if (typeFilter)    list = list.filter(p => p.type   === typeFilter);
-    if (regionFilter)  list = list.filter(p => (p.region_name ?? '') === regionFilter);
-    if (countryFilter) list = list.filter(p => (p.country_name ?? 'Unassigned') === countryFilter);
+    if (statusFilter)    list = list.filter(p => p.status === statusFilter);
+    if (typeFilter)      list = list.filter(p => p.type   === typeFilter);
+    if (selectedRegionId) list = list.filter(p => p.region_id === selectedRegionId);
+    if (countryFilter)   list = list.filter(p => (p.country_name ?? 'Unassigned') === countryFilter);
     return list;
-  }, [projects, search, statusFilter, typeFilter, regionFilter, countryFilter]);
+  }, [projects, search, statusFilter, typeFilter, selectedRegionId, countryFilter]);
 
   // Country groups and derived matrix for the aligned-row layout
   const countryGroups = useMemo(() => groupByCountry(filtered), [filtered]);
@@ -308,15 +309,16 @@ export default function Projects() {
     setSaving(true);
     try {
       const body: CreateProjectBody = {
-        name:       form.name.trim(),
-        type:       form.type,
-        status:     form.status,
-        weight:     parseFloat(form.weight) || 1.0,
-        year:       form.year ? parseInt(form.year, 10) : null,
-        region_id:  form.region_id  ? parseInt(form.region_id,  10) : null,
-        country_id: form.country_id ? parseInt(form.country_id, 10) : null,
-        metro:      form.metro.trim()      || null,
-        phase_code: form.phase_code.trim() || null,
+        name:              form.name.trim(),
+        type:              form.type,
+        status:            form.status,
+        weight:            parseFloat(form.weight) || 1.0,
+        year:              form.year ? parseInt(form.year, 10) : null,
+        region_id:         form.region_id  ? parseInt(form.region_id,  10) : null,
+        country_id:        form.country_id ? parseInt(form.country_id, 10) : null,
+        metro:             form.metro.trim()      || null,
+        phase_code:        form.phase_code.trim() || null,
+        planning_cycle_id: selectedCycleId ?? null,
       };
       if (editTarget) { await projectsApi.update(editTarget.id, body); }
       else            { await projectsApi.create(body); }
@@ -366,12 +368,36 @@ export default function Projects() {
             <div key={label} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '10px 16px', flex: '1 1 auto',
-              borderRight: i < statItems.length - 1 ? '1px solid #2A2C32' : 'none',
+              borderRight: '1px solid #2A2C32',
             }}>
               <span style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
               <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
             </div>
           ))}
+          {/* Region selector */}
+          <div style={{ padding: '0 12px', borderRight: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
+            <select
+              value={selectedRegionId ?? ''}
+              onChange={e => { setSelectedRegionId(e.target.value ? parseInt(e.target.value, 10) : null); setCountryFilter(''); }}
+              style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+            >
+              <option value="">All</option>
+              {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          {/* Planning cycle selector */}
+          <div style={{ padding: '0 12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
+            <select
+              value={selectedCycleId ?? ''}
+              onChange={e => setSelectedCycleId(e.target.value ? parseInt(e.target.value, 10) : null)}
+              style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+            >
+              <option value="">All cycles</option>
+              {cycles.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Toolbar — filters + Add Project button at right */}
@@ -389,11 +415,6 @@ export default function Projects() {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-
-          <select style={S.filterSel} value={regionFilter} onChange={e => { setRegionFilter(e.target.value); setCountryFilter(''); }}>
-            <option value="">All regions</option>
-            {allRegions.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
 
           <select style={S.filterSel} value={countryFilter} onChange={e => setCountryFilter(e.target.value)}>
             <option value="">All countries</option>
@@ -422,10 +443,10 @@ export default function Projects() {
             </span>
           )}
 
-          {(search || statusFilter || typeFilter || regionFilter || countryFilter) && (
+          {(search || statusFilter || typeFilter || countryFilter) && (
             <button
               style={{ ...S.btnSecondary, fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' as const }}
-              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); setRegionFilter(''); setCountryFilter(''); }}
+              onClick={() => { setSearch(''); setStatusFilter(''); setTypeFilter(''); setCountryFilter(''); }}
             >
               Clear filters
             </button>

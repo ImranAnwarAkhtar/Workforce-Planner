@@ -6,7 +6,7 @@ const { requireRole, WRITER_ROLES, ROLES } = require('../middleware/rbac');
 const router = Router();
 
 router.get('/', requireAuth, async (req, res) => {
-  const { region_id, year, status, type, is_active = 'true', limit = 100, offset = 0 } = req.query;
+  const { region_id, year, status, type, is_active = 'true', planning_cycle_id, limit = 100, offset = 0 } = req.query;
   const conditions = [];
   const params = [];
   let i = 1;
@@ -15,10 +15,11 @@ router.get('/', requireAuth, async (req, res) => {
     conditions.push(`p.is_active = $${i++}`);
     params.push(is_active !== 'false');
   }
-  if (region_id) { conditions.push(`p.region_id = $${i++}`); params.push(parseInt(region_id, 10)); }
-  if (year)      { conditions.push(`p.year = $${i++}`);      params.push(parseInt(year, 10)); }
-  if (status)    { conditions.push(`p.status = $${i++}`);    params.push(status); }
-  if (type)      { conditions.push(`p.type = $${i++}`);      params.push(type); }
+  if (region_id)         { conditions.push(`p.region_id = $${i++}`);          params.push(parseInt(region_id, 10)); }
+  if (year)              { conditions.push(`p.year = $${i++}`);                params.push(parseInt(year, 10)); }
+  if (status)            { conditions.push(`p.status = $${i++}`);              params.push(status); }
+  if (type)              { conditions.push(`p.type = $${i++}`);                params.push(type); }
+  if (planning_cycle_id) { conditions.push(`p.planning_cycle_id = $${i++}`);   params.push(parseInt(planning_cycle_id, 10)); }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   params.push(parseInt(limit, 10), parseInt(offset, 10));
@@ -53,34 +54,35 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => {
-  const { name, type, status, weight = 1.0, region_id, country_id, metro, phase_code, year } = req.body;
+  const { name, type, status, weight = 1.0, region_id, country_id, metro, phase_code, year, planning_cycle_id } = req.body;
   if (!name || !type || !status) return res.status(400).json({ error: 'name, type, and status are required' });
 
   const { rows } = await pool.query(
-    `INSERT INTO projects (name, type, status, weight, region_id, country_id, metro, phase_code, year, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-    [name, type, status, weight, region_id ?? null, country_id ?? null, metro ?? null, phase_code ?? null, year ?? null, req.user.id]
+    `INSERT INTO projects (name, type, status, weight, region_id, country_id, metro, phase_code, year, planning_cycle_id, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [name, type, status, weight, region_id ?? null, country_id ?? null, metro ?? null, phase_code ?? null, year ?? null, planning_cycle_id ?? null, req.user.id]
   );
   await req.auditLog({ actionType: 'CREATE', resourceType: 'project', resourceId: rows[0].id, newValue: rows[0] });
   res.status(201).json({ data: rows[0] });
 });
 
 router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => {
-  const { name, type, status, weight, region_id, country_id, metro, phase_code, year, is_active } = req.body;
+  const { name, type, status, weight, region_id, country_id, metro, phase_code, year, is_active, planning_cycle_id } = req.body;
   const sets = [];
   const params = [];
   let i = 1;
 
-  if (name      !== undefined) { sets.push(`name = $${i++}`);       params.push(name); }
-  if (type      !== undefined) { sets.push(`type = $${i++}`);       params.push(type); }
-  if (status    !== undefined) { sets.push(`status = $${i++}`);     params.push(status); }
-  if (weight    !== undefined) { sets.push(`weight = $${i++}`);     params.push(weight); }
-  if (region_id !== undefined) { sets.push(`region_id = $${i++}`);  params.push(region_id); }
-  if (country_id!== undefined) { sets.push(`country_id = $${i++}`); params.push(country_id); }
-  if (metro     !== undefined) { sets.push(`metro = $${i++}`);      params.push(metro); }
-  if (phase_code!== undefined) { sets.push(`phase_code = $${i++}`); params.push(phase_code); }
-  if (year      !== undefined) { sets.push(`year = $${i++}`);       params.push(year); }
-  if (is_active !== undefined) { sets.push(`is_active = $${i++}`);  params.push(is_active); }
+  if (name              !== undefined) { sets.push(`name = $${i++}`);              params.push(name); }
+  if (type              !== undefined) { sets.push(`type = $${i++}`);              params.push(type); }
+  if (status            !== undefined) { sets.push(`status = $${i++}`);            params.push(status); }
+  if (weight            !== undefined) { sets.push(`weight = $${i++}`);            params.push(weight); }
+  if (region_id         !== undefined) { sets.push(`region_id = $${i++}`);         params.push(region_id); }
+  if (country_id        !== undefined) { sets.push(`country_id = $${i++}`);        params.push(country_id); }
+  if (metro             !== undefined) { sets.push(`metro = $${i++}`);             params.push(metro); }
+  if (phase_code        !== undefined) { sets.push(`phase_code = $${i++}`);        params.push(phase_code); }
+  if (year              !== undefined) { sets.push(`year = $${i++}`);              params.push(year); }
+  if (is_active         !== undefined) { sets.push(`is_active = $${i++}`);         params.push(is_active); }
+  if (planning_cycle_id !== undefined) { sets.push(`planning_cycle_id = $${i++}`); params.push(planning_cycle_id); }
 
   if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
 

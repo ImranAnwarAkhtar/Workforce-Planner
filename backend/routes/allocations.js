@@ -6,15 +6,16 @@ const { requireRole, WRITER_ROLES, ROLES } = require('../middleware/rbac');
 const router = Router();
 
 router.get('/', requireAuth, async (req, res) => {
-  const { person_id, project_id, month_from, month_to, flagged, limit = 200, offset = 0 } = req.query;
+  const { person_id, project_id, month_from, month_to, flagged, planning_cycle_id, limit = 200, offset = 0 } = req.query;
   const conditions = [];
   const params = [];
   let i = 1;
 
-  if (person_id)  { conditions.push(`a.person_id = $${i++}`);                params.push(parseInt(person_id, 10)); }
-  if (project_id) { conditions.push(`a.project_id = $${i++}`);               params.push(parseInt(project_id, 10)); }
-  if (month_from) { conditions.push(`a.month >= $${i++}`);                   params.push(month_from); }
-  if (month_to)   { conditions.push(`a.month <= $${i++}`);                   params.push(month_to); }
+  if (person_id)         { conditions.push(`a.person_id = $${i++}`);          params.push(parseInt(person_id, 10)); }
+  if (project_id)        { conditions.push(`a.project_id = $${i++}`);         params.push(parseInt(project_id, 10)); }
+  if (month_from)        { conditions.push(`a.month >= $${i++}`);             params.push(month_from); }
+  if (month_to)          { conditions.push(`a.month <= $${i++}`);             params.push(month_to); }
+  if (planning_cycle_id) { conditions.push(`a.planning_cycle_id = $${i++}`);  params.push(parseInt(planning_cycle_id, 10)); }
   if (flagged === 'true') { conditions.push(`a.flagged_for_review = TRUE`); }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -57,8 +58,8 @@ router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => 
     return res.status(400).json({ error: 'person_id, project_id, and month are required' });
   }
   const { rows } = await pool.query(
-    `INSERT INTO allocations (person_id, project_id, month, fte_value, is_billable, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6)
+    `INSERT INTO allocations (person_id, project_id, month, fte_value, is_billable, planning_cycle_id, created_by)
+     VALUES ($1,$2,$3,$4,$5,(SELECT planning_cycle_id FROM projects WHERE id = $2),$6)
      ON CONFLICT (person_id, project_id, month) DO UPDATE
        SET fte_value = EXCLUDED.fte_value, is_billable = EXCLUDED.is_billable, updated_at = NOW()
      RETURNING *`,

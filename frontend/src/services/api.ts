@@ -49,6 +49,46 @@ export interface ItemResponse<T> {
 }
 
 // ---------------------------------------------------------------------------
+// Planning Cycles
+// ---------------------------------------------------------------------------
+
+export interface PlanningCycle {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: 'draft' | 'active' | 'under_review' | 'approved' | 'closed';
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CreatePlanningCycleBody {
+  name: string;
+  start_date: string;
+  end_date: string;
+  copy_from_cycle_id?: number | null;
+}
+
+export interface UpdatePlanningCycleBody {
+  name?: string;
+  start_date?: string;
+  end_date?: string;
+  status?: PlanningCycle['status'];
+  is_active?: boolean;
+}
+
+export const planningCyclesApi = {
+  list: () =>
+    client.get<ListResponse<PlanningCycle>>('/planning-cycles').then(r => r.data.data),
+
+  create: (body: CreatePlanningCycleBody) =>
+    client.post<ItemResponse<PlanningCycle>>('/planning-cycles', body).then(r => r.data.data),
+
+  update: (id: number, body: UpdatePlanningCycleBody) =>
+    client.put<ItemResponse<PlanningCycle>>(`/planning-cycles/${id}`, body).then(r => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
 // People
 // ---------------------------------------------------------------------------
 
@@ -177,6 +217,7 @@ export interface Project {
   metro: string | null;
   phase_code: string | null;
   year: number | null;
+  planning_cycle_id: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -190,6 +231,7 @@ export interface ProjectsQuery {
   status?: string;
   type?: string;
   is_active?: 'true' | 'false' | 'all';
+  planning_cycle_id?: number;
   limit?: number;
   offset?: number;
 }
@@ -204,6 +246,7 @@ export interface CreateProjectBody {
   metro?: string | null;
   phase_code?: string | null;
   year?: number | null;
+  planning_cycle_id?: number | null;
 }
 
 export type UpdateProjectBody = Partial<CreateProjectBody> & { is_active?: boolean };
@@ -252,6 +295,7 @@ export interface AllocationsQuery {
   month_from?: string;
   month_to?: string;
   flagged?: boolean;
+  planning_cycle_id?: number;
   limit?: number;
   offset?: number;
 }

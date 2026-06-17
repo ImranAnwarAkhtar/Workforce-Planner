@@ -9,6 +9,7 @@ const { limiter }        = require('./middleware/rateLimiter');
 const { auditMiddleware }= require('./middleware/audit');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
+const planningCyclesRouter= require('./routes/planningCycles');
 const projectsRouter      = require('./routes/projects');
 const peopleRouter        = require('./routes/people');
 const allocationsRouter   = require('./routes/allocations');
@@ -67,6 +68,55 @@ pool.query(`
   UPDATE levels SET level_name = 'Contingent' WHERE short_code = 'Cons' AND level_name = 'Consultant';
 `).catch(err => logger.error('Startup migration failed', { error: err.message }));
 
+// Planning cycles migration
+(async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS planning_cycles (
+        id         SERIAL PRIMARY KEY,
+        name       VARCHAR(255) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date   DATE NOT NULL,
+        status     VARCHAR(50) NOT NULL DEFAULT 'draft'
+                   CHECK (status IN ('draft','active','under_review','approved','closed')),
+        is_active  BOOLEAN NOT NULL DEFAULT true,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      ALTER TABLE projects    ADD COLUMN IF NOT EXISTS planning_cycle_id INTEGER REFERENCES planning_cycles(id);
+      ALTER TABLE projects    ADD COLUMN IF NOT EXISTS source_project_id INTEGER REFERENCES projects(id);
+      ALTER TABLE allocations ADD COLUMN IF NOT EXISTS planning_cycle_id INTEGER REFERENCES planning_cycles(id);
+    `);
+
+    // Seed the two initial cycles (idempotent — only inserts if not already present)
+    await pool.query(`
+      INSERT INTO planning_cycles (name, start_date, end_date, status)
+      SELECT '2026', '2026-01-01', '2026-09-30', 'active'
+      WHERE NOT EXISTS (SELECT 1 FROM planning_cycles WHERE name = '2026');
+
+      INSERT INTO planning_cycles (name, start_date, end_date, status)
+      SELECT '2027', '2026-10-01', '2027-03-31', 'draft'
+      WHERE NOT EXISTS (SELECT 1 FROM planning_cycles WHERE name = '2027');
+    `);
+
+    // Assign all unassigned projects + allocations to the 2026 cycle
+    await pool.query(`
+      UPDATE projects SET planning_cycle_id = (
+        SELECT id FROM planning_cycles WHERE name = '2026' LIMIT 1
+      ) WHERE planning_cycle_id IS NULL;
+
+      UPDATE allocations SET planning_cycle_id = (
+        SELECT id FROM planning_cycles WHERE name = '2026' LIMIT 1
+      ) WHERE planning_cycle_id IS NULL;
+    `);
+
+    logger.info('Planning cycles migration complete');
+  } catch (err) {
+    logger.error('Planning cycles migration failed', { error: err.message });
+  }
+})();
+
+app.use('/api/planning-cycles', wrapAsync(planningCyclesRouter));
 app.use('/api/projects',        wrapAsync(projectsRouter));
 app.use('/api/people',          wrapAsync(peopleRouter));
 app.use('/api/allocations',     wrapAsync(allocationsRouter));

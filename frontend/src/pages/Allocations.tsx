@@ -5,6 +5,7 @@ import {
   headcountApi, type CreateHeadcountBody,
   type Person, type Project, type Allocation, type Region, type GearingConstant,
 } from '../services/api';
+import { usePlanningCycle } from '../context/PlanningCycleContext';
 import PersonEditPanel from '../components/PersonEditPanel';
 
 interface PendingChange {
@@ -96,9 +97,11 @@ const FOOT_BG2  = '#E8EBF0';
 const FOOT_BORDER = '#C8CDD8';
 
 export default function Allocations() {
+  // ── Planning cycle context ────────────────────────────────────────────────
+  const { cycles, selectedCycleId, setSelectedCycleId, selectedCycle, selectedRegionId, setSelectedRegionId } = usePlanningCycle();
+
   // ── Selectors ────────────────────────────────────────────────────────────
   const [regions, setRegions]               = useState<Region[]>([]);
-  const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null);
   const [selectedYear, setSelectedYear]     = useState(2026);
   const [statusFilter, setStatusFilter]     = useState('All');
   const [countryFilter, setCountryFilter]   = useState('');
@@ -142,7 +145,7 @@ export default function Allocations() {
 
   useEffect(() => {
     refDataApi.regions()
-      .then(r => { setRegions(r); if (r.length > 0) setSelectedRegionId(r[0].id); })
+      .then(r => { setRegions(r); })
       .catch(() => setBackendError(true));
     gearingApi.list().then(setGearingConstants).catch(() => {});
     refDataApi.levels().then(setRefLevels).catch(() => {});
@@ -158,17 +161,27 @@ export default function Allocations() {
   // ── Load planning data ────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
-    if (!selectedRegionId) return;
     setLoading(true);
     setBackendError(false);
+    // Use cycle date range if a cycle is selected; otherwise fall back to selectedYear
+    const monthFrom = selectedCycle
+      ? selectedCycle.start_date.slice(0, 10)
+      : `${selectedYear}-01-01`;
+    const monthTo = selectedCycle
+      ? selectedCycle.end_date.slice(0, 10)
+      : `${selectedYear}-12-31`;
     try {
       const [peopleData, projectsData, allocData] = await Promise.all([
         peopleApi.list({ is_active: 'true', limit: 500 }).catch(() => [] as Person[]),
-        projectsApi.list({ is_active: 'true', limit: 500 }).catch(() => [] as Project[]),
+        projectsApi.list({
+          is_active: 'true', limit: 500,
+          ...(selectedCycleId ? { planning_cycle_id: selectedCycleId } : {}),
+        }).catch(() => [] as Project[]),
         allocationsApi.list({
-          month_from: `${selectedYear}-01-01`,
-          month_to:   `${selectedYear}-12-31`,
+          month_from: monthFrom,
+          month_to:   monthTo,
           limit: 2000,
+          ...(selectedCycleId ? { planning_cycle_id: selectedCycleId } : {}),
         }).catch(() => [] as Allocation[]),
       ]);
       setPeople(peopleData);
@@ -176,7 +189,7 @@ export default function Allocations() {
       setAllocations(allocData);
     } catch { setBackendError(true); }
     finally   { setLoading(false); }
-  }, [selectedRegionId, selectedYear]);
+  }, [selectedCycleId, selectedCycle, selectedYear]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -481,6 +494,30 @@ export default function Allocations() {
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Allocations Planning</div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Region</span>
+              <select
+                value={selectedRegionId ?? ''}
+                onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
+                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="">All Regions</option>
+                {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Cycle</span>
+              <select
+                value={selectedCycleId ?? ''}
+                onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
+                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="">All Cycles</option>
+                {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {pendingCount > 0 && (
               <span style={{ fontSize: 11, color: '#D4870A', background: '#FFF8E1', padding: '3px 9px', borderRadius: 12, border: '1px solid #F9A825' }}>
@@ -500,22 +537,6 @@ export default function Allocations() {
 
         {/* ── Compact controls ── */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <label style={LBL}>Region</label>
-            <select value={selectedRegionId ?? ''} onChange={e => setSelectedRegionId(Number(e.target.value))} style={SEL}>
-              {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <label style={LBL}>Year</label>
-            <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} style={SEL}>
-              <option value={2026}>2026</option>
-              <option value={2027}>2027</option>
-              <option value={2028}>2028</option>
-            </select>
-          </div>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <label style={LBL}>Status</label>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={SEL}>
@@ -572,8 +593,8 @@ export default function Allocations() {
 
       {!loading && !backendError && visibleProjects.length === 0 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, flexDirection: 'column', gap: 8, color: '#666666' }}>
-          <div style={{ fontSize: 16 }}>No projects found for {selectedRegionName} {selectedYear}</div>
-          <div style={{ fontSize: 13 }}>Add projects in the Projects screen first, then assign them to this region and year.</div>
+          <div style={{ fontSize: 16 }}>No projects found for {selectedRegionName}{selectedCycle ? ` – ${selectedCycle.name}` : ''}</div>
+          <div style={{ fontSize: 13 }}>Add projects in the Projects screen first, then assign them to this region and planning cycle.</div>
         </div>
       )}
 

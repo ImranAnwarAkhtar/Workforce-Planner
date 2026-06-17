@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { refDataApi, type Discipline, type Level, type ContractType, type Region } from '../services/api';
+import { refDataApi, planningCyclesApi, type Discipline, type Level, type ContractType, type Region, type PlanningCycle } from '../services/api';
+import { usePlanningCycle } from '../context/PlanningCycleContext';
 import axios from 'axios';
 
 const BASE = (process.env.REACT_APP_API_URL ?? 'http://localhost:3001') + '/api';
@@ -239,14 +240,180 @@ function ChangeRulesTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Planning Cycles tab
+// ---------------------------------------------------------------------------
+
+const STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
+  draft:        { label: 'Draft',        bg: '#F5F5F5', color: '#666666' },
+  active:       { label: 'Active',       bg: '#E8F5EE', color: '#1E8A4A' },
+  under_review: { label: 'Under Review', bg: '#FFF3DC', color: '#B5600A' },
+  approved:     { label: 'Approved',     bg: '#EBF0FF', color: '#1D4EBB' },
+  closed:       { label: 'Closed',       bg: '#EEEEEE', color: '#888888' },
+};
+
+const inp: React.CSSProperties = {
+  padding: '6px 10px', border: '1px solid #D5D5D5', borderRadius: 5,
+  fontSize: 13, boxSizing: 'border-box' as const, width: '100%',
+};
+
+function PlanningCyclesTab() {
+  const { cycles, reloadCycles } = usePlanningCycle();
+  const [creating, setCreating]   = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving]       = useState(false);
+
+  const [form, setForm] = useState({ name: '', start_date: '', end_date: '', copy_from_cycle_id: '' });
+  const [editForm, setEditForm] = useState({ name: '', start_date: '', end_date: '', status: 'draft' });
+
+  function startEdit(c: PlanningCycle) {
+    setEditingId(c.id);
+    setEditForm({ name: c.name, start_date: c.start_date.slice(0, 10), end_date: c.end_date.slice(0, 10), status: c.status });
+  }
+
+  async function handleCreate() {
+    if (!form.name || !form.start_date || !form.end_date) return;
+    setSaving(true);
+    try {
+      await planningCyclesApi.create({
+        name: form.name, start_date: form.start_date, end_date: form.end_date,
+        copy_from_cycle_id: form.copy_from_cycle_id ? parseInt(form.copy_from_cycle_id, 10) : null,
+      });
+      reloadCycles();
+      setCreating(false);
+      setForm({ name: '', start_date: '', end_date: '', copy_from_cycle_id: '' });
+    } finally { setSaving(false); }
+  }
+
+  async function handleUpdate(id: number) {
+    setSaving(true);
+    try {
+      await planningCyclesApi.update(id, {
+        name: editForm.name, start_date: editForm.start_date,
+        end_date: editForm.end_date, status: editForm.status as PlanningCycle['status'],
+      });
+      reloadCycles();
+      setEditingId(null);
+    } finally { setSaving(false); }
+  }
+
+  const fmtDate = (d: string) => d.slice(0, 10);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
+          Create and manage planning cycles. Optionally copy projects and allocations from an existing cycle as a starting point — months are automatically shifted to match the new cycle period.
+        </p>
+        <button
+          onClick={() => { setCreating(true); setEditingId(null); }}
+          style={{ padding: '7px 14px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 20, flexShrink: 0 }}
+        >+ New Cycle</button>
+      </div>
+
+      {creating && (
+        <div style={{ ...card, marginBottom: 16, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', marginBottom: 12 }}>New Planning Cycle</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Name *</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. H1 2027" style={inp} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Start Date *</label>
+              <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={inp} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>End Date *</label>
+              <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={inp} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Copy From</label>
+              <select value={form.copy_from_cycle_id} onChange={e => setForm(f => ({ ...f, copy_from_cycle_id: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                <option value="">— Start blank —</option>
+                {cycles.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => setCreating(false)} style={btnSecondary}>Cancel</button>
+            <button
+              onClick={handleCreate}
+              disabled={saving || !form.name || !form.start_date || !form.end_date}
+              style={{ padding: '7px 16px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (!form.name || !form.start_date || !form.end_date) ? 0.6 : 1 }}
+            >{saving ? 'Creating…' : form.copy_from_cycle_id ? 'Create & Copy' : 'Create'}</button>
+          </div>
+        </div>
+      )}
+
+      <div style={card}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={th}>Name</th>
+              <th style={th}>Start Date</th>
+              <th style={th}>End Date</th>
+              <th style={th}>Status</th>
+              <th style={th}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {cycles.length === 0
+              ? <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#555' }}>No planning cycles</td></tr>
+              : cycles.map(cycle => {
+                  const sm = STATUS_META[cycle.status] ?? STATUS_META.draft;
+                  if (editingId === cycle.id) {
+                    return (
+                      <tr key={cycle.id} style={{ background: '#FAFAFA' }}>
+                        <td style={td}><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} style={{ ...inp, width: 150 }} /></td>
+                        <td style={td}><input type="date" value={editForm.start_date} onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))} style={inp} /></td>
+                        <td style={td}><input type="date" value={editForm.end_date}   onChange={e => setEditForm(f => ({ ...f, end_date: e.target.value }))}   style={inp} /></td>
+                        <td style={td}>
+                          <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                            {Object.entries(STATUS_META).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}
+                          </select>
+                        </td>
+                        <td style={td}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => handleUpdate(cycle.id)} disabled={saving} style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{saving ? '…' : 'Save'}</button>
+                            <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={cycle.id}>
+                      <td style={{ ...td, color: '#111111', fontWeight: 600 }}>{cycle.name}</td>
+                      <td style={td}>{fmtDate(cycle.start_date)}</td>
+                      <td style={td}>{fmtDate(cycle.end_date)}</td>
+                      <td style={td}>
+                        <span style={{ padding: '2px 10px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: sm.bg, color: sm.color }}>
+                          {sm.label}
+                        </span>
+                      </td>
+                      <td style={td}>
+                        <button onClick={() => startEdit(cycle)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
+                      </td>
+                    </tr>
+                  );
+                })
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Admin page
 // ---------------------------------------------------------------------------
 
-const TABS = ['Disciplines', 'Levels', 'Contract Types', 'Regions', 'Users', 'Change Rules'] as const;
+const TABS = ['Planning Cycles', 'Disciplines', 'Levels', 'Contract Types', 'Regions', 'Users', 'Change Rules'] as const;
 type Tab = typeof TABS[number];
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<Tab>('Disciplines');
+  const [activeTab, setActiveTab] = useState<Tab>('Planning Cycles');
 
   return (
     <div style={{ color: '#111111' }}>
@@ -268,6 +435,7 @@ export default function Admin() {
       </div>
 
       {/* Tab content */}
+      {activeTab === 'Planning Cycles' && <PlanningCyclesTab />}
       {activeTab === 'Disciplines'    && <DisciplinesTab />}
       {activeTab === 'Levels'         && <LevelsTab />}
       {activeTab === 'Contract Types' && <ContractTypesTab />}
