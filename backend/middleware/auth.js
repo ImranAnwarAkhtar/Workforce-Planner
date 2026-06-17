@@ -2,7 +2,7 @@ const pool = require('../db/pool');
 
 async function requireAuth(req, res, next) {
   req.user = {
-    id: 1,
+    id: null,
     name: 'Demo User',
     email: 'demo@equinix.com',
     role: 'Workforce Planning',
