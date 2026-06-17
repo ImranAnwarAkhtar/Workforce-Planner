@@ -492,23 +492,20 @@ export default function Import() {
     <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ padding: '16px 24px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div style={{ background: '#181A1E', borderBottom: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px' }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Data Import</h1>
-          <div style={{ width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 5 }} />
-          <p style={{ fontSize: 13, color: '#666666', marginTop: 8, marginBottom: 0 }}>
-            Upload your GDC HUB Summaries Excel file to import workforce planning data
-          </p>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Data Import</div>
+          <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
         </div>
         <button
           onClick={() => downloadTemplate(activeTab)}
           title="Download a blank Excel template for this tab"
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', background: 'transparent',
-            border: '1px solid #D5D5D5', color: '#555555',
-            borderRadius: 6, fontSize: 13, cursor: 'pointer',
-            whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 16,
+            padding: '6px 12px', background: 'transparent',
+            border: '1px solid #444444', color: '#AAAAAA',
+            borderRadius: 6, fontSize: 12, cursor: 'pointer',
+            whiteSpace: 'nowrap', flexShrink: 0,
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">

@@ -250,11 +250,12 @@ export default function Admin() {
 
   return (
     <div style={{ color: '#111111' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Admin</h1>
-        <div style={{ width: 40, height: 3, background: tk.accent, borderRadius: 2, marginTop: 6 }} />
-        <p style={{ fontSize: 13, color: '#555555', marginTop: 8 }}>Reference data and system configuration</p>
+      {/* Page title bar */}
+      <div style={{ display: 'flex', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', padding: '8px 16px' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Admin</div>
+          <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
+        </div>
       </div>
 
       {/* Tabs */}

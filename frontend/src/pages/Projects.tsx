@@ -353,20 +353,16 @@ export default function Projects() {
       {/* ── Fixed top section ── */}
       <div style={{ flexShrink: 0 }}>
 
-        {/* Header — title only, button moved to toolbar */}
-        <div style={S.header}>
-          <div>
-            <h1 style={S.title}>Projects</h1>
-            <div style={S.accent} />
-          </div>
-        </div>
-
-        {/* Stats banner — dark compact strip */}
+        {/* Title + stats banner — single dark strip */}
         <div style={{
           display: 'flex', alignItems: 'center',
           background: '#181A1E', borderRadius: 8, marginBottom: 16,
           border: '1px solid #2A2C32', overflow: 'hidden',
         }}>
+          <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1, whiteSpace: 'nowrap' }}>Projects</div>
+            <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
+          </div>
           {statItems.map(({ label, value, color }, i) => (
             <div key={label} style={{
               display: 'flex', alignItems: 'center', gap: 8,

@@ -279,19 +279,20 @@ export default function Headcount() {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', color: '#111111' }}>
 
       {/* Header */}
-      <div style={{ padding: '14px 20px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '1px solid #2A2C32', padding: '8px 16px' }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Headcount Requests</h1>
-            <div style={{ width: 36, height: 3, background: '#E31837', borderRadius: 2, marginTop: 4 }} />
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Headcount Requests</div>
+            <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
           </div>
           <button onClick={() => setShowNew(true)} style={{
-            padding: '8px 18px', background: '#E31837', color: '#FFFFFF',
-            border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            padding: '5px 14px', background: '#E31837', color: '#FFFFFF',
+            border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer',
           }}>
             + New Request
           </button>
         </div>
+        <div style={{ padding: '10px 16px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5' }}>
 
         {/* Summary chips */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -329,6 +330,7 @@ export default function Headcount() {
             border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 12,
             color: '#555555', cursor: 'pointer',
           }}>↻ Refresh</button>
+        </div>
         </div>
       </div>
 

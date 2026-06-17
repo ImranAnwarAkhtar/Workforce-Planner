@@ -267,16 +267,17 @@ export default function HireRequests() {
     <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
-      <div style={{ padding: '14px 20px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '1px solid #2A2C32', padding: '8px 16px' }}>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Hire Requests</h1>
-            <div style={{ width: 36, height: 3, background: '#E31837', borderRadius: 2, marginTop: 4 }} />
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Hire Requests</div>
+            <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
           </div>
-          <button style={BTN_PRIMARY} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>
+          <button style={{ ...BTN_PRIMARY, padding: '5px 14px', fontSize: 12 }} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>
             + New Request
           </button>
         </div>
+        <div style={{ padding: '0 16px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5' }}>
 
         {/* Status tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E5E5E5' }}>
@@ -303,6 +304,7 @@ export default function HireRequests() {
               </span>
             </button>
           ))}
+        </div>
         </div>
       </div>
 

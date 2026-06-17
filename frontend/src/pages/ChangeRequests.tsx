@@ -165,11 +165,11 @@ export default function ChangeRequests() {
 
   return (
     <div style={{ color: '#FFF' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      {/* Page title bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', padding: '8px 16px' }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Change Requests</h1>
-          <div style={{ width: 40, height: 3, background: tk.accent, borderRadius: 2, marginTop: 6 }} />
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Change Requests</div>
+          <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
         </div>
         <button style={btnPrimary} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>+ New Request</button>
       </div>

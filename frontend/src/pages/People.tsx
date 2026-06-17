@@ -391,32 +391,31 @@ export default function People() {
   return (
     <div style={S.page}>
 
-      {/* Header */}
-      <div style={S.header}>
-        <div>
-          <h1 style={S.title}>People</h1>
-          <div style={S.accent} />
+      {/* Title + stats strip */}
+      <div style={{ display: 'flex', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', overflow: 'hidden' }}>
+        <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>People</div>
+          <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
         </div>
-        <button style={S.btnPrimary} onClick={openAdd}>
-          + Add Person
-        </button>
-      </div>
-
-      {/* Stats bar */}
-      {!loading && people.length > 0 && (
-        <div style={S.statsBar}>
-          <div style={S.statCard('#E31837')}>
-            <div style={S.statNum}>{people.length}</div>
-            <div style={S.statLabel}>Total People</div>
-          </div>
-          {regionStats.map(([region, count]) => (
-            <div key={region} style={S.statCard(regionColor(region))}>
-              <div style={S.statNum}>{count}</div>
-              <div style={S.statLabel}>{region}</div>
+        {!loading && people.length > 0 && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRight: '1px solid #2A2C32' }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: '#E31837', lineHeight: 1 }}>{people.length}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Total</span>
             </div>
-          ))}
+            {regionStats.map(([region, count]) => (
+              <div key={region} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', flex: '1 1 auto', borderRight: '1px solid #2A2C32' }}>
+                <span style={{ fontSize: 20, fontWeight: 800, color: regionColor(region), lineHeight: 1 }}>{count}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{region}</span>
+              </div>
+            ))}
+          </>
+        )}
+        <div style={{ flex: 1 }} />
+        <div style={{ padding: '0 12px', borderLeft: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+          <button style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer' }} onClick={openAdd}>+ Add Person</button>
         </div>
-      )}
+      </div>
 
       {/* Toolbar */}
       <div style={S.toolbar}>
