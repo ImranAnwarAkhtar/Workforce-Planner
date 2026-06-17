@@ -473,10 +473,10 @@ export default function Projects() {
 
           {/* Country header row */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            {countriesList.map(country => {
+            {countriesList.map((country, ci) => {
               const cs = countryStats[country];
               return (
-                <div key={country} style={{ width: COL_W, flexShrink: 0 }}>
+                <div key={country} style={{ width: COL_W, flexShrink: 0, boxSizing: 'border-box' as const, borderRight: ci < countriesList.length - 1 ? '1px solid #CCCCCC' : 'none' }}>
                   <div style={{
                     background: '#D0D3DA',
                     border: '1px solid #B8BBC2',
@@ -512,7 +512,6 @@ export default function Projects() {
               );
             })}
           </div>
-          <div style={{ height: 1, background: '#E0E0E0', margin: '8px 0 12px' }} />
 
           {/* Status rows — collapsible */}
           {PROJECT_STATUSES.map(status => {
@@ -563,12 +562,12 @@ export default function Projects() {
                     border: `1px solid ${sm.border}`, borderTop: 'none',
                     borderRadius: '0 0 6px 6px',
                   }}>
-                    {countriesList.map(country => {
+                    {countriesList.map((country, ci) => {
                       const cards = projectMatrix[country]?.[status] ?? [];
                       return (
                         <div
                           key={country}
-                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
+                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, boxSizing: 'border-box' as const, borderRight: ci < countriesList.length - 1 ? '1px solid #CCCCCC' : 'none' }}
                         >
                           {cards.map(p => (
                             <ProjectCard
@@ -617,15 +616,17 @@ export default function Projects() {
                 background: '#F5F5F5', border: '1px solid #DDDDDD',
                 borderTop: 'none', borderRadius: '0 0 6px 6px',
               }}>
-                {countriesList.map(country => {
+                {countriesList.map((country, ci) => {
                   const cs = countryStats[country];
                   return (
                     <div key={country} style={{
                       width: COL_W, flexShrink: 0,
                       background: '#D0D3DA',
                       border: '1px solid #B8BBC2',
+                      borderRight: ci < countriesList.length - 1 ? '1px solid #CCCCCC' : '1px solid #B8BBC2',
                       borderRadius: 6,
                       padding: '7px 9px',
+                      boxSizing: 'border-box' as const,
                     }}>
                       {/* Total count + weight */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
