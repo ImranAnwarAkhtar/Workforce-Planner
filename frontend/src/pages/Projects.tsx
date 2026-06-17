@@ -380,10 +380,10 @@ export default function Projects() {
             <select
               value={selectedRegionId ?? ''}
               onChange={e => { setSelectedRegionId(e.target.value ? parseInt(e.target.value, 10) : null); setCountryFilter(''); }}
-              style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+              style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
             >
               <option value="">All</option>
-              {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
             </select>
           </div>
           {/* Planning cycle selector */}
