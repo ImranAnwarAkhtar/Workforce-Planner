@@ -280,11 +280,8 @@ export default function Headcount() {
 
       {/* Header */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '1px solid #2A2C32', padding: '8px 16px' }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Headcount Requests</div>
-            <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Headcount Requests</div>
           <button onClick={() => setShowNew(true)} style={{
             padding: '5px 14px', background: '#E31837', color: '#FFFFFF',
             border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer',

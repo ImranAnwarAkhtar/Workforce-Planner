@@ -357,11 +357,10 @@ export default function Projects() {
         <div style={{
           display: 'flex', alignItems: 'center',
           background: '#181A1E', borderRadius: 8, marginBottom: 16,
-          border: '1px solid #2A2C32', overflow: 'hidden',
+          border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', overflow: 'hidden',
         }}>
           <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1, whiteSpace: 'nowrap' }}>Projects</div>
-            <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
           </div>
           {statItems.map(({ label, value, color }, i) => (
             <div key={label} style={{
@@ -513,12 +512,15 @@ export default function Projects() {
               );
             })}
           </div>
+          <div style={{ height: 1, background: '#E0E0E0', margin: '8px 0 12px' }} />
 
           {/* Status rows — collapsible */}
           {PROJECT_STATUSES.map(status => {
             const sm          = statusMeta(status);
-            const statusTotal = filtered.filter(p => p.status === status).length;
+            const statusItems = filtered.filter(p => p.status === status);
+            const statusTotal = statusItems.length;
             if (statusTotal === 0) return null;
+            const statusWeight = statusItems.reduce((s, p) => s + (Number(p.weight) || 1), 0).toFixed(1);
             const collapsed   = collapsedStatuses.has(status);
 
             return (
@@ -544,15 +546,13 @@ export default function Projects() {
                   }}>▼</span>
 
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: sm.dot, display: 'inline-block', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: sm.color, textTransform: 'uppercase', letterSpacing: '0.07em', flex: 1 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: sm.color }}>
                     {status}
                   </span>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, color: '#FFFFFF',
-                    background: sm.pill, padding: '0px 7px', borderRadius: 8, lineHeight: '18px',
-                  }}>
-                    {statusTotal}
+                  <span style={{ fontSize: 10, fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginLeft: 8, whiteSpace: 'nowrap' as const }}>
+                    {statusTotal} · Wt {statusWeight}
                   </span>
+                  <div style={{ flex: 1 }} />
                 </div>
 
                 {/* Cards — hidden when collapsed */}

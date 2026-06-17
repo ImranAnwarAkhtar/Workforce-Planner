@@ -166,11 +166,8 @@ export default function ChangeRequests() {
   return (
     <div style={{ color: '#FFF' }}>
       {/* Page title bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', padding: '8px 16px' }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Change Requests</div>
-          <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Change Requests</div>
         <button style={btnPrimary} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>+ New Request</button>
       </div>
 

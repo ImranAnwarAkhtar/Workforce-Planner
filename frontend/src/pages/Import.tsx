@@ -492,11 +492,8 @@ export default function Import() {
     <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ background: '#181A1E', borderBottom: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px' }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Data Import</div>
-          <div style={{ width: 24, height: 2, background: '#E31837', borderRadius: 1, marginTop: 4 }} />
-        </div>
+      <div style={{ background: '#181A1E', borderBottom: '2px solid #E31837', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Data Import</div>
         <button
           onClick={() => downloadTemplate(activeTab)}
           title="Download a blank Excel template for this tab"
