@@ -78,23 +78,25 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         borderBottom: '1px solid #222222',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 14px',
-        gap: 10,
+        padding: isExpanded ? '0 14px' : '0',
+        justifyContent: isExpanded ? 'flex-start' : 'center',
+        gap: isExpanded ? 10 : 0,
         flexShrink: 0,
         overflow: 'hidden',
       }}>
-        {/* Equinix fortress mark — always visible */}
+        {/* Equinix fortress mark — always visible, centered when collapsed */}
         <img
           src={equinixFortressRed}
           alt="Equinix"
-          style={{ height: 28, width: 'auto', flexShrink: 0, display: 'block' }}
+          style={{ height: 24, width: 'auto', flexShrink: 0, display: 'block' }}
         />
 
-        {/* Brand text — fades in when expanded */}
+        {/* Brand text — shrinks to zero width when collapsed so logo stays centred */}
         <div style={{
           opacity: isExpanded ? 1 : 0,
-          transition: 'opacity 0.15s ease',
+          maxWidth: isExpanded ? 200 : 0,
           overflow: 'hidden',
+          transition: 'opacity 0.15s ease, max-width 0.25s ease',
           whiteSpace: 'nowrap',
           flex: 1,
           minWidth: 0,
@@ -104,14 +106,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </div>
         </div>
 
-        {/* Collapse / pin-open toggle — only shown when expanded */}
+        {/* Collapse / pin-open toggle — shrinks to zero width when collapsed */}
         <button
           onClick={onToggle}
           title={collapsed ? 'Pin sidebar open' : 'Collapse sidebar'}
           style={{
             opacity: isExpanded ? 1 : 0,
+            maxWidth: isExpanded ? 26 : 0,
             pointerEvents: isExpanded ? 'auto' : 'none',
-            transition: 'opacity 0.15s ease',
+            overflow: 'hidden',
+            transition: 'opacity 0.15s ease, max-width 0.25s ease',
             width: 26, height: 26,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(255,255,255,0.04)',
