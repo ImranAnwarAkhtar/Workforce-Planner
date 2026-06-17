@@ -38,14 +38,14 @@ const S = {
     cursor: 'pointer', whiteSpace: 'nowrap' as const,
   } as React.CSSProperties,
   card: { background: '#FFFFFF', borderRadius: 8, border: '1px solid #E5E5E5', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' } as React.CSSProperties,
-  table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 14 },
+  table: { width: '100%', borderCollapse: 'collapse' as const, fontSize: 12 },
   th: {
-    padding: '11px 16px', textAlign: 'left' as const, fontSize: 11,
+    padding: '8px 12px', textAlign: 'left' as const, fontSize: 10,
     fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
     color: '#666666', background: '#F8F9FA', borderBottom: '1px solid #E8E8E8',
     whiteSpace: 'nowrap' as const,
   } as React.CSSProperties,
-  td: { padding: '12px 16px', borderBottom: '1px solid #F0F0F0', verticalAlign: 'middle' as const },
+  td: { padding: '7px 12px', borderBottom: '1px solid #F0F0F0', verticalAlign: 'middle' as const },
   center: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, color: '#999' },
   badge: (colour?: string | null): React.CSSProperties => ({
     display: 'inline-block', padding: '2px 8px', borderRadius: 12,
@@ -104,6 +104,14 @@ const S = {
 // ---------------------------------------------------------------------------
 
 const REGION_PALETTE = ['#1565C0', '#1E8A4A', '#6A1B9A', '#B5600A', '#006064', '#C0392B', '#4477EE', '#D4870A'];
+
+const DISC_COLOURS: Record<string, string> = {
+  'Construction': '#E65100',
+  'Design':       '#1565C0',
+  'Commercial':   '#1E8A4A',
+  'Commissioning':'#6A1B9A',
+  'Other':        '#888888',
+};
 
 function regionColor(name: string): string {
   if (!name || name === 'Unassigned') return '#AAAAAA';
@@ -240,6 +248,19 @@ export default function People() {
           if (r) counts[r] = (counts[r] || 0) + 1;
         });
       }
+    });
+    return Object.entries(counts).sort(([a], [b]) => {
+      if (a === 'Unassigned') return 1;
+      if (b === 'Unassigned') return -1;
+      return a.localeCompare(b);
+    });
+  }, [people]);
+
+  const disciplineStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    people.forEach(p => {
+      const d = p.discipline_name ?? 'Unassigned';
+      counts[d] = (counts[d] || 0) + 1;
     });
     return Object.entries(counts).sort(([a], [b]) => {
       if (a === 'Unassigned') return 1;
@@ -392,28 +413,43 @@ export default function People() {
     <div style={S.page}>
 
       {/* Title + stats strip */}
-      <div style={{ display: 'flex', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', overflow: 'hidden' }}>
-        <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>People</div>
+      <div style={{ background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', overflow: 'hidden' }}>
+        {/* Row 1: title, total, region stats, add button */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>People</div>
+          </div>
+          {!loading && people.length > 0 && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRight: '1px solid #2A2C32' }}>
+                <span style={{ fontSize: 20, fontWeight: 800, color: '#E31837', lineHeight: 1 }}>{people.length}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Total</span>
+              </div>
+              {regionStats.map(([region, count]) => (
+                <div key={region} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', flex: '1 1 auto', borderRight: '1px solid #2A2C32' }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: regionColor(region), lineHeight: 1 }}>{count}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{region}</span>
+                </div>
+              ))}
+            </>
+          )}
+          <div style={{ flex: 1 }} />
+          <div style={{ padding: '0 12px', borderLeft: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <button style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer' }} onClick={openAdd}>+ Add Person</button>
+          </div>
         </div>
-        {!loading && people.length > 0 && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRight: '1px solid #2A2C32' }}>
-              <span style={{ fontSize: 20, fontWeight: 800, color: '#E31837', lineHeight: 1 }}>{people.length}</span>
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Total</span>
-            </div>
-            {regionStats.map(([region, count]) => (
-              <div key={region} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', flex: '1 1 auto', borderRight: '1px solid #2A2C32' }}>
-                <span style={{ fontSize: 20, fontWeight: 800, color: regionColor(region), lineHeight: 1 }}>{count}</span>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{region}</span>
+        {/* Row 2: discipline breakdown */}
+        {!loading && disciplineStats.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #2A2C32', padding: '6px 16px', gap: 20, flexWrap: 'wrap' as const }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#555', textTransform: 'uppercase' as const, letterSpacing: '0.1em', flexShrink: 0 }}>By Discipline</span>
+            {disciplineStats.map(([disc, count]) => (
+              <div key={disc} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 15, fontWeight: 800, color: DISC_COLOURS[disc] ?? '#AAAAAA', lineHeight: 1 }}>{count}</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{disc}</span>
               </div>
             ))}
-          </>
+          </div>
         )}
-        <div style={{ flex: 1 }} />
-        <div style={{ padding: '0 12px', borderLeft: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-          <button style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer' }} onClick={openAdd}>+ Add Person</button>
-        </div>
       </div>
 
       {/* Toolbar */}
@@ -753,20 +789,20 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
       )}
 
       <td style={S.td}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
             background: selected ? '#FDDDE2' : '#FEF0F2',
             border: `1px solid ${selected ? '#E31837' : '#F5C0C8'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 12, fontWeight: 700, color: '#E31837',
+            fontSize: 10, fontWeight: 700, color: '#E31837',
           }}>
             {p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
           </div>
           <div>
             <div style={{ fontWeight: 600, color: '#111111' }}>{p.name}</div>
             {p.workday_jr_id && (
-              <div style={{ fontSize: 11, color: '#888888', marginTop: 1 }}>{p.workday_jr_id}</div>
+              <div style={{ fontSize: 10, color: '#888888', marginTop: 1 }}>{p.workday_jr_id}</div>
             )}
           </div>
         </div>
