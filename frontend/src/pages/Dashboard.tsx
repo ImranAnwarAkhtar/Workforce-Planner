@@ -131,9 +131,9 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
           paddingRight: 16, marginRight: 16,
           borderRight: gi < groups.length - 1 ? '1px solid #2A2A2A' : 'none',
         }}>
-          {/* Group label — vertical, upright (no rotation), white */}
+          {/* Group label — vertical, rotated 180° anti-clockwise, white */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', marginRight: 12, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.12em', writingMode: 'vertical-rl' }}>
+            <span style={{ fontSize: 8, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.12em', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
               {grp.label}
             </span>
           </div>
