@@ -472,11 +472,11 @@ export default function Projects() {
         <div style={{ minWidth: 'max-content' }}>
 
           {/* Country header row */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
             {countriesList.map((country, ci) => {
               const cs = countryStats[country];
-              return (
-                <div key={country} style={{ width: COL_W, flexShrink: 0, boxSizing: 'border-box' as const, borderRight: ci < countriesList.length - 1 ? '1px solid #CCCCCC' : 'none' }}>
+              return [
+                <div key={`col-${country}`} style={{ width: COL_W, flexShrink: 0 }}>
                   <div style={{
                     background: '#D0D3DA',
                     border: '1px solid #B8BBC2',
@@ -508,8 +508,11 @@ export default function Projects() {
                       )}
                     </div>
                   </div>
-                </div>
-              );
+                </div>,
+                ci < countriesList.length - 1
+                  ? <div key={`sep-${country}`} style={{ width: 1, flexShrink: 0, alignSelf: 'stretch', background: '#D0D0D0' }} />
+                  : null,
+              ];
             })}
           </div>
 
@@ -557,17 +560,17 @@ export default function Projects() {
                 {/* Cards — hidden when collapsed */}
                 {!collapsed && (
                   <div style={{
-                    display: 'flex', gap: 8, alignItems: 'flex-start',
+                    display: 'flex', gap: 4, alignItems: 'flex-start',
                     padding: '8px', background: `${sm.bg}55`,
                     border: `1px solid ${sm.border}`, borderTop: 'none',
                     borderRadius: '0 0 6px 6px',
                   }}>
                     {countriesList.map((country, ci) => {
                       const cards = projectMatrix[country]?.[status] ?? [];
-                      return (
+                      return [
                         <div
-                          key={country}
-                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, boxSizing: 'border-box' as const, borderRight: ci < countriesList.length - 1 ? '1px solid #CCCCCC' : 'none' }}
+                          key={`col-${country}`}
+                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
                         >
                           {cards.map(p => (
                             <ProjectCard
@@ -584,8 +587,11 @@ export default function Projects() {
                               background: 'rgba(255,255,255,0.6)',
                             }} />
                           )}
-                        </div>
-                      );
+                        </div>,
+                        ci < countriesList.length - 1
+                          ? <div key={`sep-${country}`} style={{ width: 1, flexShrink: 0, alignSelf: 'stretch', background: '#D0D0D0' }} />
+                          : null,
+                      ];
                     })}
                   </div>
                 )}
@@ -612,21 +618,19 @@ export default function Projects() {
 
               {/* Per-country totals tiles */}
               <div style={{
-                display: 'flex', gap: 8, padding: '8px',
+                display: 'flex', gap: 4, padding: '8px',
                 background: '#F5F5F5', border: '1px solid #DDDDDD',
                 borderTop: 'none', borderRadius: '0 0 6px 6px',
               }}>
                 {countriesList.map((country, ci) => {
                   const cs = countryStats[country];
-                  return (
-                    <div key={country} style={{
+                  return [
+                    <div key={`col-${country}`} style={{
                       width: COL_W, flexShrink: 0,
                       background: '#D0D3DA',
                       border: '1px solid #B8BBC2',
-                      borderRight: ci < countriesList.length - 1 ? '1px solid #CCCCCC' : '1px solid #B8BBC2',
                       borderRadius: 6,
                       padding: '7px 9px',
-                      boxSizing: 'border-box' as const,
                     }}>
                       {/* Total count + weight */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
@@ -686,8 +690,11 @@ export default function Projects() {
                           </span>
                         )}
                       </div>
-                    </div>
-                  );
+                    </div>,
+                    ci < countriesList.length - 1
+                      ? <div key={`sep-${country}`} style={{ width: 1, flexShrink: 0, alignSelf: 'stretch', background: '#D0D0D0' }} />
+                      : null,
+                  ];
                 })}
               </div>
             </div>
