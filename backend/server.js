@@ -116,6 +116,15 @@ pool.query(`
   }
 })();
 
+// Drop the fixed CHECK constraint on regions.code so free-form codes can be used
+(async () => {
+  try {
+    await pool.query(`ALTER TABLE regions DROP CONSTRAINT IF EXISTS regions_code_check;`);
+  } catch (err) {
+    logger.error('Regions constraint migration failed', { error: err.message });
+  }
+})();
+
 app.use('/api/planning-cycles', wrapAsync(planningCyclesRouter));
 app.use('/api/projects',        wrapAsync(projectsRouter));
 app.use('/api/people',          wrapAsync(peopleRouter));

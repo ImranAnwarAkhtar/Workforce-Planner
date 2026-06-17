@@ -188,4 +188,154 @@ router.put('/change-request-rules/:id', requireAuth, requireRole(ROLES.PMO), asy
   res.json({ data: rows[0] });
 });
 
+// ── Regions CRUD (PMO + Workforce Planning) ───────────────────────────────────
+
+router.post('/regions', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { name, code, sort_order } = req.body;
+  if (!name || !code) return res.status(400).json({ error: 'name and code are required' });
+  const { rows } = await pool.query(
+    'INSERT INTO regions (name, code, sort_order) VALUES ($1, $2, $3) RETURNING *',
+    [name.trim(), code.trim().toUpperCase(), sort_order ?? 0]
+  );
+  res.status(201).json({ data: rows[0] });
+});
+
+router.put('/regions/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { name, code, sort_order } = req.body;
+  const sets = [], params = [];
+  let i = 1;
+  if (name       !== undefined) { sets.push(`name = $${i++}`);       params.push(name.trim()); }
+  if (code       !== undefined) { sets.push(`code = $${i++}`);       params.push(code.trim().toUpperCase()); }
+  if (sort_order !== undefined) { sets.push(`sort_order = $${i++}`); params.push(sort_order); }
+  if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+  params.push(req.params.id);
+  const { rows } = await pool.query(
+    `UPDATE regions SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, params
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Region not found' });
+  res.json({ data: rows[0] });
+});
+
+router.delete('/regions/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM regions WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Region not found' });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23503') return res.status(409).json({ error: 'Cannot delete — region is referenced by countries or projects' });
+    throw err;
+  }
+});
+
+// ── Disciplines CRUD (PMO + Workforce Planning) ───────────────────────────────
+
+router.post('/disciplines', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  const { rows } = await pool.query('INSERT INTO disciplines (name) VALUES ($1) RETURNING *', [name.trim()]);
+  res.status(201).json({ data: rows[0] });
+});
+
+router.put('/disciplines/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { name } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  const { rows } = await pool.query(
+    'UPDATE disciplines SET name = $1 WHERE id = $2 RETURNING *', [name.trim(), req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Discipline not found' });
+  res.json({ data: rows[0] });
+});
+
+router.delete('/disciplines/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM disciplines WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Discipline not found' });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23503') return res.status(409).json({ error: 'Cannot delete — discipline is referenced by people or projects' });
+    throw err;
+  }
+});
+
+// ── Levels CRUD (PMO + Workforce Planning) ────────────────────────────────────
+
+router.post('/levels', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { level_name, short_code, level_number } = req.body;
+  if (!level_name || !short_code) return res.status(400).json({ error: 'level_name and short_code are required' });
+  const { rows } = await pool.query(
+    'INSERT INTO levels (level_name, short_code, level_number) VALUES ($1, $2, $3) RETURNING *',
+    [level_name.trim(), short_code.trim(), level_number || null]
+  );
+  res.status(201).json({ data: rows[0] });
+});
+
+router.put('/levels/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { level_name, short_code, level_number } = req.body;
+  const sets = [], params = [];
+  let i = 1;
+  if (level_name   !== undefined) { sets.push(`level_name = $${i++}`);   params.push(level_name.trim()); }
+  if (short_code   !== undefined) { sets.push(`short_code = $${i++}`);   params.push(short_code.trim()); }
+  if (level_number !== undefined) { sets.push(`level_number = $${i++}`); params.push(level_number || null); }
+  if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+  params.push(req.params.id);
+  const { rows } = await pool.query(
+    `UPDATE levels SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, params
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Level not found' });
+  res.json({ data: rows[0] });
+});
+
+router.delete('/levels/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM levels WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Level not found' });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23503') return res.status(409).json({ error: 'Cannot delete — level is referenced by people records' });
+    throw err;
+  }
+});
+
+// ── Contract Types CRUD (PMO + Workforce Planning) ────────────────────────────
+
+router.post('/contract-types', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { code, description, category, colour_hex } = req.body;
+  if (!code || !description || !category || !colour_hex) {
+    return res.status(400).json({ error: 'code, description, category, and colour_hex are required' });
+  }
+  const { rows } = await pool.query(
+    'INSERT INTO contract_types (code, description, category, colour_hex) VALUES ($1, $2, $3, $4) RETURNING *',
+    [code.trim(), description.trim(), category, colour_hex.replace('#', '').toUpperCase().substring(0, 6)]
+  );
+  res.status(201).json({ data: rows[0] });
+});
+
+router.put('/contract-types/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { code, description, category, colour_hex } = req.body;
+  const sets = [], params = [];
+  let i = 1;
+  if (code        !== undefined) { sets.push(`code = $${i++}`);        params.push(code.trim()); }
+  if (description !== undefined) { sets.push(`description = $${i++}`); params.push(description.trim()); }
+  if (category    !== undefined) { sets.push(`category = $${i++}`);    params.push(category); }
+  if (colour_hex  !== undefined) { sets.push(`colour_hex = $${i++}`);  params.push(colour_hex.replace('#', '').toUpperCase().substring(0, 6)); }
+  if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+  params.push(req.params.id);
+  const { rows } = await pool.query(
+    `UPDATE contract_types SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, params
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Contract type not found' });
+  res.json({ data: rows[0] });
+});
+
+router.delete('/contract-types/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM contract_types WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Contract type not found' });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23503') return res.status(409).json({ error: 'Cannot delete — contract type is referenced by people records' });
+    throw err;
+  }
+});
+
 module.exports = router;

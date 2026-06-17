@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { refDataApi, planningCyclesApi, type Discipline, type Level, type ContractType, type Region, type PlanningCycle } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
 import axios from 'axios';
@@ -15,6 +16,11 @@ const card: React.CSSProperties = { background: tk.bg2, border: `1px solid ${tk.
 const th: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: tk.muted, background: '#F8F9FA', borderBottom: `1px solid ${tk.border}`, whiteSpace: 'nowrap' };
 const td: React.CSSProperties = { padding: '10px 14px', borderBottom: '1px solid #F0F0F0', fontSize: 14, color: '#333333' };
 const btnSecondary: React.CSSProperties = { padding: '8px 14px', background: 'transparent', color: '#555555', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 13, cursor: 'pointer' };
+const lbl: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' };
+
+function errMsg(e: unknown): string {
+  return (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Operation failed';
+}
 
 interface ChangeRule { id: number; change_type: string; auto_approve: boolean }
 interface User { id: number; name: string; email: string; role: string; is_active: boolean }
@@ -43,99 +49,560 @@ function LoadingRows({ cols }: { cols: number }) {
 
 function DisciplinesTab() {
   const [data, setData] = useState<Discipline[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { refDataApi.disciplines().then(setData).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const [loading, setLoading]   = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId]   = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [saving, setSaving]     = useState(false);
+  const [formName, setFormName] = useState('');
+  const [editName, setEditName] = useState('');
+
+  function load() {
+    setLoading(true);
+    refDataApi.disciplines().then(setData).catch(() => {}).finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleCreate() {
+    if (!formName.trim()) return;
+    setSaving(true);
+    try {
+      await rawClient.post('/admin/disciplines', { name: formName.trim() });
+      load(); setCreating(false); setFormName('');
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleUpdate(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.put(`/admin/disciplines/${id}`, { name: editName.trim() });
+      load(); setEditingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleDelete(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.delete(`/admin/disciplines/${id}`);
+      load(); setDeletingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); setDeletingId(null); } finally { setSaving(false); }
+  }
+
+  const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+
   return (
-    <div style={card}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={th}>ID</th><th style={th}>Name</th></tr></thead>
-        <tbody>
-          {loading ? <LoadingRows cols={2} /> : data.length === 0 ? (
-            <tr><td colSpan={2} style={{ ...td, textAlign: 'center', color: '#555' }}>No data</td></tr>
-          ) : data.map(d => (
-            <tr key={d.id}><td style={td}>{d.id}</td><td style={{ ...td, color: '#111111', fontWeight: 500 }}>{d.name}</td></tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <p style={{ fontSize: 13, color: '#666', margin: 0 }}>Manage project and people disciplines.</p>
+        <button onClick={() => { setCreating(true); setEditingId(null); setDeletingId(null); }}
+          style={{ padding: '7px 14px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New Discipline</button>
+      </div>
+
+      {creating && (
+        <div style={{ ...card, marginBottom: 16, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 12 }}>New Discipline</div>
+          <div style={{ maxWidth: 320 }}>
+            <label style={lbl}>Name *</label>
+            <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Construction"
+              style={inp} onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+            <button onClick={() => { setCreating(false); setFormName(''); }} style={btnSecondary}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving || !formName.trim()}
+              style={{ padding: '7px 16px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: !formName.trim() ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Create'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={card}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr><th style={th}>Name</th><th style={{ ...th, width: 180 }}>Actions</th></tr></thead>
+          <tbody>
+            {loading ? <LoadingRows cols={2} /> : data.length === 0 ? (
+              <tr><td colSpan={2} style={{ ...td, textAlign: 'center', color: '#555' }}>No disciplines</td></tr>
+            ) : data.map(d => {
+              if (editingId === d.id) return (
+                <tr key={d.id} style={{ background: '#FAFAFA' }}>
+                  <td style={td}><input value={editName} onChange={e => setEditName(e.target.value)} style={{ ...inp, maxWidth: 320 }} /></td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => handleUpdate(d.id)} disabled={saving} style={saveBtn}>{saving ? '…' : 'Save'}</button>
+                      <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+              return (
+                <tr key={d.id}>
+                  <td style={{ ...td, color: '#111', fontWeight: 500 }}>{d.name}</td>
+                  <td style={td}>
+                    {deletingId === d.id ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <button onClick={() => handleDelete(d.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
+                        <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => { setEditingId(d.id); setEditName(d.name); setDeletingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
+                        <button onClick={() => { setDeletingId(d.id); setEditingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 function LevelsTab() {
+  const blankL = { level_name: '', short_code: '', level_number: '' };
   const [data, setData] = useState<Level[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { refDataApi.levels().then(setData).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const [loading, setLoading]   = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId]   = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [saving, setSaving]   = useState(false);
+  const [form, setForm]       = useState(blankL);
+  const [editForm, setEditForm] = useState(blankL);
+
+  function load() {
+    setLoading(true);
+    refDataApi.levels().then(setData).catch(() => {}).finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleCreate() {
+    if (!form.level_name.trim() || !form.short_code.trim()) return;
+    setSaving(true);
+    try {
+      await rawClient.post('/admin/levels', {
+        level_name: form.level_name.trim(), short_code: form.short_code.trim(),
+        level_number: form.level_number ? parseInt(form.level_number) : null,
+      });
+      load(); setCreating(false); setForm(blankL);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleUpdate(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.put(`/admin/levels/${id}`, {
+        level_name: editForm.level_name.trim(), short_code: editForm.short_code.trim(),
+        level_number: editForm.level_number ? parseInt(editForm.level_number) : null,
+      });
+      load(); setEditingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleDelete(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.delete(`/admin/levels/${id}`);
+      load(); setDeletingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); setDeletingId(null); } finally { setSaving(false); }
+  }
+
+  const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+
   return (
-    <div style={card}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={th}>ID</th><th style={th}>Level Name</th><th style={th}>Short Code</th><th style={th}>Level #</th></tr></thead>
-        <tbody>
-          {loading ? <LoadingRows cols={4} /> : data.length === 0 ? (
-            <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#555' }}>No data</td></tr>
-          ) : data.map(l => (
-            <tr key={l.id}>
-              <td style={td}>{l.id}</td>
-              <td style={{ ...td, color: '#111111', fontWeight: 500 }}>{l.level_name}</td>
-              <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#F0ECFF', color: '#6644BB', border: '1px solid #C5B8F0', fontSize: 11, fontWeight: 600 }}>{l.short_code}</span></td>
-              <td style={td}>{l.level_number ?? '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <p style={{ fontSize: 13, color: '#666', margin: 0 }}>Manage seniority levels used for people and hire requests.</p>
+        <button onClick={() => { setCreating(true); setEditingId(null); setDeletingId(null); }}
+          style={{ padding: '7px 14px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New Level</button>
+      </div>
+
+      {creating && (
+        <div style={{ ...card, marginBottom: 16, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 12 }}>New Level</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={lbl}>Level Name *</label>
+              <input value={form.level_name} onChange={e => setForm(f => ({ ...f, level_name: e.target.value }))} placeholder="e.g. Senior Manager" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Short Code *</label>
+              <input value={form.short_code} onChange={e => setForm(f => ({ ...f, short_code: e.target.value }))} placeholder="e.g. S M" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Level #</label>
+              <input type="number" value={form.level_number} onChange={e => setForm(f => ({ ...f, level_number: e.target.value }))} placeholder="e.g. 4" style={inp} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setCreating(false); setForm(blankL); }} style={btnSecondary}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving || !form.level_name.trim() || !form.short_code.trim()}
+              style={{ padding: '7px 16px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (!form.level_name.trim() || !form.short_code.trim()) ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Create'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={card}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            <th style={th}>Level Name</th><th style={th}>Short Code</th><th style={th}>Level #</th>
+            <th style={{ ...th, width: 180 }}>Actions</th>
+          </tr></thead>
+          <tbody>
+            {loading ? <LoadingRows cols={4} /> : data.length === 0 ? (
+              <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#555' }}>No levels</td></tr>
+            ) : data.map(l => {
+              if (editingId === l.id) return (
+                <tr key={l.id} style={{ background: '#FAFAFA' }}>
+                  <td style={td}><input value={editForm.level_name} onChange={e => setEditForm(f => ({ ...f, level_name: e.target.value }))} style={inp} /></td>
+                  <td style={td}><input value={editForm.short_code} onChange={e => setEditForm(f => ({ ...f, short_code: e.target.value }))} style={{ ...inp, width: 90 }} /></td>
+                  <td style={td}><input type="number" value={editForm.level_number} onChange={e => setEditForm(f => ({ ...f, level_number: e.target.value }))} style={{ ...inp, width: 70 }} /></td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => handleUpdate(l.id)} disabled={saving} style={saveBtn}>{saving ? '…' : 'Save'}</button>
+                      <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+              return (
+                <tr key={l.id}>
+                  <td style={{ ...td, color: '#111', fontWeight: 500 }}>{l.level_name}</td>
+                  <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#F0ECFF', color: '#6644BB', border: '1px solid #C5B8F0', fontSize: 11, fontWeight: 600 }}>{l.short_code}</span></td>
+                  <td style={td}>{l.level_number ?? '—'}</td>
+                  <td style={td}>
+                    {deletingId === l.id ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <button onClick={() => handleDelete(l.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
+                        <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => { setEditingId(l.id); setEditForm({ level_name: l.level_name, short_code: l.short_code, level_number: String(l.level_number ?? '') }); setDeletingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
+                        <button onClick={() => { setDeletingId(l.id); setEditingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 function ContractTypesTab() {
+  const blankCT = { code: '', description: '', category: 'existing', colour_hex: 'CCCCCC' };
   const [data, setData] = useState<ContractType[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { refDataApi.contractTypes().then(setData).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const [loading, setLoading]   = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId]   = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [saving, setSaving]   = useState(false);
+  const [form, setForm]       = useState(blankCT);
+  const [editForm, setEditForm] = useState(blankCT);
+
+  function load() {
+    setLoading(true);
+    refDataApi.contractTypes().then(setData).catch(() => {}).finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleCreate() {
+    if (!form.code.trim() || !form.description.trim()) return;
+    setSaving(true);
+    try {
+      await rawClient.post('/admin/contract-types', form);
+      load(); setCreating(false); setForm(blankCT);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleUpdate(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.put(`/admin/contract-types/${id}`, editForm);
+      load(); setEditingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleDelete(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.delete(`/admin/contract-types/${id}`);
+      load(); setDeletingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); setDeletingId(null); } finally { setSaving(false); }
+  }
+
+  const CATEGORIES = ['existing', 'approved', 'requested'];
+  const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+
+  function ColourInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const hex6 = value.replace('#', '').padEnd(6, '0').substring(0, 6).toUpperCase();
+    return (
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input type="color" value={`#${hex6}`}
+          onChange={e => onChange(e.target.value.replace('#', '').toUpperCase())}
+          style={{ width: 34, height: 30, padding: 1, border: '1px solid #D5D5D5', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }} />
+        <input value={hex6} maxLength={6}
+          onChange={e => onChange(e.target.value.replace('#', '').toUpperCase().substring(0, 6))}
+          placeholder="RRGGBB" style={{ ...inp, width: 90, fontFamily: 'monospace', fontSize: 12 }} />
+      </div>
+    );
+  }
+
   return (
-    <div style={card}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={th}>ID</th><th style={th}>Code</th><th style={th}>Description</th><th style={th}>Category</th><th style={th}>Colour</th></tr></thead>
-        <tbody>
-          {loading ? <LoadingRows cols={5} /> : data.length === 0 ? (
-            <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#555' }}>No data</td></tr>
-          ) : data.map(c => (
-            <tr key={c.id}>
-              <td style={td}>{c.id}</td>
-              <td style={{ ...td, color: '#111111', fontWeight: 600 }}>{c.code}</td>
-              <td style={td}>{c.description}</td>
-              <td style={td}>{c.category ?? '—'}</td>
-              <td style={td}>
-                {c.colour_hex
-                  ? <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><div style={{ width: 14, height: 14, borderRadius: 3, background: c.colour_hex }} /><span style={{ fontSize: 11, color: '#666' }}>{c.colour_hex}</span></div>
-                  : <span style={{ color: '#444' }}>—</span>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <p style={{ fontSize: 13, color: '#666', margin: 0 }}>Manage contract types used on people records.</p>
+        <button onClick={() => { setCreating(true); setEditingId(null); setDeletingId(null); }}
+          style={{ padding: '7px 14px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New Contract Type</button>
+      </div>
+
+      {creating && (
+        <div style={{ ...card, marginBottom: 16, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 12 }}>New Contract Type</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={lbl}>Code *</label>
+              <input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. FTE" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Description *</label>
+              <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Full Time Employee" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Category *</label>
+              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Colour *</label>
+              <ColourInput value={form.colour_hex} onChange={v => setForm(f => ({ ...f, colour_hex: v }))} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setCreating(false); setForm(blankCT); }} style={btnSecondary}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving || !form.code.trim() || !form.description.trim()}
+              style={{ padding: '7px 16px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (!form.code.trim() || !form.description.trim()) ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Create'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={card}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            <th style={th}>Code</th><th style={th}>Description</th><th style={th}>Category</th><th style={th}>Colour</th>
+            <th style={{ ...th, width: 180 }}>Actions</th>
+          </tr></thead>
+          <tbody>
+            {loading ? <LoadingRows cols={5} /> : data.length === 0 ? (
+              <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#555' }}>No contract types</td></tr>
+            ) : data.map(c => {
+              if (editingId === c.id) return (
+                <tr key={c.id} style={{ background: '#FAFAFA' }}>
+                  <td style={td}><input value={editForm.code} onChange={e => setEditForm(f => ({ ...f, code: e.target.value }))} style={{ ...inp, width: 80 }} /></td>
+                  <td style={td}><input value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} style={inp} /></td>
+                  <td style={td}>
+                    <select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
+                      {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                  </td>
+                  <td style={td}><ColourInput value={editForm.colour_hex} onChange={v => setEditForm(f => ({ ...f, colour_hex: v }))} /></td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => handleUpdate(c.id)} disabled={saving} style={saveBtn}>{saving ? '…' : 'Save'}</button>
+                      <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+              const hex = (c.colour_hex ?? '').replace('#', '');
+              return (
+                <tr key={c.id}>
+                  <td style={{ ...td, color: '#111', fontWeight: 600 }}>{c.code}</td>
+                  <td style={td}>{c.description}</td>
+                  <td style={td}>{c.category ?? '—'}</td>
+                  <td style={td}>
+                    {hex
+                      ? <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 14, height: 14, borderRadius: 3, background: `#${hex}`, border: '1px solid #E0E0E0' }} />
+                          <span style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>{hex}</span>
+                        </div>
+                      : <span style={{ color: '#AAA' }}>—</span>}
+                  </td>
+                  <td style={td}>
+                    {deletingId === c.id ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <button onClick={() => handleDelete(c.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
+                        <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => { setEditingId(c.id); setEditForm({ code: c.code, description: c.description, category: c.category ?? 'existing', colour_hex: hex || 'CCCCCC' }); setDeletingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
+                        <button onClick={() => { setDeletingId(c.id); setEditingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 function RegionsTab() {
+  const blankR = { name: '', code: '', sort_order: '0' };
   const [data, setData] = useState<Region[]>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => { refDataApi.regions().then(setData).catch(() => {}).finally(() => setLoading(false)); }, []);
+  const [loading, setLoading]   = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId]   = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [saving, setSaving]   = useState(false);
+  const [form, setForm]       = useState(blankR);
+  const [editForm, setEditForm] = useState(blankR);
+
+  function load() {
+    setLoading(true);
+    refDataApi.regions().then(setData).catch(() => {}).finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleCreate() {
+    if (!form.name.trim() || !form.code.trim()) return;
+    setSaving(true);
+    try {
+      await rawClient.post('/admin/regions', { name: form.name.trim(), code: form.code.trim(), sort_order: parseInt(form.sort_order) || 0 });
+      load(); setCreating(false); setForm(blankR);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleUpdate(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.put(`/admin/regions/${id}`, { name: editForm.name.trim(), code: editForm.code.trim(), sort_order: parseInt(editForm.sort_order) || 0 });
+      load(); setEditingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  async function handleDelete(id: number) {
+    setSaving(true);
+    try {
+      await rawClient.delete(`/admin/regions/${id}`);
+      load(); setDeletingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); setDeletingId(null); } finally { setSaving(false); }
+  }
+
+  const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+
   return (
-    <div style={card}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={th}>ID</th><th style={th}>Name</th><th style={th}>Code</th></tr></thead>
-        <tbody>
-          {loading ? <LoadingRows cols={3} /> : data.length === 0 ? (
-            <tr><td colSpan={3} style={{ ...td, textAlign: 'center', color: '#555' }}>No data</td></tr>
-          ) : data.map(r => (
-            <tr key={r.id}>
-              <td style={td}>{r.id}</td>
-              <td style={{ ...td, color: '#111111', fontWeight: 500 }}>{r.name}</td>
-              <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#F5F5F5', color: '#666666', border: '1px solid #E0E0E0', fontSize: 11 }}>{r.code}</span></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <p style={{ fontSize: 13, color: '#666', margin: 0 }}>Manage planning regions. Sort order controls display sequence.</p>
+        <button onClick={() => { setCreating(true); setEditingId(null); setDeletingId(null); }}
+          style={{ padding: '7px 14px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ New Region</button>
+      </div>
+
+      {creating && (
+        <div style={{ ...card, marginBottom: 16, padding: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 12 }}>New Region</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={lbl}>Name *</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Asia Pacific" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Code *</label>
+              <input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="e.g. APAC" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Sort Order</label>
+              <input type="number" value={form.sort_order} onChange={e => setForm(f => ({ ...f, sort_order: e.target.value }))} style={inp} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button onClick={() => { setCreating(false); setForm(blankR); }} style={btnSecondary}>Cancel</button>
+            <button onClick={handleCreate} disabled={saving || !form.name.trim() || !form.code.trim()}
+              style={{ padding: '7px 16px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (!form.name.trim() || !form.code.trim()) ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Create'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={card}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead><tr>
+            <th style={th}>Name</th><th style={th}>Code</th><th style={{ ...th, width: 80 }}>Sort</th>
+            <th style={{ ...th, width: 180 }}>Actions</th>
+          </tr></thead>
+          <tbody>
+            {loading ? <LoadingRows cols={4} /> : data.length === 0 ? (
+              <tr><td colSpan={4} style={{ ...td, textAlign: 'center', color: '#555' }}>No regions</td></tr>
+            ) : data.map(r => {
+              if (editingId === r.id) return (
+                <tr key={r.id} style={{ background: '#FAFAFA' }}>
+                  <td style={td}><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} style={inp} /></td>
+                  <td style={td}><input value={editForm.code} onChange={e => setEditForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} style={{ ...inp, width: 100 }} /></td>
+                  <td style={td}><input type="number" value={editForm.sort_order} onChange={e => setEditForm(f => ({ ...f, sort_order: e.target.value }))} style={{ ...inp, width: 60 }} /></td>
+                  <td style={td}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => handleUpdate(r.id)} disabled={saving} style={saveBtn}>{saving ? '…' : 'Save'}</button>
+                      <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+              return (
+                <tr key={r.id}>
+                  <td style={{ ...td, color: '#111', fontWeight: 500 }}>{r.name}</td>
+                  <td style={td}><span style={{ padding: '1px 7px', borderRadius: 8, background: '#F5F5F5', color: '#666', border: '1px solid #E0E0E0', fontSize: 11 }}>{r.code}</span></td>
+                  <td style={td}>{r.sort_order}</td>
+                  <td style={td}>
+                    {deletingId === r.id ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <button onClick={() => handleDelete(r.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
+                        <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => { setEditingId(r.id); setEditForm({ name: r.name, code: r.code, sort_order: String(r.sort_order) }); setDeletingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
+                        <button onClick={() => { setDeletingId(r.id); setEditingId(null); }}
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

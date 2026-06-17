@@ -532,7 +532,7 @@ export const tbhCodesApi = {
 export interface Discipline { id: number; name: string }
 export interface Level { id: number; level_name: string; short_code: string; level_number: number | null }
 export interface ContractType { id: number; code: string; description: string; colour_hex: string | null; category: string | null }
-export interface Region  { id: number; name: string; code: string }
+export interface Region  { id: number; name: string; code: string; sort_order: number }
 export interface Country { id: number; name: string; code: string; region_id: number; region_name: string }
 
 export const refDataApi = {
