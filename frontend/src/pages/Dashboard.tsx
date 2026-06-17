@@ -118,9 +118,9 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
       display: 'flex', alignItems: 'stretch', gap: 0, overflowX: 'auto', flexShrink: 0,
     }}>
       {/* Logo */}
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingRight: 20, borderRight: '1px solid #333', marginRight: 16, flexShrink: 0 }}>
-        <img src={equinixFortressRed} alt="Equinix" style={{ height: 30, width: 'auto', display: 'block' }} />
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.15em', marginTop: 4 }}>HUB IQ</div>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', paddingRight: 20, borderRight: '1px solid #333', marginRight: 16, flexShrink: 0 }}>
+        <img src={equinixFortressRed} alt="Equinix" style={{ height: 20, width: 'auto', display: 'block' }} />
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.15em', marginTop: 4 }}>HUB IQ</div>
         <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>{yearA} vs {yearB}</div>
       </div>
 
