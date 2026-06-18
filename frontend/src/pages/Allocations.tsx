@@ -295,7 +295,7 @@ export default function Allocations() {
   function getCellValue(personId: number, projectId: number): number {
     const key = `${personId}_${projectId}`;
     if (pendingChanges[key] !== undefined) return pendingChanges[key].fteValue;
-    return allocMap[personId]?.[projectId]?.fte_value ?? 0;
+    return Number(allocMap[personId]?.[projectId]?.fte_value ?? 0);
   }
   function isCellDirty(personId: number, projectId: number): boolean {
     return `${personId}_${projectId}` in pendingChanges;
