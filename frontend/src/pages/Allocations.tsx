@@ -470,7 +470,7 @@ export default function Allocations() {
               <td key={g.country} style={{
                 padding: '5px 6px', textAlign: 'center', fontSize: 11, fontWeight: 700,
                 color: ct > 0 ? col : '#CCCCCC',
-                borderLeft: `2px solid ${col}33`, borderRight: '1px solid #D8DFE8',
+                boxShadow: `inset 2px 0 0 ${col}33`, borderRight: '1px solid #D8DFE8',
                 borderTop: `1px solid ${labelColor}33`,
               }}>
                 {ct > 0 ? ct.toFixed(1) : '—'}
@@ -505,7 +505,7 @@ export default function Allocations() {
         })}
         <td style={{
           position: 'sticky', right: 0, zIndex: 2, background: bg,
-          borderLeft: '2px solid #D5D5D5', padding: '5px 8px', textAlign: 'center',
+          boxShadow: 'inset 2px 0 0 #D5D5D5', padding: '5px 8px', textAlign: 'center',
           fontSize: 11, color: labelColor, fontWeight: 700,
           borderTop: `1px solid ${labelColor}33`,
         }}>
@@ -670,7 +670,7 @@ export default function Allocations() {
 
       {!loading && visibleProjects.length > 0 && (
         <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-          <table style={{ borderCollapse: 'collapse', fontSize: 13, tableLayout: 'fixed', minWidth: '100%' }}>
+          <table style={{ borderCollapse: 'separate', borderSpacing: 0, fontSize: 13, tableLayout: 'fixed', minWidth: '100%' }}>
 
             <colgroup>
               <col style={{ width: 220 }} />
@@ -706,7 +706,7 @@ export default function Allocations() {
                         title={`Expand ${g.country}`}
                         style={{
                           position: 'sticky', top: 0, zIndex: 3,
-                          background: '#D0D3DA', borderLeft: `3px solid ${color}`,
+                          background: '#D0D3DA', boxShadow: `inset 3px 0 0 ${color}`,
                           borderBottom: '2px solid #B0B4BC', borderRight: '1px solid #B8BBC2',
                           padding: '5px 6px', textAlign: 'center', cursor: 'pointer',
                           whiteSpace: 'nowrap', verticalAlign: 'middle',
@@ -721,7 +721,7 @@ export default function Allocations() {
                       onClick={() => toggleCountry(g.country)} title={`Collapse ${g.country}`}
                       style={{
                         position: 'sticky', top: 0, zIndex: 3,
-                        background: '#D0D3DA', borderLeft: `3px solid ${color}`,
+                        background: '#D0D3DA', boxShadow: `inset 3px 0 0 ${color}`,
                         borderBottom: '1px solid #B0B4BC', borderRight: '1px solid #B8BBC2',
                         padding: '6px 10px', textAlign: 'center', cursor: 'pointer',
                         fontWeight: 700, color, fontSize: 12, whiteSpace: 'nowrap', height: ROW1_H,
@@ -735,7 +735,7 @@ export default function Allocations() {
                 })}
                 <th style={{
                   position: 'sticky', top: 0, right: 0, zIndex: 5,
-                  background: '#D0D3DA', borderLeft: '2px solid #B0B4BC',
+                  background: '#D0D3DA', boxShadow: 'inset 2px 0 0 #B0B4BC',
                   borderBottom: '1px solid #D0D3DA', padding: '10px 8px', height: ROW1_H,
                   fontSize: 10, color: '#333333', textTransform: 'uppercase',
                   textAlign: 'center', verticalAlign: 'middle',
@@ -789,7 +789,7 @@ export default function Allocations() {
                 {/* Blank cell covering the Total column */}
                 <th style={{
                   position: 'sticky', top: ROW1_H, right: 0, zIndex: 5,
-                  background: '#D0D3DA', borderLeft: '2px solid #B0B4BC',
+                  background: '#D0D3DA', boxShadow: 'inset 2px 0 0 #B0B4BC',
                   borderBottom: '2px solid #B0B4BC',
                 }} />
               </tr>
@@ -810,8 +810,9 @@ export default function Allocations() {
                       <td colSpan={totalColCount - 1} style={{
                         position: 'sticky', left: 0, zIndex: 2,
                         background: '#F2F4F8',
-                        borderLeft: `4px solid ${discColor}`,
+                        boxShadow: `inset 4px 0 0 ${discColor}`,
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
+                        borderRight: '2px solid #D5D5D5',
                         padding: '8px 14px', fontWeight: 700, fontSize: 13, color: discColor,
                         whiteSpace: 'nowrap',
                       }}>
@@ -825,7 +826,7 @@ export default function Allocations() {
                       </td>
                       <td style={{
                         position: 'sticky', right: 0, zIndex: 2,
-                        background: '#F2F4F8', borderLeft: '2px solid #D5D5D5',
+                        background: '#F2F4F8', boxShadow: 'inset 2px 0 0 #D5D5D5',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
                         padding: '8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
                         color: discTotal > 0 ? discColor : '#CCCCCC',
@@ -848,7 +849,7 @@ export default function Allocations() {
                             <td style={{
                               position: 'sticky', left: 0, zIndex: 2,
                               background: '#EBF0FB',
-                              borderLeft: '3px solid #1565C0',
+                              boxShadow: 'inset 3px 0 0 #1565C0',
                               borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
                               padding: '6px 14px 6px 28px', fontWeight: 600, fontSize: 12, color: '#1565C0',
                               whiteSpace: 'nowrap',
@@ -869,7 +870,7 @@ export default function Allocations() {
                                   <td key={g.country} style={{
                                     padding: '5px 6px', textAlign: 'center', fontSize: 11, fontWeight: 700,
                                     color: ct > 0 ? col : '#CCCCCC',
-                                    borderLeft: `2px solid ${col}33`, borderRight: '1px solid #D8DFE8',
+                                    boxShadow: `inset 2px 0 0 ${col}33`, borderRight: '1px solid #D8DFE8',
                                     borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
                                   }}>
                                     {ct > 0 ? ct.toFixed(1) : '—'}
@@ -905,7 +906,7 @@ export default function Allocations() {
                             })}
                             <td style={{
                               position: 'sticky', right: 0, zIndex: 2,
-                              background: '#EBF0FB', borderLeft: '2px solid #D5D5D5',
+                              background: '#EBF0FB', boxShadow: 'inset 2px 0 0 #D5D5D5',
                               borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
                               padding: '6px 8px', textAlign: 'center',
                               fontSize: 11, fontWeight: 700,
@@ -964,7 +965,7 @@ export default function Allocations() {
                                         padding: '4px 6px', textAlign: 'center',
                                         fontSize: 12, fontWeight: 600,
                                         color: countryTotal > 0 ? color : '#CCCCCC',
-                                        borderLeft: `2px solid ${color}33`,
+                                        boxShadow: `inset 2px 0 0 ${color}33`,
                                         borderRight: '1px solid #EEEEEE',
                                         background: countryTotal > 0 ? `${color}0A` : 'transparent',
                                         verticalAlign: 'middle',
@@ -1018,7 +1019,7 @@ export default function Allocations() {
 
                                 <td style={{
                                   position: 'sticky', right: 0, zIndex: 2,
-                                  background: STICKY_BG, borderLeft: '2px solid #D5D5D5',
+                                  background: STICKY_BG, boxShadow: 'inset 2px 0 0 #D5D5D5',
                                   padding: '5px 8px', textAlign: 'center',
                                   fontWeight: 700, fontSize: 13,
                                   color: rowTotalColour(total, contracted),
@@ -1043,7 +1044,6 @@ export default function Allocations() {
                       <td colSpan={totalColCount} style={{
                         padding: '4px 14px 4px 18px',
                         background: '#FAFAFA',
-                        borderBottom: '1px solid #EEEEEE',
                       }}>
                         <button
                           onClick={() => {
@@ -1093,7 +1093,7 @@ export default function Allocations() {
                         <td key={g.country} style={{
                           textAlign: 'center', fontSize: 13, fontWeight: 700, color: gc,
                           background: FOOT_BG, padding: '7px 6px',
-                          borderLeft: `2px solid ${FOOT_BORDER}`,
+                          boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`,
                         }}>
                           {allocated > 0 ? allocated.toFixed(1) : '—'}
                         </td>
@@ -1124,7 +1124,7 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG,
-                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '7px 8px',
+                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '7px 8px',
                     textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#333333',
                   }}>
                     {people.reduce((s, p) => s + displayedProjectIds.reduce((ss, pid) => ss + getCellValue(p.id, pid), 0), 0).toFixed(1)}
@@ -1147,7 +1147,7 @@ export default function Allocations() {
                       return (
                         <td key={g.country} style={{
                           textAlign: 'center', fontSize: 11, color: '#1E8A4A',
-                          background: FOOT_BG2, padding: '5px 6px', borderLeft: `2px solid ${FOOT_BORDER}`,
+                          background: FOOT_BG2, padding: '5px 6px', boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`,
                         }}>
                           {gearMin > 0 ? gearMin.toFixed(1) : '—'}
                         </td>
@@ -1170,7 +1170,7 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
                     textAlign: 'center', fontSize: 10, color: '#888888',
                   }}>—</td>
                 </tr>
@@ -1191,7 +1191,7 @@ export default function Allocations() {
                       return (
                         <td key={g.country} style={{
                           textAlign: 'center', fontSize: 11, color: '#B5600A',
-                          background: FOOT_BG2, padding: '5px 6px', borderLeft: `2px solid ${FOOT_BORDER}`,
+                          background: FOOT_BG2, padding: '5px 6px', boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`,
                         }}>
                           {gearMax > 0 ? gearMax.toFixed(1) : '—'}
                         </td>
@@ -1214,7 +1214,7 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
                     textAlign: 'center', fontSize: 10, color: '#888888',
                   }}>—</td>
                 </tr>
@@ -1239,7 +1239,8 @@ export default function Allocations() {
                       <td key={key} style={{
                         textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc,
                         background: FOOT_BG2, padding: '5px 6px',
-                        borderLeft: isCollapsed ? `2px solid ${FOOT_BORDER}` : `1px solid ${FOOT_BORDER}`,
+                        boxShadow: isCollapsed ? `inset 2px 0 0 ${FOOT_BORDER}` : undefined,
+                        borderLeft: isCollapsed ? undefined : `1px solid ${FOOT_BORDER}`,
                         borderRight: `1px solid ${FOOT_BORDER}`, borderTop: `1px solid ${FOOT_BORDER}`,
                       }}>
                         {gearMin > 0 ? (variance >= 0 ? `+${variance.toFixed(1)}` : variance.toFixed(1)) : '—'}
@@ -1258,7 +1259,7 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
                     textAlign: 'center', fontSize: 10, color: '#888888',
                     borderTop: `1px solid ${FOOT_BORDER}`,
                   }}>—</td>
@@ -1283,7 +1284,8 @@ export default function Allocations() {
                       <td key={key} style={{
                         textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc,
                         background: FOOT_BG2, padding: '5px 6px',
-                        borderLeft: isCollapsed ? `2px solid ${FOOT_BORDER}` : `1px solid ${FOOT_BORDER}`,
+                        boxShadow: isCollapsed ? `inset 2px 0 0 ${FOOT_BORDER}` : undefined,
+                        borderLeft: isCollapsed ? undefined : `1px solid ${FOOT_BORDER}`,
                         borderRight: `1px solid ${FOOT_BORDER}`,
                       }}>
                         {gearMax > 0 ? (varianceMax >= 0 ? `+${varianceMax.toFixed(1)}` : varianceMax.toFixed(1)) : '—'}
@@ -1302,7 +1304,7 @@ export default function Allocations() {
                   })}
                   <td style={{
                     position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    borderLeft: `2px solid ${FOOT_BORDER}`, padding: '5px 8px',
+                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
                     textAlign: 'center', fontSize: 10, color: '#888888',
                   }}>—</td>
                 </tr>
