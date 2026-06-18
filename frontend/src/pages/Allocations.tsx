@@ -103,7 +103,7 @@ export default function Allocations() {
   // ── Selectors ────────────────────────────────────────────────────────────
   const [regions, setRegions]               = useState<Region[]>([]);
   const [selectedYear, setSelectedYear]     = useState(2026);
-  const [statusFilter, setStatusFilter]     = useState('All');
+  const [statusFilter, setStatusFilter]     = useState('');
   const [countryFilter, setCountryFilter]   = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState('');
 
@@ -197,7 +197,7 @@ export default function Allocations() {
 
   const visibleProjects = useMemo(() => {
     let f = projects.filter(p => p.region_id === selectedRegionId);
-    if (statusFilter !== 'All') f = f.filter(p => p.status === statusFilter);
+    if (statusFilter) f = f.filter(p => p.status === statusFilter);
     const ord: Record<string, number> = { Approved: 0, Seeded: 1, Proposed: 2 };
     return f.sort((a, b) => (ord[a.status] ?? 3) - (ord[b.status] ?? 3));
   }, [projects, selectedRegionId, statusFilter]);
@@ -624,30 +624,22 @@ export default function Allocations() {
 
         {/* ── Compact controls ── */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <label style={LBL}>Status</label>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={SEL}>
-              <option>All</option><option>Approved</option>
-              <option>Seeded</option><option>Proposed</option>
-            </select>
-          </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={SEL}>
+            <option value="">All statuses</option>
+            <option>Approved</option>
+            <option>Seeded</option>
+            <option>Proposed</option>
+          </select>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <label style={LBL}>Country</label>
-            <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)} style={SEL}>
-              <option value="">All</option>
-              {countryGroups.map(g => <option key={g.country} value={g.country}>{g.country}</option>)}
-            </select>
-          </div>
+          <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)} style={SEL}>
+            <option value="">All countries</option>
+            {countryGroups.map(g => <option key={g.country} value={g.country}>{g.country}</option>)}
+          </select>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <label style={LBL}>Discipline</label>
-            <select value={disciplineFilter} onChange={e => setDisciplineFilter(e.target.value)} style={SEL}>
-              <option value="">All</option>
-              {DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-
+          <select value={disciplineFilter} onChange={e => setDisciplineFilter(e.target.value)} style={SEL}>
+            <option value="">All disciplines</option>
+            {DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
 
           <span style={{ fontSize: 11, color: '#999999' }}>
             {visibleProjects.length} project{visibleProjects.length !== 1 ? 's' : ''} · {people.length} people
