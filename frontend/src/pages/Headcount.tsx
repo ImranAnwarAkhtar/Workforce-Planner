@@ -13,11 +13,11 @@ const DISCIPLINE_COLOURS: Record<string, string> = {
   'Commissioning': '#6A1B9A', 'Other': '#888888',
 };
 
-const TYPE_META: Record<string, { label: string; bg: string; color: string; border: string }> = {
-  'R FTE': { label: 'Requested FTE',     bg: '#FEF3F2', color: '#C0392B', border: '#FBBDBA' },
-  'R CON': { label: 'Requested Contract', bg: '#FFF8E1', color: '#B5600A', border: '#F9E2A0' },
-  'A FTE': { label: 'Approved FTE',      bg: '#EBF7EF', color: '#1E8A4A', border: '#A8DDB5' },
-  'A CON': { label: 'Approved Contract', bg: '#EBF2FB', color: '#1565C0', border: '#A8C4E8' },
+const TYPE_META: Record<string, { label: string; bg: string; color: string; border: string; bannerColor: string }> = {
+  'R FTE': { label: 'R FTE',             bg: '#FEF3F2', color: '#C0392B', border: '#FBBDBA', bannerColor: '#F87171' },
+  'R CON': { label: 'R CON',             bg: '#FFF8E1', color: '#B5600A', border: '#F9E2A0', bannerColor: '#FBBF24' },
+  'A FTE': { label: 'A FTE',             bg: '#EBF7EF', color: '#1E8A4A', border: '#A8DDB5', bannerColor: '#34D399' },
+  'A CON': { label: 'A CON',             bg: '#EBF2FB', color: '#1565C0', border: '#A8C4E8', bannerColor: '#60A5FA' },
 };
 
 const SEL: React.CSSProperties = {
@@ -26,43 +26,54 @@ const SEL: React.CSSProperties = {
 };
 
 export default function Headcount() {
-  const [records, setRecords]       = useState<Person[]>([]);
-  const [loading, setLoading]       = useState(false);
+  const [records, setRecords]         = useState<Person[]>([]);
+  const [loading, setLoading]         = useState(false);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
-  const [levels, setLevels]         = useState<Level[]>([]);
-  const [countries, setCountries]   = useState<Country[]>([]);
-  const [tbhCodes, setTbhCodes]     = useState<{ id: number; tbh_id: string }[]>([]);
+  const [levels, setLevels]           = useState<Level[]>([]);
+  const [countries, setCountries]     = useState<Country[]>([]);
+  const [tbhCodes, setTbhCodes]       = useState<{ id: number; tbh_id: string }[]>([]);
 
   // Filters
   const [typeFilter, setTypeFilter] = useState('');
   const [discFilter, setDiscFilter] = useState('');
 
-  // Edit panel
+  // Edit panel (PersonEditPanel)
   const [editPerson, setEditPerson] = useState<Person | null>(null);
+
+  // View detail modal
+  const [viewTarget, setViewTarget] = useState<Person | null>(null);
 
   // Approve confirm
   const [approveTarget, setApproveTarget] = useState<Person | null>(null);
   const [approving, setApproving]         = useState(false);
+
+  // Reject confirm
+  const [rejectTarget, setRejectTarget] = useState<Person | null>(null);
+  const [rejecting, setRejecting]       = useState(false);
+
+  // Delete confirm
+  const [deleteTarget, setDeleteTarget] = useState<Person | null>(null);
+  const [deleting, setDeleting]         = useState(false);
 
   // Convert to hire modal
   const [convertTarget, setConvertTarget] = useState<Person | null>(null);
   const [convertForm, setConvertForm]     = useState({
     name: '', new_contract_type_code: 'FTE', workday_jr_id: '', notes: '',
   });
-  const [converting, setConverting]       = useState(false);
+  const [converting, setConverting] = useState(false);
 
   // Assign TBH
-  const [tbhTarget, setTbhTarget]   = useState<Person | null>(null);
-  const [tbhValue, setTbhValue]     = useState('');
-  const [savingTbh, setSavingTbh]   = useState(false);
+  const [tbhTarget, setTbhTarget] = useState<Person | null>(null);
+  const [tbhValue, setTbhValue]   = useState('');
+  const [savingTbh, setSavingTbh] = useState(false);
 
   // New request modal
-  const [showNew, setShowNew]       = useState(false);
-  const [newForm, setNewForm]       = useState({
+  const [showNew, setShowNew]   = useState(false);
+  const [newForm, setNewForm]   = useState({
     name: '', contract_type_code: 'R FTE' as 'R FTE' | 'R CON',
     discipline_id: '', level_id: '', country_id: '', notes: '',
   });
-  const [creating, setCreating]     = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,6 +112,32 @@ export default function Headcount() {
     } finally { setApproving(false); }
   }
 
+  async function handleReject() {
+    if (!rejectTarget) return;
+    setRejecting(true);
+    try {
+      await headcountApi.delete(rejectTarget.id);
+      toast.success(`Request rejected and removed`);
+      setRecords(prev => prev.filter(r => r.id !== rejectTarget.id));
+      setRejectTarget(null);
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Rejection failed');
+    } finally { setRejecting(false); }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await headcountApi.delete(deleteTarget.id);
+      toast.success('Record deleted');
+      setRecords(prev => prev.filter(r => r.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Delete failed');
+    } finally { setDeleting(false); }
+  }
+
   async function handleAssignTbh() {
     if (!tbhTarget) return;
     setSavingTbh(true);
@@ -108,23 +145,20 @@ export default function Headcount() {
       const updated = await headcountApi.assignTbh(tbhTarget.id, tbhValue ? Number(tbhValue) : null);
       toast.success('TBH code assigned');
       setRecords(prev => prev.map(r => r.id === updated.id ? updated : r));
-      setTbhTarget(null);
-      setTbhValue('');
+      setTbhTarget(null); setTbhValue('');
     } catch { toast.error('Failed to assign TBH'); }
     finally { setSavingTbh(false); }
   }
 
   async function handleConvert() {
-    if (!convertTarget || !convertForm.name.trim()) {
-      toast.error('Hire name is required'); return;
-    }
+    if (!convertTarget || !convertForm.name.trim()) { toast.error('Hire name is required'); return; }
     setConverting(true);
     try {
       const updated = await headcountApi.convert(convertTarget.id, {
-        name:                  convertForm.name.trim(),
-        new_contract_type_code:convertForm.new_contract_type_code,
-        workday_jr_id:         convertForm.workday_jr_id.trim() || undefined,
-        notes:                 convertForm.notes.trim() || undefined,
+        name:                   convertForm.name.trim(),
+        new_contract_type_code: convertForm.new_contract_type_code,
+        workday_jr_id:          convertForm.workday_jr_id.trim() || undefined,
+        notes:                  convertForm.notes.trim() || undefined,
       });
       toast.success(`Converted to ${updated.contract_type_code} — ${updated.name}`);
       setRecords(prev => prev.filter(r => r.id !== updated.id));
@@ -169,6 +203,14 @@ export default function Headcount() {
 
   const ungrouped = filtered.filter(r => !DISCIPLINES.includes(r.discipline_name ?? 'Other'));
 
+  const counts = {
+    total: records.length,
+    rFte:  records.filter(r => r.contract_type_code === 'R FTE').length,
+    rCon:  records.filter(r => r.contract_type_code === 'R CON').length,
+    aFte:  records.filter(r => r.contract_type_code === 'A FTE').length,
+    aCon:  records.filter(r => r.contract_type_code === 'A CON').length,
+  };
+
   // ── Shared badge ─────────────────────────────────────────────────────────
 
   function TypeBadge({ code }: { code: string | null }) {
@@ -193,18 +235,11 @@ export default function Headcount() {
 
     return (
       <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
-        <td style={{ padding: '8px 14px', width: 110 }}>
+        <td style={{ padding: '8px 14px', width: 90 }}>
           <TypeBadge code={r.contract_type_code} />
         </td>
         <td style={{ padding: '8px 14px' }}>
-          <div
-            style={{ fontWeight: 600, fontSize: 13, cursor: 'pointer', color: '#1565C0',
-              textDecoration: 'underline', textDecorationStyle: 'dotted' }}
-            onClick={() => setEditPerson(r)}
-            title="Click to edit"
-          >
-            {r.name}
-          </div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: '#111111' }}>{r.name}</div>
           {r.notes && (
             <div style={{ fontSize: 11, color: '#777777', marginTop: 2, maxWidth: 300,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -222,43 +257,43 @@ export default function Headcount() {
           {r.tbh_id
             ? <span style={{ fontSize: 11, fontWeight: 600, color: '#1E8A4A', background: '#EBF7EF',
                 padding: '2px 7px', borderRadius: 3, border: '1px solid #A8DDB5' }}>{r.tbh_id}</span>
-            : <span style={{ fontSize: 11, color: '#AAAAAA' }}>Not assigned</span>}
+            : <span style={{ fontSize: 11, color: '#AAAAAA' }}>—</span>}
         </td>
         <td style={{ padding: '8px 14px' }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* View */}
+            <button onClick={() => setViewTarget(r)} style={BTN_VIEW}>View</button>
+
+            {/* Edit */}
+            <button onClick={() => setEditPerson(r)} style={BTN_EDIT}>Edit</button>
+
+            {/* Approve (R FTE / R CON) */}
             {isRequested && (
-              <button onClick={() => setApproveTarget(r)} style={{
-                padding: '4px 10px', background: '#EBF7EF', color: '#1E8A4A',
-                border: '1px solid #A8DDB5', borderRadius: 4, fontSize: 11,
-                cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap',
-              }}>
-                ✓ Approve
-              </button>
+              <button onClick={() => setApproveTarget(r)} style={BTN_APPROVE}>✓ Approve</button>
             )}
+
+            {/* Reject (R FTE / R CON) */}
+            {isRequested && (
+              <button onClick={() => setRejectTarget(r)} style={BTN_REJECT}>✗ Reject</button>
+            )}
+
+            {/* TBH + Convert (A FTE / A CON) */}
             {isApproved && (
               <>
-                <button onClick={() => { setTbhTarget(r); setTbhValue(String(r.tbh_code_id ?? '')); }} style={{
-                  padding: '4px 10px', background: '#EBF2FB', color: '#1565C0',
-                  border: '1px solid #A8C4E8', borderRadius: 4, fontSize: 11,
-                  cursor: 'pointer', whiteSpace: 'nowrap',
-                }}>
+                <button onClick={() => { setTbhTarget(r); setTbhValue(String(r.tbh_code_id ?? '')); }} style={BTN_TBH}>
                   TBH Code
                 </button>
                 <button onClick={() => {
                   setConvertTarget(r);
-                  setConvertForm({
-                    name: '', new_contract_type_code: allowedConversion[0],
-                    workday_jr_id: '', notes: r.notes ?? '',
-                  });
-                }} style={{
-                  padding: '4px 10px', background: '#FFF8E1', color: '#B5600A',
-                  border: '1px solid #F9E2A0', borderRadius: 4, fontSize: 11,
-                  cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap',
-                }}>
-                  → Convert to Hire
+                  setConvertForm({ name: '', new_contract_type_code: allowedConversion[0], workday_jr_id: '', notes: r.notes ?? '' });
+                }} style={BTN_CONVERT}>
+                  → Convert
                 </button>
               </>
             )}
+
+            {/* Delete (all) */}
+            <button onClick={() => setDeleteTarget(r)} style={BTN_DELETE}>🗑</button>
           </div>
         </td>
       </tr>
@@ -267,74 +302,82 @@ export default function Headcount() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const counts = {
-    total: records.length,
-    rFte:  records.filter(r => r.contract_type_code === 'R FTE').length,
-    rCon:  records.filter(r => r.contract_type_code === 'R CON').length,
-    aFte:  records.filter(r => r.contract_type_code === 'A FTE').length,
-    aCon:  records.filter(r => r.contract_type_code === 'A CON').length,
-  };
+  const bannerStats = [
+    { label: 'Total',  value: counts.total, color: '#AAAAAA' },
+    { label: 'R FTE',  value: counts.rFte,  color: TYPE_META['R FTE'].bannerColor },
+    { label: 'R CON',  value: counts.rCon,  color: TYPE_META['R CON'].bannerColor },
+    { label: 'A FTE',  value: counts.aFte,  color: TYPE_META['A FTE'].bannerColor },
+    { label: 'A CON',  value: counts.aCon,  color: TYPE_META['A CON'].bannerColor },
+  ];
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', color: '#111111' }}>
 
-      {/* Header */}
+      {/* ── Dark banner: title + stats + new button ── */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Headcount Requests</div>
-          <button onClick={() => setShowNew(true)} style={{
-            padding: '4px 10px', background: '#E31837', color: '#FFFFFF',
-            border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer',
-          }}>
-            + New Request
-          </button>
-        </div>
-        <div style={{ padding: '10px 16px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5' }}>
+        <div style={{
+          display: 'flex', alignItems: 'stretch',
+          background: '#181A1E', borderBottom: '2px solid #E31837',
+          borderRadius: '8px 8px 0 0', overflow: 'hidden',
+        }}>
+          {/* Title */}
+          <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Headcount Requests</span>
+          </div>
 
-        {/* Summary chips */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-          {[
-            { label: 'Total', value: counts.total, color: '#444444', bg: '#F0F0F0' },
-            { label: 'R FTE', value: counts.rFte, color: '#C0392B', bg: '#FEF3F2' },
-            { label: 'R CON', value: counts.rCon, color: '#B5600A', bg: '#FFF8E1' },
-            { label: 'A FTE', value: counts.aFte, color: '#1E8A4A', bg: '#EBF7EF' },
-            { label: 'A CON', value: counts.aCon, color: '#1565C0', bg: '#EBF2FB' },
-          ].map(s => (
+          {/* Stats */}
+          {bannerStats.map(s => (
             <div key={s.label} style={{
-              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-              color: s.color, background: s.bg, whiteSpace: 'nowrap',
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
+              padding: '10px 16px', flex: '1 1 auto', borderRight: '1px solid #2A2C32',
             }}>
-              {s.label}: {s.value}
+              <span style={{ fontSize: 17, fontWeight: 400, color: s.color, lineHeight: 1 }}>{s.value}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.07em', lineHeight: 1.4 }}>{s.label}</span>
             </div>
           ))}
+
+          {/* New request button */}
+          <div style={{ padding: '0 14px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <button onClick={() => setShowNew(true)} style={{
+              padding: '5px 12px', background: '#E31837', color: '#FFFFFF',
+              border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>
+              + New Request
+            </button>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        {/* Sub-bar: filters */}
+        <div style={{ padding: '10px 16px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={SEL}>
             <option value="">All types</option>
-            <option value="R FTE">R FTE</option>
-            <option value="R CON">R CON</option>
-            <option value="A FTE">A FTE</option>
-            <option value="A CON">A CON</option>
+            <option value="R FTE">R FTE — Requested FTE</option>
+            <option value="R CON">R CON — Requested Contract</option>
+            <option value="A FTE">A FTE — Approved FTE</option>
+            <option value="A CON">A CON — Approved Contract</option>
           </select>
           <select value={discFilter} onChange={e => setDiscFilter(e.target.value)} style={SEL}>
             <option value="">All disciplines</option>
             {DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
+          {(typeFilter || discFilter) && (
+            <button onClick={() => { setTypeFilter(''); setDiscFilter(''); }} style={{
+              padding: '4px 10px', background: 'transparent', border: '1px solid #D5D5D5',
+              borderRadius: 4, fontSize: 11, color: '#555', cursor: 'pointer',
+            }}>✕ Clear</button>
+          )}
           <button onClick={load} style={{
             padding: '5px 12px', background: 'transparent',
             border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 12,
-            color: '#555555', cursor: 'pointer',
+            color: '#555555', cursor: 'pointer', marginLeft: 'auto',
           }}>↻ Refresh</button>
-        </div>
         </div>
       </div>
 
-      {/* Body */}
+      {/* ── Body ── */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, padding: 40, color: '#888' }}>
             Loading…
           </div>
         ) : filtered.length === 0 ? (
@@ -400,6 +443,48 @@ export default function Headcount() {
         }}
       />
 
+      {/* ── View detail modal ── */}
+      {viewTarget && (
+        <Modal onClose={() => setViewTarget(null)}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#111', marginBottom: 6 }}>{viewTarget.name}</div>
+              <TypeBadge code={viewTarget.contract_type_code} />
+            </div>
+            <button onClick={() => setViewTarget(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#999', lineHeight: 1, padding: 0 }}>×</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 14 }}>
+            {[
+              ['Discipline',  viewTarget.discipline_name  ?? '—'],
+              ['Level',       viewTarget.level_name        ?? '—'],
+              ['Country',     viewTarget.country_names     || '—'],
+              ['Region',      viewTarget.region_names      || '—'],
+              ['TBH Code',    viewTarget.tbh_id            ?? 'Not assigned'],
+              ['Created',     new Date(viewTarget.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</div>
+                <div style={{ fontSize: 13, color: '#111', fontWeight: 500 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+          {viewTarget.notes && (
+            <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 12 }}>
+              <div style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Notes / Justification</div>
+              <div style={{ fontSize: 13, color: '#333', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{viewTarget.notes}</div>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+            <button onClick={() => { setViewTarget(null); setEditPerson(viewTarget); }} style={{ ...OK_BTN, flex: 'none', padding: '8px 20px' }}>
+              Edit
+            </button>
+            <button onClick={() => setViewTarget(null)} style={{ ...CANCEL_BTN, flex: 'none', padding: '8px 20px' }}>
+              Close
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {/* ── Approve confirm ── */}
       {approveTarget && (
         <Modal onClose={() => setApproveTarget(null)}>
@@ -419,19 +504,49 @@ export default function Headcount() {
         </Modal>
       )}
 
+      {/* ── Reject confirm ── */}
+      {rejectTarget && (
+        <Modal onClose={() => setRejectTarget(null)}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, color: '#C0392B' }}>Reject Request?</div>
+          <p style={{ fontSize: 13, color: '#444444', margin: '0 0 16px' }}>
+            This will reject and permanently remove the headcount request for{' '}
+            <strong>{rejectTarget.name}</strong> ({rejectTarget.contract_type_code}).
+            This action cannot be undone.
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setRejectTarget(null)} style={CANCEL_BTN}>Cancel</button>
+            <button onClick={handleReject} disabled={rejecting} style={{ ...OK_BTN, background: '#C0392B' }}>
+              {rejecting ? 'Rejecting…' : 'Reject Request'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Delete confirm ── */}
+      {deleteTarget && (
+        <Modal onClose={() => setDeleteTarget(null)}>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Delete Record?</div>
+          <p style={{ fontSize: 13, color: '#444444', margin: '0 0 16px' }}>
+            Are you sure you want to delete <strong>{deleteTarget.name}</strong> ({deleteTarget.contract_type_code})?
+            This action cannot be undone.
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setDeleteTarget(null)} style={CANCEL_BTN}>Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} style={{ ...OK_BTN, background: '#555555' }}>
+              {deleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {/* ── Assign TBH ── */}
       {tbhTarget && (
         <Modal onClose={() => setTbhTarget(null)}>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Assign TBH Code</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-            <label style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>
-              TBH Code
-            </label>
-            <select
-              style={{ padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13 }}
-              value={tbhValue}
-              onChange={e => setTbhValue(e.target.value)}
-            >
+            <label style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600 }}>TBH Code</label>
+            <select style={{ padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13 }}
+              value={tbhValue} onChange={e => setTbhValue(e.target.value)}>
               <option value="">— Remove assignment —</option>
               {tbhCodes.map(t => <option key={t.id} value={t.id}>{t.tbh_id}</option>)}
             </select>
@@ -460,8 +575,7 @@ export default function Headcount() {
                 placeholder="First Last" />
             </Field>
             <Field label="Contract type *">
-              <select style={INP}
-                value={convertForm.new_contract_type_code}
+              <select style={INP} value={convertForm.new_contract_type_code}
                 onChange={e => setConvertForm(prev => ({ ...prev, new_contract_type_code: e.target.value }))}>
                 {(convertTarget.contract_type_code === 'A FTE' ? ['FTE', 'SNR'] : ['CON'])
                   .map(c => <option key={c} value={c}>{c}</option>)}
@@ -499,32 +613,28 @@ export default function Headcount() {
             </Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <Field label="Type">
-                <select style={INP}
-                  value={newForm.contract_type_code}
+                <select style={INP} value={newForm.contract_type_code}
                   onChange={e => setNewForm(prev => ({ ...prev, contract_type_code: e.target.value as 'R FTE' | 'R CON' }))}>
                   <option value="R FTE">R FTE — Employee</option>
                   <option value="R CON">R CON — Contractor</option>
                 </select>
               </Field>
               <Field label="Discipline">
-                <select style={INP}
-                  value={newForm.discipline_id}
+                <select style={INP} value={newForm.discipline_id}
                   onChange={e => setNewForm(prev => ({ ...prev, discipline_id: e.target.value }))}>
                   <option value="">— None —</option>
                   {disciplines.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </Field>
               <Field label="Level">
-                <select style={INP}
-                  value={newForm.level_id}
+                <select style={INP} value={newForm.level_id}
                   onChange={e => setNewForm(prev => ({ ...prev, level_id: e.target.value }))}>
                   <option value="">— None —</option>
                   {levels.map(l => <option key={l.id} value={l.id}>{l.level_name}</option>)}
                 </select>
               </Field>
               <Field label="Country">
-                <select style={INP}
-                  value={newForm.country_id}
+                <select style={INP} value={newForm.country_id}
                   onChange={e => setNewForm(prev => ({ ...prev, country_id: e.target.value }))}>
                   <option value="">— None —</option>
                   {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -576,16 +686,27 @@ const OK_BTN: React.CSSProperties = {
   fontWeight: 600, color: '#FFFFFF', cursor: 'pointer',
 };
 
+// Action button styles
+const BTN_BASE: React.CSSProperties = {
+  padding: '3px 9px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+  cursor: 'pointer', whiteSpace: 'nowrap', border: '1px solid',
+};
+const BTN_VIEW:    React.CSSProperties = { ...BTN_BASE, background: '#F8F9FA',  color: '#374151', borderColor: '#D1D5DB' };
+const BTN_EDIT:    React.CSSProperties = { ...BTN_BASE, background: '#EFF6FF',  color: '#1D4ED8', borderColor: '#BFDBFE' };
+const BTN_APPROVE: React.CSSProperties = { ...BTN_BASE, background: '#EBF7EF',  color: '#1E8A4A', borderColor: '#A8DDB5' };
+const BTN_REJECT:  React.CSSProperties = { ...BTN_BASE, background: '#FEF3F2',  color: '#C0392B', borderColor: '#FBBDBA' };
+const BTN_TBH:     React.CSSProperties = { ...BTN_BASE, background: '#EBF2FB',  color: '#1565C0', borderColor: '#A8C4E8' };
+const BTN_CONVERT: React.CSSProperties = { ...BTN_BASE, background: '#FFF8E1',  color: '#B5600A', borderColor: '#F9E2A0' };
+const BTN_DELETE:  React.CSSProperties = { ...BTN_BASE, background: 'transparent', color: '#9CA3AF', borderColor: '#E5E7EB', padding: '3px 7px' };
+
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <>
-      <div onClick={onClose} style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 500,
-      }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 500 }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: 440, maxHeight: '85vh', overflowY: 'auto',
+        width: 460, maxHeight: '85vh', overflowY: 'auto',
         background: '#FFFFFF', borderRadius: 8,
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)', zIndex: 501,
         padding: 24,

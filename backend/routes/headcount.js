@@ -216,4 +216,19 @@ router.put('/:id/convert', requireAuth, requireRole(...WP_ROLES), async (req, re
   res.json({ data: full[0] });
 });
 
+// DELETE /api/headcount/:id — soft-delete (reject request or remove record)
+router.delete('/:id', requireAuth, requireRole(...WP_ROLES), async (req, res) => {
+  const { rows } = await pool.query(
+    'UPDATE people SET is_active = FALSE, updated_at = NOW() WHERE id = $1 AND is_active = TRUE RETURNING id',
+    [req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Headcount record not found' });
+  await req.auditLog({
+    actionType: 'DELETE',
+    resourceType: 'person',
+    resourceId: parseInt(req.params.id, 10),
+  });
+  res.status(204).end();
+});
+
 module.exports = router;

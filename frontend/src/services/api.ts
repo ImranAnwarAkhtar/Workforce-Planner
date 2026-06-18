@@ -234,6 +234,9 @@ export const headcountApi = {
 
   convert: (id: number, body: { name: string; new_contract_type_code: string; notes?: string | null; workday_jr_id?: string | null }) =>
     client.put<ItemResponse<Person>>(`/headcount/${id}/convert`, body).then(r => r.data.data),
+
+  delete: (id: number) =>
+    client.delete(`/headcount/${id}`),
 };
 
 // ---------------------------------------------------------------------------
