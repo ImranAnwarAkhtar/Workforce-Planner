@@ -492,8 +492,8 @@ export default function Projects() {
         ) : (
         <div style={{ minWidth: 'max-content' }}>
 
-          {/* Country header row */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+          {/* Country header row — sticky */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 12, position: 'sticky', top: 0, zIndex: 10, background: '#F7F8FA', paddingTop: 4, paddingBottom: 4 }}>
             {countriesList.map((country, ci) => {
               const cs = countryStats[country];
               return [
@@ -502,28 +502,30 @@ export default function Projects() {
                     background: '#D0D3DA',
                     border: '1px solid #B8BBC2',
                     borderRadius: 8,
-                    padding: '8px 10px 7px',
+                    padding: '6px 8px 5px',
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {country}
+                    {/* Row 1: country name + project count */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+                        {country}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#111111', marginLeft: 4, flexShrink: 0 }}>{cs.total}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#555555', marginBottom: 4 }}>
-                      <span><strong style={{ color: '#111111' }}>{cs.total}</strong> proj</span>
-                      <span style={{ color: '#E31837', fontWeight: 700 }}>Wt {cs.weight.toFixed(1)}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                    {/* Row 2: weight + type pills inline */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 9, color: '#E31837', fontWeight: 700, marginRight: 2, flexShrink: 0 }}>Wt {cs.weight.toFixed(1)}</span>
                       {cs.retail > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
                           R:{cs.retail}
                         </span>
                       )}
                       {cs.xscale > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
                           xS:{cs.xscale}
                         </span>
                       )}
                       {cs.matrix > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
+                        <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
                           M:{cs.matrix}
                         </span>
                       )}
