@@ -687,12 +687,12 @@ export default function Allocations() {
 
             {/* ── Two-row sticky header ── */}
             <thead>
-              <tr style={{ background: '#F8F9FA' }}>
+              <tr style={{ background: '#D0D3DA' }}>
                 <th rowSpan={2} style={{
                   position: 'sticky', top: 0, left: 0, zIndex: 5,
-                  background: '#F8F9FA', borderRight: '2px solid #E0E0E0',
-                  borderBottom: '2px solid #D0D0D0', padding: '10px 14px',
-                  textAlign: 'left', fontSize: 11, color: '#666666',
+                  background: '#D0D3DA', borderRight: '2px solid #B0B4BC',
+                  borderBottom: '2px solid #B0B4BC', padding: '10px 14px',
+                  textAlign: 'left', fontSize: 11, color: '#333333',
                   textTransform: 'uppercase', letterSpacing: '0.08em', verticalAlign: 'middle',
                 }}>
                   Person
@@ -706,13 +706,13 @@ export default function Allocations() {
                         title={`Expand ${g.country}`}
                         style={{
                           position: 'sticky', top: 0, zIndex: 3,
-                          background: '#F8F9FA', borderLeft: `3px solid ${color}`,
-                          borderBottom: '2px solid #D0D0D0', borderRight: '1px solid #E0E0E0',
+                          background: '#D0D3DA', borderLeft: `3px solid ${color}`,
+                          borderBottom: '2px solid #B0B4BC', borderRight: '1px solid #B8BBC2',
                           padding: '5px 6px', textAlign: 'center', cursor: 'pointer',
                           whiteSpace: 'nowrap', verticalAlign: 'middle',
                         }}>
-                        <div style={{ fontWeight: 700, color, fontSize: 11 }}>{g.country}</div>
-                        <div style={{ fontSize: 9, color: '#999999', marginTop: 2 }}>{g.projects.length}p ▶</div>
+                        <div style={{ fontWeight: 700, color: '#333333', fontSize: 11 }}>{g.country}</div>
+                        <div style={{ fontSize: 9, color: '#777777', marginTop: 2 }}>{g.projects.length}p ▶</div>
                       </th>
                     );
                   }
@@ -721,13 +721,13 @@ export default function Allocations() {
                       onClick={() => toggleCountry(g.country)} title={`Collapse ${g.country}`}
                       style={{
                         position: 'sticky', top: 0, zIndex: 3,
-                        background: '#F8F9FA', borderLeft: `3px solid ${color}`,
-                        borderBottom: '1px solid #D0D0D0', borderRight: '1px solid #DDDDDD',
+                        background: '#D0D3DA', borderLeft: `3px solid ${color}`,
+                        borderBottom: '1px solid #B0B4BC', borderRight: '1px solid #B8BBC2',
                         padding: '6px 10px', textAlign: 'center', cursor: 'pointer',
-                        fontWeight: 700, color, fontSize: 12, whiteSpace: 'nowrap',
+                        fontWeight: 700, color: '#333333', fontSize: 12, whiteSpace: 'nowrap',
                       }}>
                       {g.country} ▼
-                      <span style={{ marginLeft: 6, fontSize: 9, color: '#888888', fontWeight: 400 }}>
+                      <span style={{ marginLeft: 6, fontSize: 9, color: '#666666', fontWeight: 400 }}>
                         {g.projects.length} project{g.projects.length !== 1 ? 's' : ''}
                       </span>
                     </th>
@@ -735,16 +735,16 @@ export default function Allocations() {
                 })}
                 <th rowSpan={2} style={{
                   position: 'sticky', top: 0, right: 0, zIndex: 5,
-                  background: '#F8F9FA', borderLeft: '2px solid #D5D5D5',
-                  borderBottom: '2px solid #D0D0D0', padding: '10px 8px',
-                  fontSize: 10, color: '#666666', textTransform: 'uppercase',
+                  background: '#D0D3DA', borderLeft: '2px solid #B0B4BC',
+                  borderBottom: '2px solid #B0B4BC', padding: '10px 8px',
+                  fontSize: 10, color: '#333333', textTransform: 'uppercase',
                   textAlign: 'center', verticalAlign: 'middle',
                 }}>
                   Total
                 </th>
               </tr>
 
-              <tr style={{ background: '#F8F9FA' }}>
+              <tr style={{ background: '#D0D3DA' }}>
                 {displayedCountryGroups.map(g => {
                   if (collapsedCountries.has(g.country)) return null;
                   const color = countryColor(g.country);
@@ -753,27 +753,27 @@ export default function Allocations() {
                       {g.projects.map(p => (
                         <th key={p.id} style={{
                           position: 'sticky', top: ROW1_H, zIndex: 3,
-                          background: '#F8F9FA', borderLeft: '1px solid #EEEEEE',
-                          borderBottom: '1px solid #D0D0D0', padding: '5px 4px', textAlign: 'center',
+                          background: '#D0D3DA', borderLeft: '1px solid #B8BBC2',
+                          borderBottom: '1px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
                         }}>
                           <div style={{
-                            fontSize: 10, fontWeight: 600, color: STATUS_COLOURS[p.status] ?? '#333333',
+                            fontSize: 10, fontWeight: 600, color: '#333333',
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                             maxWidth: 64, margin: '0 auto',
                           }} title={p.name}>{p.name}</div>
                           <span style={{
                             fontSize: 9, padding: '1px 3px', borderRadius: 3,
-                            background: '#FFFFFF', color: STATUS_COLOURS[p.status] ?? '#666666',
-                            border: `1px solid ${STATUS_COLOURS[p.status] ?? '#CCCCCC'}`,
+                            background: '#C4C7CE', color: STATUS_COLOURS[p.status] ?? '#444444',
+                            border: `1px solid ${STATUS_COLOURS[p.status] ?? '#AAAAAA'}`,
                             display: 'inline-block', marginTop: 2,
                           }}>{p.status}</span>
                         </th>
                       ))}
                       <th style={{
-                        position: 'sticky', top: ROW1_H, zIndex: 3, background: '#EEF4FF',
-                        borderLeft: '1px solid #C0C8E0', borderRight: '1px solid #C0C8E0',
-                        borderBottom: '1px solid #D0D0D0', padding: '5px 4px', textAlign: 'center',
-                        fontSize: 10, color, fontWeight: 700, whiteSpace: 'nowrap',
+                        position: 'sticky', top: ROW1_H, zIndex: 3, background: '#C4C7CE',
+                        borderLeft: '1px solid #B0B4BC', borderRight: '1px solid #B0B4BC',
+                        borderBottom: '1px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
+                        fontSize: 10, color: '#333333', fontWeight: 700, whiteSpace: 'nowrap',
                       }}>
                         Σ {g.country.slice(0, 3)}
                       </th>
@@ -831,9 +831,9 @@ export default function Allocations() {
                       return (
                         <React.Fragment key={levelKey}>
 
-                          {/* Level header */}
-                          <tr onClick={() => toggleLevel(levelKey)} style={{ cursor: 'pointer' }}>
-                            <td colSpan={totalColCount - 1} style={{
+                          {/* Level header — shows subtotals inline */}
+                          <tr onClick={() => toggleLevel(levelKey)} style={{ cursor: 'pointer', background: '#EBF0FB' }}>
+                            <td style={{
                               position: 'sticky', left: 0, zIndex: 2,
                               background: '#EBF0FB',
                               borderLeft: '3px solid #1565C0',
@@ -849,6 +849,48 @@ export default function Allocations() {
                                 {levelPeople.length} {levelPeople.length === 1 ? 'person' : 'people'}
                               </span>
                             </td>
+                            {displayedCountryGroups.map(g => {
+                              const col = countryColor(g.country);
+                              const ct  = getGroupCountryTotal(levelPeople, g.projects);
+                              if (collapsedCountries.has(g.country)) {
+                                return (
+                                  <td key={g.country} style={{
+                                    padding: '5px 6px', textAlign: 'center', fontSize: 11, fontWeight: 700,
+                                    color: ct > 0 ? col : '#CCCCCC',
+                                    borderLeft: `2px solid ${col}33`, borderRight: '1px solid #D8DFE8',
+                                    borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
+                                  }}>
+                                    {ct > 0 ? ct.toFixed(1) : '—'}
+                                  </td>
+                                );
+                              }
+                              return (
+                                <React.Fragment key={g.country}>
+                                  {g.projects.map(proj => {
+                                    const pt = getGroupProjectTotal(levelPeople, proj.id);
+                                    return (
+                                      <td key={proj.id} style={{
+                                        padding: '5px 4px', textAlign: 'center', fontSize: 11,
+                                        color: pt > 0 ? '#1E8A4A' : '#CCCCCC',
+                                        borderLeft: '1px solid #D8DFE8',
+                                        borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
+                                      }}>
+                                        {pt > 0 ? pt.toFixed(1) : ''}
+                                      </td>
+                                    );
+                                  })}
+                                  <td style={{
+                                    padding: '5px 6px', textAlign: 'center', fontSize: 11, fontWeight: 700,
+                                    color: ct > 0 ? col : '#CCCCCC',
+                                    background: ct > 0 ? `${col}0A` : 'transparent',
+                                    borderLeft: '1px solid #C0C8E0', borderRight: '1px solid #C0C8E0',
+                                    borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
+                                  }}>
+                                    {ct > 0 ? ct.toFixed(1) : '—'}
+                                  </td>
+                                </React.Fragment>
+                              );
+                            })}
                             <td style={{
                               position: 'sticky', right: 0, zIndex: 2,
                               background: '#EBF0FB', borderLeft: '2px solid #D5D5D5',
@@ -975,8 +1017,6 @@ export default function Allocations() {
                               </tr>
                             );
                           })}
-
-                          <SubtotalRow label={`${levelName} · Subtotal`} labelColor="#1565C0" bg="#EEF2F8" ppl={levelPeople} />
 
                         </React.Fragment>
                       );
