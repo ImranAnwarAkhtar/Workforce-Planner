@@ -21,8 +21,8 @@ type ProjectStatus = typeof PROJECT_STATUSES[number];
 
 const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string; barBg: string; pill: string }> = {
   'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#1A6B3A', pill: '#2A9D5C' },
-  'Seeded':   { color: '#FFFFFF', bg: '#FFFDE7', border: '#FFD54F', dot: '#FFC000', barBg: '#996F00', pill: '#CC9900' },
-  'Proposed': { color: '#FFFFFF', bg: '#EBF0FF', border: '#BDD0FF', dot: '#6699FF', barBg: '#1A3A8C', pill: '#3366DD' },
+  'Seeded':   { color: '#FFFFFF', bg: '#E8F8FA', border: '#7DD5E0', dot: '#17A5B8', barBg: '#0B6B7A', pill: '#138EA0' },
+  'Proposed': { color: '#FFFFFF', bg: '#F5EEFB', border: '#CFA8E8', dot: '#9A5CC8', barBg: '#5C3980', pill: '#7C48B8' },
 };
 
 const TYPE_META: Record<ProjectType, { color: string; bg: string; border: string }> = {
@@ -492,17 +492,16 @@ export default function Projects() {
         ) : (
         <div style={{ minWidth: 'max-content' }}>
 
-          {/* Country header row — sticky */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 12, position: 'sticky', top: 0, zIndex: 10, background: '#F7F8FA', paddingTop: 4, paddingBottom: 4 }}>
-            {countriesList.map((country, ci) => {
-              const cs = countryStats[country];
-              return [
-                <div key={`col-${country}`} style={{ width: COL_W, flexShrink: 0 }}>
-                  <div style={{
-                    background: '#D0D3DA',
-                    border: '1px solid #B8BBC2',
-                    borderRadius: 8,
+          {/* Country header row — sticky, table-style */}
+          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F7F8FA', paddingTop: 4, paddingBottom: 4 }}>
+            <div style={{ display: 'flex', border: '1px solid #B0B4BC', background: '#D0D3DA', overflow: 'hidden' }}>
+              {countriesList.map((country, ci) => {
+                const cs = countryStats[country];
+                return (
+                  <div key={country} style={{
+                    width: COL_W, flexShrink: 0,
                     padding: '6px 8px 5px',
+                    borderRight: ci < countriesList.length - 1 ? '1px solid #B0B4BC' : 'none',
                   }}>
                     {/* Row 1: country name + project count */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
@@ -533,12 +532,9 @@ export default function Projects() {
                       <span style={{ fontSize: 9, color: '#E31837', fontWeight: 700, flexShrink: 0 }}>Wt {cs.weight.toFixed(1)}</span>
                     </div>
                   </div>
-                </div>,
-                ci < countriesList.length - 1
-                  ? <div key={`sep-${country}`} style={{ width: 1, flexShrink: 0, alignSelf: 'stretch', background: '#D0D0D0' }} />
-                  : null,
-              ];
-            })}
+                );
+              })}
+            </div>
           </div>
 
           {/* Status rows — collapsible */}
@@ -551,31 +547,27 @@ export default function Projects() {
             const collapsed   = collapsedStatuses.has(status);
 
             return (
-              <div key={status} style={{ marginBottom: 10 }}>
+              <div key={status} style={{ marginBottom: 4 }}>
 
                 {/* Clickable status label bar */}
                 <div
                   onClick={() => toggleStatus(status)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    marginBottom: collapsed ? 0 : 8, padding: '4px 10px',
+                    marginBottom: 0, padding: '4px 10px',
                     background: sm.barBg, border: `1px solid ${sm.border}`,
-                    borderRadius: collapsed ? 6 : '6px 6px 0 0',
+                    borderRadius: 0,
                     cursor: 'pointer', userSelect: 'none',
                   }}
                 >
-                  {/* Chevron */}
                   <span style={{
                     fontSize: 9, color: sm.color, fontWeight: 900,
                     transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                     transition: 'transform 0.15s',
                     display: 'inline-block', width: 10, textAlign: 'center',
                   }}>▼</span>
-
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: sm.dot, display: 'inline-block', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: sm.color }}>
-                    {status}
-                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: sm.color }}>{status}</span>
                   <span style={{ fontSize: 10, fontWeight: 400, color: 'rgba(255,255,255,0.7)', marginLeft: 8, whiteSpace: 'nowrap' as const }}>
                     {statusTotal} · Wt {statusWeight}
                   </span>
@@ -585,38 +577,35 @@ export default function Projects() {
                 {/* Cards — hidden when collapsed */}
                 {!collapsed && (
                   <div style={{
-                    display: 'flex', gap: 4, alignItems: 'flex-start',
-                    padding: '8px', background: `${sm.bg}55`,
+                    display: 'flex', alignItems: 'flex-start',
+                    background: `${sm.bg}88`,
                     border: `1px solid ${sm.border}`, borderTop: 'none',
-                    borderRadius: '0 0 6px 6px',
                   }}>
                     {countriesList.map((country, ci) => {
                       const cards = projectMatrix[country]?.[status] ?? [];
-                      return [
+                      return (
                         <div
-                          key={`col-${country}`}
-                          style={{ width: COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
+                          key={country}
+                          style={{
+                            width: COL_W, flexShrink: 0,
+                            display: 'flex', flexDirection: 'column', gap: 6,
+                            padding: '6px',
+                            borderRight: ci < countriesList.length - 1 ? `1px solid ${sm.border}` : 'none',
+                            minHeight: 40,
+                          }}
                         >
                           {cards.map(p => (
-                            <ProjectCard
-                              key={p.id}
-                              project={p}
-                              onClick={() => openEdit(p)}
-                            />
+                            <ProjectCard key={p.id} project={p} onClick={() => openEdit(p)} />
                           ))}
                           {cards.length === 0 && (
                             <div style={{
                               height: 28,
-                              border: '1px dashed #E0E0E0',
-                              borderRadius: 5,
-                              background: 'rgba(255,255,255,0.6)',
+                              border: '1px dashed #D8D8D8',
+                              background: 'rgba(255,255,255,0.4)',
                             }} />
                           )}
-                        </div>,
-                        ci < countriesList.length - 1
-                          ? <div key={`sep-${country}`} style={{ width: 1, flexShrink: 0, alignSelf: 'stretch', background: '#D0D0D0' }} />
-                          : null,
-                      ];
+                        </div>
+                      );
                     })}
                   </div>
                 )}
@@ -624,16 +613,16 @@ export default function Projects() {
             );
           })}
 
-          {/* ── Totals row ── */}
+          {/* ── Totals row ── table style */}
           {countriesList.length > 0 && (
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 8 }}>
               {/* Totals header bar */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                padding: '5px 10px', marginBottom: 0,
-                background: '#1A1A1A', borderRadius: '6px 6px 0 0',
+                padding: '5px 10px',
+                background: '#1A1A1A', border: '1px solid #333333', borderBottom: 'none',
               }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.12em', flex: 1 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.12em', flex: 1 }}>
                   Totals
                 </span>
                 <span style={{ fontSize: 10, color: '#888' }}>
@@ -641,85 +630,73 @@ export default function Projects() {
                 </span>
               </div>
 
-              {/* Per-country totals tiles */}
-              <div style={{
-                display: 'flex', gap: 4, padding: '8px',
-                background: '#F5F5F5', border: '1px solid #DDDDDD',
-                borderTop: 'none', borderRadius: '0 0 6px 6px',
-              }}>
+              {/* Per-country totals — table cells */}
+              <div style={{ display: 'flex', border: '1px solid #B0B4BC', background: '#D0D3DA', overflow: 'hidden' }}>
                 {countriesList.map((country, ci) => {
                   const cs = countryStats[country];
-                  return [
-                    <div key={`col-${country}`} style={{
+                  return (
+                    <div key={country} style={{
                       width: COL_W, flexShrink: 0,
-                      background: '#D0D3DA',
-                      border: '1px solid #B8BBC2',
-                      borderRadius: 6,
-                      padding: '7px 9px',
+                      padding: '7px 8px',
+                      borderRight: ci < countriesList.length - 1 ? '1px solid #B0B4BC' : 'none',
                     }}>
                       {/* Total count + weight */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                         <span style={{ fontSize: 17, fontWeight: 800, color: '#111111', lineHeight: 1 }}>{cs.total}</span>
                         <span style={{ fontSize: 9, fontWeight: 700, color: '#E31837' }}>Wt {cs.weight.toFixed(1)}</span>
                       </div>
-
                       {/* Status breakdown */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 5 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
                         {cs.approved > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, color: '#1E8A4A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1E8A4A', display: 'inline-block' }} />
+                            <span style={{ fontSize: 9, color: STATUS_META.Approved.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: STATUS_META.Approved.dot, display: 'inline-block' }} />
                               Appr
                             </span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#1E8A4A' }}>{cs.approved}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: STATUS_META.Approved.barBg }}>{cs.approved}</span>
                           </div>
                         )}
                         {cs.seeded > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, color: '#B5600A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#D4870A', display: 'inline-block' }} />
+                            <span style={{ fontSize: 9, color: STATUS_META.Seeded.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: STATUS_META.Seeded.dot, display: 'inline-block' }} />
                               Seed
                             </span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#B5600A' }}>{cs.seeded}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: STATUS_META.Seeded.barBg }}>{cs.seeded}</span>
                           </div>
                         )}
                         {cs.proposed > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, color: '#1D4EBB', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4477EE', display: 'inline-block' }} />
+                            <span style={{ fontSize: 9, color: STATUS_META.Proposed.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: STATUS_META.Proposed.dot, display: 'inline-block' }} />
                               Prop
                             </span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#1D4EBB' }}>{cs.proposed}</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: STATUS_META.Proposed.barBg }}>{cs.proposed}</span>
                           </div>
                         )}
                       </div>
-
                       {/* Divider */}
-                      <div style={{ height: 1, background: '#F0F0F0', marginBottom: 5 }} />
-
+                      <div style={{ height: 1, background: '#C4C7CE', marginBottom: 4 }} />
                       {/* Type breakdown */}
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                         {cs.retail > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 6, background: '#E3F2FD', color: '#1565C0', fontWeight: 700 }}>
+                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#E3F2FD', color: '#1565C0', fontWeight: 700 }}>
                             R {cs.retail}
                           </span>
                         )}
                         {cs.xscale > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 6, background: '#F3E5F7', color: '#6A1B9A', fontWeight: 700 }}>
+                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#F3E5F7', color: '#6A1B9A', fontWeight: 700 }}>
                             xS {cs.xscale}
                           </span>
                         )}
                         {cs.matrix > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', borderRadius: 6, background: '#E0F5F6', color: '#006064', fontWeight: 700 }}>
+                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#E0F5F6', color: '#006064', fontWeight: 700 }}>
                             M {cs.matrix}
                           </span>
                         )}
                       </div>
-                    </div>,
-                    ci < countriesList.length - 1
-                      ? <div key={`sep-${country}`} style={{ width: 1, flexShrink: 0, alignSelf: 'stretch', background: '#D0D0D0' }} />
-                      : null,
-                  ];
+                    </div>
+                  );
                 })}
               </div>
             </div>
