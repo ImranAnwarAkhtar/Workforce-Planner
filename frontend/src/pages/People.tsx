@@ -435,7 +435,7 @@ export default function People() {
           )}
           <div style={{ flex: 1 }} />
           <div style={{ padding: '0 12px', borderLeft: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <button style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer' }} onClick={openAdd}>+ Add Person</button>
+            <button style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer' }} onClick={openAdd}>+ Person</button>
           </div>
         </div>
         {/* Row 2: discipline breakdown */}
