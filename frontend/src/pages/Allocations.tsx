@@ -20,7 +20,7 @@ const DISCIPLINES = ['Construction', 'Design', 'Commercial', 'Commissioning', 'O
 const DISCIPLINE_COLOURS: Record<string, string> = {
   'Construction': '#1565C0',
   'Design':       '#1E8A4A',
-  'Commercial':   '#B45309',
+  'Commercial':   '#8C6300',
   'Commissioning':'#6A1B9A',
   'Other':        '#888888',
 };
