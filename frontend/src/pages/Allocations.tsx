@@ -821,27 +821,27 @@ export default function Allocations() {
                     <tr onClick={() => toggleDiscipline(discipline)} style={{ cursor: 'pointer' }}>
                       <td colSpan={totalColCount - 1} style={{
                         position: 'sticky', left: 0, zIndex: 2,
-                        background: `${discColor}38`,
-                        boxShadow: `inset 4px 0 0 ${discColor}`,
+                        background: discColor,
+                        boxShadow: 'inset 4px 0 0 rgba(0,0,0,0.2)',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
                         borderRight: '2px solid #D5D5D5',
-                        padding: '5px 14px', fontWeight: 700, fontSize: 13, color: discColor,
+                        padding: '4px 14px', fontWeight: 700, fontSize: 12, color: '#FFFFFF',
                         whiteSpace: 'nowrap',
                       }}>
-                        <span style={{ marginRight: 8, fontSize: 11, opacity: 0.7 }}>
+                        <span style={{ marginRight: 8, fontSize: 11, opacity: 0.8 }}>
                           {isDiscCollapsed ? '▶' : '▼'}
                         </span>
                         {discipline}
-                        <span style={{ marginLeft: 10, color: '#888888', fontWeight: 400, fontSize: 11 }}>
+                        <span style={{ marginLeft: 10, color: 'rgba(255,255,255,0.65)', fontWeight: 400, fontSize: 11 }}>
                           {allPeople.length} {allPeople.length === 1 ? 'person' : 'people'}
                         </span>
                       </td>
                       <td style={{
                         position: 'sticky', right: 0, zIndex: 2,
-                        background: `${discColor}38`, boxShadow: 'inset 2px 0 0 #D5D5D5',
+                        background: discColor, boxShadow: 'inset 2px 0 0 rgba(0,0,0,0.2)',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
-                        padding: '5px 8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
-                        color: discTotal > 0 ? discColor : '#CCCCCC',
+                        padding: '4px 8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
+                        color: discTotal > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
                       }}>
                         {discTotal > 0 ? discTotal.toFixed(1) : '—'}
                       </td>
