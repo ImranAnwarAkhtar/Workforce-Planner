@@ -290,15 +290,14 @@ export default function Allocations() {
   function collapseAllCountries() { setCollapsedCountries(new Set(allCountryNames)); }
   function expandAllCountries()   { setCollapsedCountries(new Set()); }
 
-  const allPeopleCollapsed = hierarchy.length > 0 && hierarchy.every(h => collapsedDisciplines.has(h.discipline));
-  function collapseAllPeople() {
-    setCollapsedDisciplines(new Set(hierarchy.map(h => h.discipline)));
-    setCollapsedLevels(new Set(hierarchy.flatMap(h => h.levels.map(l => `${h.discipline}::${l.code}`))));
-  }
-  function expandAllPeople() {
-    setCollapsedDisciplines(new Set());
-    setCollapsedLevels(new Set());
-  }
+  const allDeptsCollapsed  = hierarchy.length > 0 && hierarchy.every(h => collapsedDisciplines.has(h.discipline));
+  const allLevelsCollapsed = hierarchy.length > 0 && hierarchy.every(h =>
+    h.levels.every(l => collapsedLevels.has(`${h.discipline}::${l.code}`)));
+
+  function collapseAllDepts()  { setCollapsedDisciplines(new Set(hierarchy.map(h => h.discipline))); }
+  function expandAllDepts()    { setCollapsedDisciplines(new Set()); }
+  function collapseAllLevels() { setCollapsedLevels(new Set(hierarchy.flatMap(h => h.levels.map(l => `${h.discipline}::${l.code}`)))); }
+  function expandAllLevels()   { setCollapsedLevels(new Set()); }
 
   // ── Cell value helpers ────────────────────────────────────────────────────
 
@@ -595,17 +594,30 @@ export default function Allocations() {
                     Countries
                   </button>
                   <button
-                    title={allPeopleCollapsed ? 'Expand all discipline/people' : 'Collapse all discipline/people'}
-                    onClick={() => allPeopleCollapsed ? expandAllPeople() : collapseAllPeople()}
+                    title={allDeptsCollapsed ? 'Expand all departments' : 'Collapse all departments'}
+                    onClick={() => allDeptsCollapsed ? expandAllDepts() : collapseAllDepts()}
                     style={{ padding: '5px 10px', background: '#E31837', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                      {allPeopleCollapsed
+                      {allDeptsCollapsed
                         ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
                         : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
                       }
                     </svg>
-                    Dept/People
+                    Dept
+                  </button>
+                  <button
+                    title={allLevelsCollapsed ? 'Expand all levels' : 'Collapse all levels'}
+                    onClick={() => allLevelsCollapsed ? expandAllLevels() : collapseAllLevels()}
+                    style={{ padding: '5px 10px', background: '#E31837', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                      {allLevelsCollapsed
+                        ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                        : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                      }
+                    </svg>
+                    Levels
                   </button>
                   <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
                     padding: '5px 16px', background: '#E31837',
