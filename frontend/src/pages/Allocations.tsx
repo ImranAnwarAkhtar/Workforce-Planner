@@ -821,7 +821,7 @@ export default function Allocations() {
                     <tr onClick={() => toggleDiscipline(discipline)} style={{ cursor: 'pointer' }}>
                       <td colSpan={totalColCount - 1} style={{
                         position: 'sticky', left: 0, zIndex: 2,
-                        background: '#F2F4F8',
+                        background: `${discColor}22`,
                         boxShadow: `inset 4px 0 0 ${discColor}`,
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
                         borderRight: '2px solid #D5D5D5',
@@ -838,7 +838,7 @@ export default function Allocations() {
                       </td>
                       <td style={{
                         position: 'sticky', right: 0, zIndex: 2,
-                        background: '#F2F4F8', boxShadow: 'inset 2px 0 0 #D5D5D5',
+                        background: `${discColor}22`, boxShadow: 'inset 2px 0 0 #D5D5D5',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
                         padding: '8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
                         color: discTotal > 0 ? discColor : '#CCCCCC',
@@ -857,13 +857,13 @@ export default function Allocations() {
                         <React.Fragment key={levelKey}>
 
                           {/* Level header — shows subtotals inline */}
-                          <tr onClick={() => toggleLevel(levelKey)} style={{ cursor: 'pointer', background: '#EBF0FB' }}>
+                          <tr onClick={() => toggleLevel(levelKey)} style={{ cursor: 'pointer', background: `${discColor}0D` }}>
                             <td style={{
                               position: 'sticky', left: 0, zIndex: 2,
-                              background: '#EBF0FB',
-                              boxShadow: 'inset 3px 0 0 #1565C0',
-                              borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
-                              padding: '6px 14px 6px 28px', fontWeight: 600, fontSize: 12, color: '#1565C0',
+                              background: `${discColor}0D`,
+                              boxShadow: `inset 3px 0 0 ${discColor}`,
+                              borderTop: `1px solid ${discColor}33`, borderBottom: `1px solid ${discColor}33`,
+                              padding: '6px 14px 6px 28px', fontWeight: 600, fontSize: 12, color: discColor,
                               whiteSpace: 'nowrap',
                             }}>
                               <span style={{ marginRight: 8, fontSize: 10, opacity: 0.7 }}>
@@ -883,7 +883,7 @@ export default function Allocations() {
                                     padding: '5px 6px', textAlign: 'center', fontSize: 11, fontWeight: 700,
                                     color: ct > 0 ? col : '#CCCCCC',
                                     boxShadow: `inset 2px 0 0 ${col}33`, borderRight: '1px solid #D8DFE8',
-                                    borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
+                                    borderTop: `1px solid ${discColor}33`, borderBottom: `1px solid ${discColor}33`,
                                   }}>
                                     {ct > 0 ? ct.toFixed(1) : '—'}
                                   </td>
@@ -896,9 +896,9 @@ export default function Allocations() {
                                     return (
                                       <td key={proj.id} style={{
                                         padding: '5px 4px', textAlign: 'center', fontSize: 11,
-                                        color: pt > 0 ? '#1E8A4A' : '#CCCCCC',
+                                        color: pt > 0 ? discColor : '#CCCCCC',
                                         borderLeft: '1px solid #D8DFE8',
-                                        borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
+                                        borderTop: `1px solid ${discColor}33`, borderBottom: `1px solid ${discColor}33`,
                                       }}>
                                         {pt > 0 ? pt.toFixed(1) : ''}
                                       </td>
@@ -909,7 +909,7 @@ export default function Allocations() {
                                     color: ct > 0 ? col : '#CCCCCC',
                                     background: ct > 0 ? `${col}0A` : 'transparent',
                                     borderLeft: '1px solid #C0C8E0', borderRight: '1px solid #C0C8E0',
-                                    borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
+                                    borderTop: `1px solid ${discColor}33`, borderBottom: `1px solid ${discColor}33`,
                                   }}>
                                     {ct > 0 ? ct.toFixed(1) : '—'}
                                   </td>
@@ -918,11 +918,11 @@ export default function Allocations() {
                             })}
                             <td style={{
                               position: 'sticky', right: 0, zIndex: 2,
-                              background: '#EBF0FB', boxShadow: 'inset 2px 0 0 #D5D5D5',
-                              borderTop: '1px solid #D0D8F0', borderBottom: '1px solid #D0D8F0',
+                              background: `${discColor}0D`, boxShadow: 'inset 2px 0 0 #D5D5D5',
+                              borderTop: `1px solid ${discColor}33`, borderBottom: `1px solid ${discColor}33`,
                               padding: '6px 8px', textAlign: 'center',
                               fontSize: 11, fontWeight: 700,
-                              color: levelTotal > 0 ? '#1565C0' : '#CCCCCC',
+                              color: levelTotal > 0 ? discColor : '#CCCCCC',
                             }}>
                               {levelTotal > 0 ? levelTotal.toFixed(1) : '—'}
                             </td>
