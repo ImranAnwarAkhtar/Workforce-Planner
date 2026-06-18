@@ -306,6 +306,26 @@ export default function Allocations() {
     displayedCountryGroups.flatMap(g => g.projects.map(p => p.id)),
     [displayedCountryGroups]);
 
+  // ── Banner metrics ────────────────────────────────────────────────────────
+
+  const bannerMetrics = useMemo(() => {
+    const totalAvailable = people.reduce((s, p) =>
+      s + (parseFloat(String(p.contracted_fte ?? 1)) || 1), 0);
+    const byDisc = hierarchy.map(h => ({
+      discipline: h.discipline,
+      allocated: h.allPeople.reduce((s, p) =>
+        s + displayedProjectIds.reduce((ps, pid) => {
+          const key = `${p.id}_${pid}`;
+          const val = pendingChanges[key] !== undefined
+            ? pendingChanges[key].fteValue
+            : Number(allocMap[p.id]?.[pid]?.fte_value ?? 0);
+          return ps + val;
+        }, 0), 0),
+    }));
+    const totalAllocated = byDisc.reduce((s, d) => s + d.allocated, 0);
+    return { totalAvailable, totalAllocated, byDisc };
+  }, [people, hierarchy, displayedProjectIds, allocMap, pendingChanges]);
+
   function getPersonTotal(personId: number): number {
     return displayedProjectIds.reduce((s, pid) => s + getCellValue(personId, pid), 0);
   }
@@ -492,46 +512,79 @@ export default function Allocations() {
 
       {/* ── Header ── */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Allocations Planning</div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Region</span>
-              <select
-                value={selectedRegionId ?? ''}
-                onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
-                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
-              >
-                <option value="">All</option>
-                {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
-              </select>
+        <div style={{ background: '#181A1E', borderBottom: '2px solid #E31837' }}>
+          {/* Title row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Allocations Planning</div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Region</span>
+                <select
+                  value={selectedRegionId ?? ''}
+                  onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
+                  style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
+                >
+                  <option value="">All</option>
+                  {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Cycle</span>
+                <select
+                  value={selectedCycleId ?? ''}
+                  onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
+                  style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+                >
+                  <option value="">All Cycles</option>
+                  {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Cycle</span>
-              <select
-                value={selectedCycleId ?? ''}
-                onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
-                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
-              >
-                <option value="">All Cycles</option>
-                {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {pendingCount > 0 && (
+                <span style={{ fontSize: 11, color: '#D4870A', background: '#FFF8E1', padding: '3px 9px', borderRadius: 12, border: '1px solid #F9A825' }}>
+                  {pendingCount} unsaved
+                </span>
+              )}
+              <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
+                padding: '7px 18px', background: '#E31837',
+                color: '#FFF', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600,
+                cursor: pendingCount > 0 ? 'pointer' : 'default',
+                opacity: pendingCount > 0 ? 1 : 0.45,
+              }}>
+                {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
+              </button>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {pendingCount > 0 && (
-              <span style={{ fontSize: 11, color: '#D4870A', background: '#FFF8E1', padding: '3px 9px', borderRadius: 12, border: '1px solid #F9A825' }}>
-                {pendingCount} unsaved
-              </span>
-            )}
-            <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
-              padding: '7px 18px', background: pendingCount > 0 ? '#E31837' : '#CCCCCC',
-              color: '#FFF', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600,
-              cursor: pendingCount > 0 ? 'pointer' : 'default',
-            }}>
-              {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
-            </button>
-          </div>
+          {/* Metrics row */}
+          {!loading && people.length > 0 && (() => {
+            const util = bannerMetrics.totalAvailable > 0
+              ? bannerMetrics.totalAllocated / bannerMetrics.totalAvailable : 0;
+            const utilColour = util > 1.05 ? '#E31837' : util >= 0.85 ? '#33CC77' : util >= 0.6 ? '#F9A825' : '#AAAAAA';
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #2A2C32', padding: '5px 16px', gap: 0, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #2A2C32' }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: '#FFFFFF', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: '#555', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Available FTE</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #2A2C32' }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: '#33CC77', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: '#555', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Allocated FTE</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 20, marginRight: 20, borderRight: '1px solid #2A2C32' }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: utilColour, lineHeight: 1 }}>{Math.round(util * 100)}%</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: '#555', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Utilisation</span>
+                </div>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#444', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginRight: 16, flexShrink: 0 }}>By Discipline</span>
+                {bannerMetrics.byDisc.filter(d => d.allocated > 0).map(d => (
+                  <div key={d.discipline} style={{ display: 'flex', alignItems: 'center', gap: 5, marginRight: 20 }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: DISCIPLINE_COLOURS[d.discipline] ?? '#AAAAAA', lineHeight: 1 }}>{d.allocated.toFixed(1)}</span>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
         <div style={{ padding: '10px 16px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5' }}>
 
