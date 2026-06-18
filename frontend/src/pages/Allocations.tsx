@@ -582,9 +582,22 @@ export default function Allocations() {
                     </span>
                   )}
                   <button
-                    title={allPeopleCollapsed ? 'Expand all people' : 'Collapse all people'}
+                    title={allCollapsed ? 'Expand all countries' : 'Collapse all countries'}
+                    onClick={() => allCollapsed ? expandAllCountries() : collapseAllCountries()}
+                    style={{ padding: '5px 10px', background: '#E31837', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                      {allCollapsed
+                        ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                        : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                      }
+                    </svg>
+                    All Countries
+                  </button>
+                  <button
+                    title={allPeopleCollapsed ? 'Expand all discipline/people' : 'Collapse all discipline/people'}
                     onClick={() => allPeopleCollapsed ? expandAllPeople() : collapseAllPeople()}
-                    style={{ padding: '5px 10px', background: 'transparent', border: '1px solid #3A3C42', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#CCCCCC', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '5px 10px', background: '#E31837', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       {allPeopleCollapsed
@@ -592,7 +605,7 @@ export default function Allocations() {
                         : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
                       }
                     </svg>
-                    All
+                    All Discipline/People
                   </button>
                   <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
                     padding: '5px 16px', background: '#E31837',
@@ -635,15 +648,6 @@ export default function Allocations() {
             </select>
           </div>
 
-          {displayedCountryGroups.length > 0 && (
-            <button onClick={allCollapsed ? expandAllCountries : collapseAllCountries} style={{
-              padding: '5px 10px', background: 'transparent',
-              border: '1px solid #D5D5D5', borderRadius: 4,
-              fontSize: 11, color: '#555555', cursor: 'pointer',
-            }}>
-              {allCollapsed ? 'Expand countries' : 'Collapse countries'}
-            </button>
-          )}
 
           <span style={{ fontSize: 11, color: '#999999' }}>
             {visibleProjects.length} project{visibleProjects.length !== 1 ? 's' : ''} · {people.length} people
