@@ -21,7 +21,7 @@ type ProjectStatus = typeof PROJECT_STATUSES[number];
 
 const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string; barBg: string; pill: string }> = {
   'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#1A6B3A', pill: '#2A9D5C' },
-  'Seeded':   { color: '#FFFFFF', bg: '#FFFAE8', border: '#F5D060', dot: '#F0BE00', barBg: '#B8860B', pill: '#D4A000' },
+  'Seeded':   { color: '#FFFFFF', bg: '#FFFDE7', border: '#FFD54F', dot: '#FFC000', barBg: '#996F00', pill: '#CC9900' },
   'Proposed': { color: '#FFFFFF', bg: '#EBF0FF', border: '#BDD0FF', dot: '#6699FF', barBg: '#1A3A8C', pill: '#3366DD' },
 };
 
