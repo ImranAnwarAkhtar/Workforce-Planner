@@ -422,12 +422,12 @@ export default function People() {
           {!loading && people.length > 0 && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRight: '1px solid #2A2C32' }}>
-                <span style={{ fontSize: 20, fontWeight: 800, color: '#E31837', lineHeight: 1 }}>{people.length}</span>
+                <span style={{ fontSize: 17, fontWeight: 400, color: '#E31837', lineHeight: 1 }}>{people.length}</span>
                 <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Total</span>
               </div>
               {regionStats.map(([region, count]) => (
                 <div key={region} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', flex: '1 1 auto', borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 20, fontWeight: 800, color: regionColor(region), lineHeight: 1 }}>{count}</span>
+                  <span style={{ fontSize: 17, fontWeight: 400, color: regionColor(region), lineHeight: 1 }}>{count}</span>
                   <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{region}</span>
                 </div>
               ))}

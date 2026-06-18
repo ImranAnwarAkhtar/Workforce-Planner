@@ -557,21 +557,21 @@ export default function Allocations() {
             return (
               <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #2A2C32', padding: '5px 16px', gap: 0, flexWrap: 'wrap' as const }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: '#FFFFFF', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
+                  <span style={{ fontSize: 17, fontWeight: 400, color: '#FFFFFF', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
                   <span style={{ fontSize: 9, fontWeight: 600, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Available FTE</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: '#33CC77', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
+                  <span style={{ fontSize: 17, fontWeight: 400, color: '#33CC77', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
                   <span style={{ fontSize: 9, fontWeight: 600, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Allocated FTE</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 20, marginRight: 20, borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: utilColour, lineHeight: 1 }}>{Math.round(util * 100)}%</span>
+                  <span style={{ fontSize: 17, fontWeight: 400, color: utilColour, lineHeight: 1 }}>{Math.round(util * 100)}%</span>
                   <span style={{ fontSize: 9, fontWeight: 600, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Utilisation</span>
                 </div>
                 <span style={{ fontSize: 9, fontWeight: 700, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginRight: 16, flexShrink: 0 }}>By Discipline</span>
                 {bannerMetrics.byDisc.filter(d => d.allocated > 0).map(d => (
                   <div key={d.discipline} style={{ display: 'flex', alignItems: 'center', gap: 5, marginRight: 20 }}>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: DISCIPLINE_COLOURS[d.discipline] ?? '#AAAAAA', lineHeight: 1 }}>{d.allocated.toFixed(1)}</span>
+                    <span style={{ fontSize: 17, fontWeight: 400, color: DISCIPLINE_COLOURS[d.discipline] ?? '#AAAAAA', lineHeight: 1 }}>{d.allocated.toFixed(1)}</span>
                     <span style={{ fontSize: 9, fontWeight: 600, color: '#999999', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
                   </div>
                 ))}
