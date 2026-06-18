@@ -290,6 +290,16 @@ export default function Allocations() {
   function collapseAllCountries() { setCollapsedCountries(new Set(allCountryNames)); }
   function expandAllCountries()   { setCollapsedCountries(new Set()); }
 
+  const allPeopleCollapsed = hierarchy.length > 0 && hierarchy.every(h => collapsedDisciplines.has(h.discipline));
+  function collapseAllPeople() {
+    setCollapsedDisciplines(new Set(hierarchy.map(h => h.discipline)));
+    setCollapsedLevels(new Set(hierarchy.flatMap(h => h.levels.map(l => `${h.discipline}::${l.code}`))));
+  }
+  function expandAllPeople() {
+    setCollapsedDisciplines(new Set());
+    setCollapsedLevels(new Set());
+  }
+
   // ── Cell value helpers ────────────────────────────────────────────────────
 
   function getCellValue(personId: number, projectId: number): number {
@@ -565,12 +575,25 @@ export default function Allocations() {
                     <span style={{ fontSize: 9, fontWeight: 600, color: '#999999', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
                   </div>
                 ))}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                   {pendingCount > 0 && (
                     <span style={{ fontSize: 11, color: '#D4870A', background: '#2A2000', padding: '3px 9px', borderRadius: 12, border: '1px solid #6B4800' }}>
                       {pendingCount} unsaved
                     </span>
                   )}
+                  <button
+                    title={allPeopleCollapsed ? 'Expand all people' : 'Collapse all people'}
+                    onClick={() => allPeopleCollapsed ? expandAllPeople() : collapseAllPeople()}
+                    style={{ padding: '5px 10px', background: 'transparent', border: '1px solid #3A3C42', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#CCCCCC', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                      {allPeopleCollapsed
+                        ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                        : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                      }
+                    </svg>
+                    All
+                  </button>
                   <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
                     padding: '5px 16px', background: '#E31837',
                     color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600,
