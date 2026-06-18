@@ -583,7 +583,7 @@ export default function Allocations() {
                   <button
                     title={allCollapsed ? 'Expand all countries' : 'Collapse all countries'}
                     onClick={() => allCollapsed ? expandAllCountries() : collapseAllCountries()}
-                    style={{ padding: '5px 10px', background: '#E31837', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '4px 10px', background: '#E31837', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       {allCollapsed
@@ -596,7 +596,7 @@ export default function Allocations() {
                   <button
                     title={allDeptsCollapsed ? 'Expand all departments' : 'Collapse all departments'}
                     onClick={() => allDeptsCollapsed ? expandAllDepts() : collapseAllDepts()}
-                    style={{ padding: '5px 10px', background: '#E31837', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '4px 10px', background: '#E31837', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       {allDeptsCollapsed
@@ -609,7 +609,7 @@ export default function Allocations() {
                   <button
                     title={allLevelsCollapsed ? 'Expand all levels' : 'Collapse all levels'}
                     onClick={() => allLevelsCollapsed ? expandAllLevels() : collapseAllLevels()}
-                    style={{ padding: '5px 10px', background: '#E31837', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '4px 10px', background: '#E31837', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       {allLevelsCollapsed
@@ -620,8 +620,8 @@ export default function Allocations() {
                     Levels
                   </button>
                   <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
-                    padding: '5px 16px', background: '#E31837',
-                    color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600,
+                    padding: '4px 10px', background: '#E31837',
+                    color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
                     cursor: pendingCount > 0 ? 'pointer' : 'default',
                     opacity: pendingCount > 0 ? 1 : 0.45,
                   }}>

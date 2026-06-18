@@ -773,7 +773,7 @@ function PlanningCyclesTab() {
         </p>
         <button
           onClick={() => { setCreating(true); setEditingId(null); }}
-          style={{ padding: '7px 14px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 20, flexShrink: 0 }}
+          style={{ padding: '4px 10px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 20, flexShrink: 0 }}
         >+ New Cycle</button>
       </div>
 

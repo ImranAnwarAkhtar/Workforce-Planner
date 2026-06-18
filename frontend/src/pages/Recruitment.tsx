@@ -209,7 +209,7 @@ export default function Recruitment() {
       {/* Page title bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Recruitment Pipeline</div>
-        <button style={btnPrimary} onClick={openAdd}>+ Add TBH Code</button>
+        <button style={{ ...btnPrimary, padding: '4px 10px', fontSize: 11, borderRadius: 4 }} onClick={openAdd}>+ Add TBH Code</button>
       </div>
 
       {/* Pipeline summary */}

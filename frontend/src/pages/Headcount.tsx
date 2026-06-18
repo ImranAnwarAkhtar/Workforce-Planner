@@ -283,8 +283,8 @@ export default function Headcount() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Headcount Requests</div>
           <button onClick={() => setShowNew(true)} style={{
-            padding: '5px 14px', background: '#E31837', color: '#FFFFFF',
-            border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            padding: '4px 10px', background: '#E31837', color: '#FFFFFF',
+            border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer',
           }}>
             + New Request
           </button>

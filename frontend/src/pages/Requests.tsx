@@ -270,7 +270,7 @@ export default function HireRequests() {
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Hire Requests</div>
-          <button style={{ ...BTN_PRIMARY, padding: '5px 14px', fontSize: 12 }} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>
+          <button style={{ ...BTN_PRIMARY, padding: '4px 10px', fontSize: 11, borderRadius: 4 }} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>
             + New Request
           </button>
         </div>
