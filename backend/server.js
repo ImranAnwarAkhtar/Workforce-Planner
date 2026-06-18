@@ -110,6 +110,17 @@ pool.query(`
       ) WHERE planning_cycle_id IS NULL;
     `);
 
+    // Cycle approvers table for named Global Approval approvers
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cycle_approvers (
+        id                SERIAL PRIMARY KEY,
+        planning_cycle_id INTEGER NOT NULL REFERENCES planning_cycles(id) ON DELETE CASCADE,
+        approver_name     VARCHAR(255) NOT NULL,
+        approver_email    VARCHAR(255),
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
     logger.info('Planning cycles migration complete');
   } catch (err) {
     logger.error('Planning cycles migration failed', { error: err.message });

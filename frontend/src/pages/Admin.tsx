@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { refDataApi, planningCyclesApi, type Discipline, type Level, type ContractType, type Region, type PlanningCycle } from '../services/api';
+import { refDataApi, planningCyclesApi, cycleApproversApi, type Discipline, type Level, type ContractType, type Region, type PlanningCycle, type CycleApprover } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
 import axios from 'axios';
 
@@ -710,12 +710,31 @@ function ChangeRulesTab() {
 // Planning Cycles tab
 // ---------------------------------------------------------------------------
 
-const STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
-  draft:        { label: 'Draft',        bg: '#F5F5F5', color: '#666666' },
-  active:       { label: 'Active',       bg: '#E8F5EE', color: '#1E8A4A' },
-  under_review: { label: 'Under Review', bg: '#FFF3DC', color: '#B5600A' },
-  approved:     { label: 'Approved',     bg: '#EBF0FF', color: '#1D4EBB' },
-  closed:       { label: 'Closed',       bg: '#EEEEEE', color: '#888888' },
+const CYCLE_STAGES: Record<string, { label: string; bg: string; color: string }> = {
+  draft:        { label: 'Stage 1: Admin Setup',    bg: '#F3F4F6', color: '#374151' },
+  active:       { label: 'Stage 2: Planning',        bg: '#EFF6FF', color: '#1D4ED8' },
+  under_review: { label: 'Stage 3: Regional Review', bg: '#FFFBEB', color: '#D97706' },
+  approved:     { label: 'Stage 4: Global Approval', bg: '#ECFDF5', color: '#059669' },
+  closed:       { label: 'Closed',                   bg: '#F3F4F6', color: '#9CA3AF' },
+};
+
+// Roles that can edit at each stage
+const STAGE_ACCESS: Record<string, string[]> = {
+  draft:        ['PMO'],
+  active:       ['PMO', 'Workforce Planning', 'Dept Lead', 'Function Lead', 'Head of Dept'],
+  under_review: ['PMO', 'Workforce Planning', 'Dept Lead', 'Function Lead', 'Head of Dept', 'Head of Commercial'],
+  approved:     [],
+  closed:       [],
+};
+
+// Colour palette for role chips
+const ROLE_CHIP: Record<string, { bg: string; color: string; border: string }> = {
+  'PMO':                { bg: '#FEE2E2', color: '#991B1B', border: '#FECACA' },
+  'Workforce Planning': { bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' },
+  'Dept Lead':          { bg: '#F5F3FF', color: '#5B21B6', border: '#DDD6FE' },
+  'Function Lead':      { bg: '#F5F3FF', color: '#5B21B6', border: '#DDD6FE' },
+  'Head of Dept':       { bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
+  'Head of Commercial': { bg: '#F0FDF4', color: '#166534', border: '#BBF7D0' },
 };
 
 const inp: React.CSSProperties = {
@@ -725,16 +744,43 @@ const inp: React.CSSProperties = {
 
 function PlanningCyclesTab() {
   const { cycles, reloadCycles } = usePlanningCycle();
-  const [creating, setCreating]   = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [saving, setSaving]       = useState(false);
+  const [creating, setCreating]         = useState(false);
+  const [editingId, setEditingId]       = useState<number | null>(null);
+  const [saving, setSaving]             = useState(false);
+  const [stageSaving, setStageSaving]   = useState<number | null>(null);
+  const [approvers, setApprovers]       = useState<Record<number, CycleApprover[]>>({});
+  const [addingApproverFor, setAddingApproverFor] = useState<number | null>(null);
+  const [newApproverName, setNewApproverName]     = useState('');
+  const [newApproverEmail, setNewApproverEmail]   = useState('');
 
-  const [form, setForm] = useState({ name: '', start_date: '', end_date: '', copy_from_cycle_id: '' });
-  const [editForm, setEditForm] = useState({ name: '', start_date: '', end_date: '', status: 'draft' });
+  const [form, setForm]         = useState({ name: '', start_date: '', end_date: '', copy_from_cycle_id: '' });
+  const [editForm, setEditForm] = useState({ name: '', start_date: '', end_date: '' });
+
+  async function loadApprovers(cycleList: PlanningCycle[]) {
+    const entries = await Promise.all(
+      cycleList.map(async c => {
+        try { return [c.id, await cycleApproversApi.list(c.id)] as [number, CycleApprover[]]; }
+        catch { return [c.id, []] as [number, CycleApprover[]]; }
+      })
+    );
+    setApprovers(Object.fromEntries(entries));
+  }
+
+  useEffect(() => {
+    if (cycles.length > 0) loadApprovers(cycles);
+  }, [cycles]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleStageChange(id: number, newStatus: string) {
+    setStageSaving(id);
+    try {
+      await planningCyclesApi.update(id, { status: newStatus as PlanningCycle['status'] });
+      reloadCycles();
+    } finally { setStageSaving(null); }
+  }
 
   function startEdit(c: PlanningCycle) {
     setEditingId(c.id);
-    setEditForm({ name: c.name, start_date: c.start_date.slice(0, 10), end_date: c.end_date.slice(0, 10), status: c.status });
+    setEditForm({ name: c.name, start_date: c.start_date.slice(0, 10), end_date: c.end_date.slice(0, 10) });
   }
 
   async function handleCreate() {
@@ -754,22 +800,40 @@ function PlanningCyclesTab() {
   async function handleUpdate(id: number) {
     setSaving(true);
     try {
-      await planningCyclesApi.update(id, {
-        name: editForm.name, start_date: editForm.start_date,
-        end_date: editForm.end_date, status: editForm.status as PlanningCycle['status'],
-      });
+      await planningCyclesApi.update(id, { name: editForm.name, start_date: editForm.start_date, end_date: editForm.end_date });
       reloadCycles();
       setEditingId(null);
     } finally { setSaving(false); }
   }
 
-  const fmtDate = (d: string) => d.slice(0, 10);
+  async function handleAddApprover(cycleId: number) {
+    if (!newApproverName.trim()) return;
+    try {
+      await cycleApproversApi.add(cycleId, newApproverName.trim(), newApproverEmail.trim() || undefined);
+      setNewApproverName(''); setNewApproverEmail(''); setAddingApproverFor(null);
+      const data = await cycleApproversApi.list(cycleId);
+      setApprovers(prev => ({ ...prev, [cycleId]: data }));
+    } catch { /* toast shown by axios interceptor */ }
+  }
+
+  async function handleRemoveApprover(cycleId: number, approverId: number) {
+    try {
+      await cycleApproversApi.remove(cycleId, approverId);
+      const data = await cycleApproversApi.list(cycleId);
+      setApprovers(prev => ({ ...prev, [cycleId]: data }));
+    } catch { /* toast shown by axios interceptor */ }
+  }
+
+  function fmtPeriod(c: PlanningCycle) {
+    const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    return `${fmt(c.start_date)} – ${fmt(c.end_date)}`;
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <p style={{ fontSize: 13, color: '#666', margin: 0 }}>
-          Create and manage planning cycles. Optionally copy projects and allocations from an existing cycle as a starting point — months are automatically shifted to match the new cycle period.
+          Manage planning cycles and their workflow stages. Use the Stage column to advance a cycle — editing access updates automatically based on the stage.
         </p>
         <button
           onClick={() => { setCreating(true); setEditingId(null); }}
@@ -782,19 +846,19 @@ function PlanningCyclesTab() {
           <div style={{ fontSize: 13, fontWeight: 700, color: '#111111', marginBottom: 12 }}>New Planning Cycle</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Name *</label>
+              <label style={lbl}>Name *</label>
               <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. H1 2027" style={inp} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Start Date *</label>
+              <label style={lbl}>Start Date *</label>
               <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} style={inp} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>End Date *</label>
+              <label style={lbl}>End Date *</label>
               <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} style={inp} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#666', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Copy From</label>
+              <label style={lbl}>Copy From</label>
               <select value={form.copy_from_cycle_id} onChange={e => setForm(f => ({ ...f, copy_from_cycle_id: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
                 <option value="">— Start blank —</option>
                 {cycles.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -804,59 +868,135 @@ function PlanningCyclesTab() {
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button onClick={() => setCreating(false)} style={btnSecondary}>Cancel</button>
             <button
-              onClick={handleCreate}
-              disabled={saving || !form.name || !form.start_date || !form.end_date}
+              onClick={handleCreate} disabled={saving || !form.name || !form.start_date || !form.end_date}
               style={{ padding: '7px 16px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (!form.name || !form.start_date || !form.end_date) ? 0.6 : 1 }}
             >{saving ? 'Creating…' : form.copy_from_cycle_id ? 'Create & Copy' : 'Create'}</button>
           </div>
         </div>
       )}
 
-      <div style={card}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div style={{ ...card, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 880 }}>
           <thead>
             <tr>
-              <th style={th}>Name</th>
-              <th style={th}>Start Date</th>
-              <th style={th}>End Date</th>
-              <th style={th}>Status</th>
-              <th style={th}>Actions</th>
+              <th style={{ ...th, width: 100 }}>Name</th>
+              <th style={{ ...th, width: 180 }}>Period</th>
+              <th style={{ ...th, width: 220 }}>Stage</th>
+              <th style={th}>Edit Access</th>
+              <th style={th}>Approvers</th>
+              <th style={{ ...th, width: 80 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {cycles.length === 0
-              ? <tr><td colSpan={5} style={{ ...td, textAlign: 'center', color: '#555' }}>No planning cycles</td></tr>
+              ? <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#555' }}>No planning cycles</td></tr>
               : cycles.map(cycle => {
-                  const sm = STATUS_META[cycle.status] ?? STATUS_META.draft;
+                  const stage = CYCLE_STAGES[cycle.status] ?? CYCLE_STAGES.draft;
+                  const cycleApprovers = approvers[cycle.id] ?? [];
+                  const isSavingStage  = stageSaving === cycle.id;
+
                   if (editingId === cycle.id) {
                     return (
                       <tr key={cycle.id} style={{ background: '#FAFAFA' }}>
-                        <td style={td}><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} style={{ ...inp, width: 150 }} /></td>
-                        <td style={td}><input type="date" value={editForm.start_date} onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))} style={inp} /></td>
-                        <td style={td}><input type="date" value={editForm.end_date}   onChange={e => setEditForm(f => ({ ...f, end_date: e.target.value }))}   style={inp} /></td>
                         <td style={td}>
-                          <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} style={{ ...inp, cursor: 'pointer' }}>
-                            {Object.entries(STATUS_META).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}
-                          </select>
+                          <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} style={{ ...inp, width: 100 }} />
                         </td>
+                        <td style={td} colSpan={3}>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <input type="date" value={editForm.start_date} onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))} style={{ ...inp, width: 140 }} />
+                            <span style={{ color: '#999', fontSize: 12 }}>to</span>
+                            <input type="date" value={editForm.end_date} onChange={e => setEditForm(f => ({ ...f, end_date: e.target.value }))} style={{ ...inp, width: 140 }} />
+                          </div>
+                        </td>
+                        <td style={td} />
                         <td style={td}>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={() => handleUpdate(cycle.id)} disabled={saving} style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{saving ? '…' : 'Save'}</button>
+                            <button onClick={() => handleUpdate(cycle.id)} disabled={saving}
+                              style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                              {saving ? '…' : 'Save'}
+                            </button>
                             <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
                           </div>
                         </td>
                       </tr>
                     );
                   }
+
                   return (
                     <tr key={cycle.id}>
-                      <td style={{ ...td, color: '#111111', fontWeight: 600 }}>{cycle.name}</td>
-                      <td style={td}>{fmtDate(cycle.start_date)}</td>
-                      <td style={td}>{fmtDate(cycle.end_date)}</td>
+                      <td style={{ ...td, fontWeight: 600, color: '#111' }}>{cycle.name}</td>
+                      <td style={{ ...td, fontSize: 12, color: '#555' }}>{fmtPeriod(cycle)}</td>
                       <td style={td}>
-                        <span style={{ padding: '2px 10px', borderRadius: 10, fontSize: 11, fontWeight: 700, background: sm.bg, color: sm.color }}>
-                          {sm.label}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <select
+                            value={cycle.status}
+                            disabled={isSavingStage}
+                            onChange={e => handleStageChange(cycle.id, e.target.value)}
+                            style={{
+                              padding: '4px 8px', border: `1px solid ${stage.color}44`,
+                              borderRadius: 6, fontSize: 12, fontWeight: 600,
+                              color: stage.color, background: stage.bg,
+                              cursor: isSavingStage ? 'wait' : 'pointer', outline: 'none',
+                            }}
+                          >
+                            {Object.entries(CYCLE_STAGES).map(([v, { label }]) => (
+                              <option key={v} value={v}>{label}</option>
+                            ))}
+                          </select>
+                          {isSavingStage && <span style={{ fontSize: 11, color: '#9CA3AF' }}>Saving…</span>}
+                        </div>
+                      </td>
+                      <td style={td}>
+                        {(STAGE_ACCESS[cycle.status]?.length ?? 0) > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {STAGE_ACCESS[cycle.status].map(r => {
+                              const chip = ROLE_CHIP[r] ?? { bg: '#F3F4F6', color: '#374151', border: '#D1D5DB' };
+                              return (
+                                <span key={r} style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10, background: chip.bg, color: chip.color, border: `1px solid ${chip.border}` }}>
+                                  {r}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 11, color: '#9CA3AF' }}>
+                            {cycle.status === 'closed' ? '🔒 Fully locked' : '🔒 Locked for editing'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={td}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                          {cycleApprovers.map(ap => (
+                            <span key={ap.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, padding: '2px 8px', borderRadius: 10, background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#166534' }}>
+                              {ap.approver_name}
+                              {ap.approver_email && <span style={{ opacity: 0.65 }}>({ap.approver_email})</span>}
+                              <button
+                                onClick={() => handleRemoveApprover(cycle.id, ap.id)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#166534', fontSize: 14, padding: '0 0 0 2px', lineHeight: 1, opacity: 0.6 }}
+                                title="Remove approver"
+                              >×</button>
+                            </span>
+                          ))}
+                          {addingApproverFor === cycle.id ? (
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <input autoFocus value={newApproverName} onChange={e => setNewApproverName(e.target.value)}
+                                placeholder="Name" onKeyDown={e => e.key === 'Enter' && handleAddApprover(cycle.id)}
+                                style={{ ...inp, width: 110, fontSize: 11, padding: '3px 6px' }} />
+                              <input value={newApproverEmail} onChange={e => setNewApproverEmail(e.target.value)}
+                                placeholder="Email (optional)"
+                                style={{ ...inp, width: 150, fontSize: 11, padding: '3px 6px' }} />
+                              <button onClick={() => handleAddApprover(cycle.id)} disabled={!newApproverName.trim()}
+                                style={{ padding: '3px 10px', background: '#059669', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Add</button>
+                              <button onClick={() => { setAddingApproverFor(null); setNewApproverName(''); setNewApproverEmail(''); }}
+                                style={{ padding: '3px 8px', background: 'none', border: '1px solid #D1D5DB', borderRadius: 4, fontSize: 11, cursor: 'pointer', color: '#666' }}>✕</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setAddingApproverFor(cycle.id); setNewApproverName(''); setNewApproverEmail(''); }}
+                              style={{ padding: '2px 8px', background: 'none', border: '1px dashed #D1D5DB', borderRadius: 10, fontSize: 11, color: '#666', cursor: 'pointer' }}>
+                              + Approver
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td style={td}>
                         <button onClick={() => startEdit(cycle)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>

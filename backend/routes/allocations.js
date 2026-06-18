@@ -2,6 +2,7 @@ const { Router } = require('express');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole, WRITER_ROLES, ROLES } = require('../middleware/rbac');
+const { guardCycleEdit } = require('../middleware/cycleAccess');
 
 const router = Router();
 
@@ -57,6 +58,13 @@ router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => 
   if (!person_id || !project_id || !month) {
     return res.status(400).json({ error: 'person_id, project_id, and month are required' });
   }
+
+  const { rows: [proj] } = await pool.query(
+    'SELECT planning_cycle_id FROM projects WHERE id = $1',
+    [project_id]
+  );
+  if (!await guardCycleEdit(proj?.planning_cycle_id, req, res)) return;
+
   const { rows } = await pool.query(
     `INSERT INTO allocations (person_id, project_id, month, fte_value, is_billable, planning_cycle_id, created_by)
      VALUES ($1,$2,$3,$4,$5,(SELECT planning_cycle_id FROM projects WHERE id = $2),$6)
@@ -71,6 +79,14 @@ router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => 
 
 router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => {
   const { fte_value, is_billable, flagged_for_review, flag_reason } = req.body;
+
+  const { rows: [existing] } = await pool.query(
+    'SELECT planning_cycle_id FROM allocations WHERE id = $1',
+    [req.params.id]
+  );
+  if (!existing) return res.status(404).json({ error: 'Allocation not found' });
+  if (!await guardCycleEdit(existing.planning_cycle_id, req, res)) return;
+
   const sets = [];
   const params = [];
   let i = 1;
@@ -93,6 +109,13 @@ router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) =
 });
 
 router.delete('/:id', requireAuth, requireRole(ROLES.PMO, ROLES.WORKFORCE_PLANNING), async (req, res) => {
+  const { rows: [existing] } = await pool.query(
+    'SELECT planning_cycle_id FROM allocations WHERE id = $1',
+    [req.params.id]
+  );
+  if (!existing) return res.status(404).json({ error: 'Allocation not found' });
+  if (!await guardCycleEdit(existing.planning_cycle_id, req, res)) return;
+
   const { rows } = await pool.query('DELETE FROM allocations WHERE id = $1 RETURNING id', [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Allocation not found' });
   await req.auditLog({ actionType: 'DELETE', resourceType: 'allocation', resourceId: rows[0].id });

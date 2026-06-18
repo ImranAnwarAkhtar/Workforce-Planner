@@ -18,6 +18,34 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ data: rows });
 });
 
+// ── Approvers (must come before /:id to avoid route conflict) ────────────────
+router.get('/:id/approvers', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT * FROM cycle_approvers WHERE planning_cycle_id = $1 ORDER BY created_at ASC',
+    [req.params.id]
+  );
+  res.json({ data: rows });
+});
+
+router.post('/:id/approvers', requireAuth, requireRole(...WP_ONLY), async (req, res) => {
+  const { approver_name, approver_email } = req.body;
+  if (!approver_name) return res.status(400).json({ error: 'approver_name is required' });
+  const { rows } = await pool.query(
+    'INSERT INTO cycle_approvers (planning_cycle_id, approver_name, approver_email) VALUES ($1,$2,$3) RETURNING *',
+    [req.params.id, approver_name, approver_email ?? null]
+  );
+  res.status(201).json({ data: rows[0] });
+});
+
+router.delete('/:id/approvers/:approverId', requireAuth, requireRole(...WP_ONLY), async (req, res) => {
+  const { rows } = await pool.query(
+    'DELETE FROM cycle_approvers WHERE id = $1 AND planning_cycle_id = $2 RETURNING id',
+    [req.params.approverId, req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Approver not found' });
+  res.status(204).end();
+});
+
 // ── Get single ────────────────────────────────────────────────────────────────
 router.get('/:id', requireAuth, async (req, res) => {
   const { rows } = await pool.query(

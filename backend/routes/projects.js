@@ -2,6 +2,7 @@ const { Router } = require('express');
 const pool = require('../db/pool');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole, WRITER_ROLES, ROLES } = require('../middleware/rbac');
+const { guardCycleEdit } = require('../middleware/cycleAccess');
 
 const router = Router();
 
@@ -57,6 +58,8 @@ router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => 
   const { name, type, status, weight = 1.0, region_id, country_id, metro, phase_code, year, planning_cycle_id } = req.body;
   if (!name || !type || !status) return res.status(400).json({ error: 'name, type, and status are required' });
 
+  if (!await guardCycleEdit(planning_cycle_id, req, res)) return;
+
   const { rows } = await pool.query(
     `INSERT INTO projects (name, type, status, weight, region_id, country_id, metro, phase_code, year, planning_cycle_id, created_by)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
@@ -68,6 +71,14 @@ router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => 
 
 router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => {
   const { name, type, status, weight, region_id, country_id, metro, phase_code, year, is_active, planning_cycle_id } = req.body;
+
+  const { rows: [existing] } = await pool.query(
+    'SELECT planning_cycle_id FROM projects WHERE id = $1',
+    [req.params.id]
+  );
+  if (!existing) return res.status(404).json({ error: 'Project not found' });
+  if (!await guardCycleEdit(existing.planning_cycle_id, req, res)) return;
+
   const sets = [];
   const params = [];
   let i = 1;
@@ -97,6 +108,13 @@ router.put('/:id', requireAuth, requireRole(...WRITER_ROLES), async (req, res) =
 });
 
 router.delete('/:id', requireAuth, requireRole(ROLES.PMO), async (req, res) => {
+  const { rows: [existing] } = await pool.query(
+    'SELECT planning_cycle_id FROM projects WHERE id = $1',
+    [req.params.id]
+  );
+  if (!existing) return res.status(404).json({ error: 'Project not found' });
+  if (!await guardCycleEdit(existing.planning_cycle_id, req, res)) return;
+
   const { rows } = await pool.query(
     'UPDATE projects SET is_active = FALSE WHERE id = $1 RETURNING id',
     [req.params.id]

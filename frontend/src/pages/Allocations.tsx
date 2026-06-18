@@ -2,10 +2,12 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
   peopleApi, projectsApi, allocationsApi, refDataApi, gearingApi,
-  headcountApi, type CreateHeadcountBody,
+  headcountApi, STAGE_EDIT_ROLES, type CreateHeadcountBody,
   type Person, type Project, type Allocation, type Region, type GearingConstant,
 } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
+
+const CURRENT_USER_ROLE = 'Workforce Planning';
 import PersonEditPanel from '../components/PersonEditPanel';
 
 interface PendingChange {
@@ -99,6 +101,7 @@ const FOOT_BORDER = '#C8CDD8';
 export default function Allocations() {
   // ── Planning cycle context ────────────────────────────────────────────────
   const { cycles, selectedCycleId, setSelectedCycleId, selectedCycle, selectedRegionId, setSelectedRegionId } = usePlanningCycle();
+  const canEdit = !selectedCycle || (STAGE_EDIT_ROLES[selectedCycle.status]?.includes(CURRENT_USER_ROLE) ?? true);
 
   // ── Selectors ────────────────────────────────────────────────────────────
   const [regions, setRegions]               = useState<Region[]>([]);
@@ -619,11 +622,16 @@ export default function Allocations() {
                     </svg>
                     Levels
                   </button>
-                  <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
+                  {!canEdit && selectedCycle && (
+                    <span style={{ fontSize: 11, color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '3px 9px', fontWeight: 600 }}>
+                      🔒 {selectedCycle.status === 'draft' ? 'Stage 1: Admin Setup' : selectedCycle.status === 'approved' ? 'Stage 4: Global Approval' : 'Closed'} — read only
+                    </span>
+                  )}
+                  <button onClick={handleSaveAll} disabled={saving || pendingCount === 0 || !canEdit} style={{
                     padding: '4px 10px', background: '#E31837',
                     color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                    cursor: pendingCount > 0 ? 'pointer' : 'default',
-                    opacity: pendingCount > 0 ? 1 : 0.45,
+                    cursor: (pendingCount > 0 && canEdit) ? 'pointer' : 'default',
+                    opacity: (pendingCount > 0 && canEdit) ? 1 : 0.45,
                   }}>
                     {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
                   </button>
@@ -1004,13 +1012,16 @@ export default function Allocations() {
                                               type="number" min="0" max="2" step="0.1"
                                               defaultValue={val > 0 ? val.toString() : ''}
                                               key={`${person.id}_${proj.id}_${allocations.length}`}
-                                              onBlur={e => handleCellChange(person.id, proj.id, e.target.value)}
+                                              disabled={!canEdit}
+                                              onBlur={e => canEdit && handleCellChange(person.id, proj.id, e.target.value)}
                                               style={{
-                                                width: 52, padding: '3px 2px', background: '#FFFFFF',
+                                                width: 52, padding: '3px 2px',
+                                                background: !canEdit ? '#F3F4F6' : '#FFFFFF',
                                                 border: dirty ? '2px solid #F9A825' : '1px solid #E0E0E0',
                                                 borderRadius: 3, color: fteCellColour(val),
                                                 textAlign: 'center', fontSize: 12,
                                                 fontFamily: 'monospace', outline: 'none',
+                                                cursor: !canEdit ? 'not-allowed' : 'text',
                                               }}
                                             />
                                           </td>

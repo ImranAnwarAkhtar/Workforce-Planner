@@ -89,6 +89,40 @@ export const planningCyclesApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Cycle Approvers
+// ---------------------------------------------------------------------------
+
+export interface CycleApprover {
+  id: number;
+  planning_cycle_id: number;
+  approver_name: string;
+  approver_email: string | null;
+  created_at: string;
+}
+
+export const cycleApproversApi = {
+  list: (cycleId: number) =>
+    client.get<ListResponse<CycleApprover>>(`/planning-cycles/${cycleId}/approvers`).then(r => r.data.data),
+
+  add: (cycleId: number, approver_name: string, approver_email?: string) =>
+    client.post<ItemResponse<CycleApprover>>(`/planning-cycles/${cycleId}/approvers`, {
+      approver_name, approver_email: approver_email ?? null,
+    }).then(r => r.data.data),
+
+  remove: (cycleId: number, approverId: number) =>
+    client.delete(`/planning-cycles/${cycleId}/approvers/${approverId}`),
+};
+
+// Roles permitted to edit in each cycle stage (mirrors backend cycleAccess.js)
+export const STAGE_EDIT_ROLES: Record<string, string[]> = {
+  draft:        ['PMO'],
+  active:       ['PMO', 'Workforce Planning', 'Department Lead', 'Function Lead', 'Head of Department'],
+  under_review: ['PMO', 'Workforce Planning', 'Department Lead', 'Function Lead', 'Head of Department', 'Head of Commercial'],
+  approved:     [],
+  closed:       [],
+};
+
+// ---------------------------------------------------------------------------
 // People
 // ---------------------------------------------------------------------------
 

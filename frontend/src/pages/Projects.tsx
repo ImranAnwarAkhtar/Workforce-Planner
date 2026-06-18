@@ -1,10 +1,13 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
-  projectsApi, refDataApi,
+  projectsApi, refDataApi, STAGE_EDIT_ROLES,
   type Project, type Region, type Country,
   type CreateProjectBody,
 } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
+
+// Role assumed in dev-bypass auth — update when real auth is added
+const CURRENT_USER_ROLE = 'Workforce Planning';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -136,6 +139,9 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const { cycles, selectedCycleId, setSelectedCycleId, selectedRegionId, setSelectedRegionId } = usePlanningCycle();
+
+  const selectedCycle = cycles.find(c => c.id === selectedCycleId);
+  const canEdit = !selectedCycle || (STAGE_EDIT_ROLES[selectedCycle.status]?.includes(CURRENT_USER_ROLE) ?? true);
 
   const [search,         setSearch]         = useState('');
   const [statusFilter,   setStatusFilter]   = useState('');
@@ -452,8 +458,13 @@ export default function Projects() {
             </button>
           )}
 
-          {/* Right side: collapse-all toggle + add project */}
+          {/* Right side: collapse-all toggle + lock indicator + add project */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+            {!canEdit && selectedCycle && (
+              <span style={{ fontSize: 11, color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '4px 10px', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                🔒 {selectedCycle.status === 'draft' ? 'Stage 1: Admin Setup' : selectedCycle.status === 'approved' ? 'Stage 4: Global Approval' : 'Closed'} — editing restricted
+              </span>
+            )}
             <button
               title={collapsedStatuses.size > 0 ? 'Expand all sections' : 'Collapse all sections'}
               onClick={() => {
@@ -470,7 +481,8 @@ export default function Projects() {
               </svg>
               Status
             </button>
-            <button style={S.btnCompact} onClick={openAdd}>+ Project</button>
+            <button style={{ ...S.btnCompact, opacity: canEdit ? 1 : 0.4, cursor: canEdit ? 'pointer' : 'not-allowed' }}
+              onClick={canEdit ? openAdd : undefined}>+ Project</button>
           </div>
         </div>
       </div>
@@ -595,7 +607,7 @@ export default function Projects() {
                           }}
                         >
                           {cards.map(p => (
-                            <ProjectCard key={p.id} project={p} onClick={() => openEdit(p)} />
+                            <ProjectCard key={p.id} project={p} onClick={canEdit ? () => openEdit(p) : undefined} />
                           ))}
                           {cards.length === 0 && (
                             <div style={{
@@ -842,7 +854,7 @@ export default function Projects() {
 // Project card
 // ---------------------------------------------------------------------------
 
-function ProjectCard({ project: p, onClick }: { project: Project; onClick: () => void }) {
+function ProjectCard({ project: p, onClick }: { project: Project; onClick?: () => void }) {
   const [hover, setHover] = useState(false);
   const tm     = typeMeta(p.type);
   const weight = Number(p.weight) || 1;
@@ -862,7 +874,7 @@ function ProjectCard({ project: p, onClick }: { project: Project; onClick: () =>
         padding: '7px 9px 6px',
         boxShadow: hover ? '0 2px 6px rgba(0,0,0,0.10)' : '0 1px 2px rgba(0,0,0,0.04)',
         transition: 'box-shadow 0.12s, border-color 0.12s, background 0.12s',
-        cursor: 'pointer',
+        cursor: onClick ? 'pointer' : 'default',
         width: '100%',
         boxSizing: 'border-box' as const,
       }}
