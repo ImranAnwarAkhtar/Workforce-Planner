@@ -455,7 +455,7 @@ export default function Allocations() {
       <tr style={{ background: bg }}>
         <td style={{
           position: 'sticky', left: 0, zIndex: 2, background: bg,
-          padding: '5px 14px', fontSize: 11, color: labelColor, fontWeight: 700,
+          padding: '3px 14px', fontSize: 11, color: labelColor, fontWeight: 700,
           borderRight: '2px solid #D0D0D0', borderTop: `1px solid ${labelColor}33`,
           whiteSpace: 'nowrap',
         }}>
@@ -821,11 +821,11 @@ export default function Allocations() {
                     <tr onClick={() => toggleDiscipline(discipline)} style={{ cursor: 'pointer' }}>
                       <td colSpan={totalColCount - 1} style={{
                         position: 'sticky', left: 0, zIndex: 2,
-                        background: `${discColor}22`,
+                        background: `${discColor}38`,
                         boxShadow: `inset 4px 0 0 ${discColor}`,
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
                         borderRight: '2px solid #D5D5D5',
-                        padding: '8px 14px', fontWeight: 700, fontSize: 13, color: discColor,
+                        padding: '5px 14px', fontWeight: 700, fontSize: 13, color: discColor,
                         whiteSpace: 'nowrap',
                       }}>
                         <span style={{ marginRight: 8, fontSize: 11, opacity: 0.7 }}>
@@ -838,9 +838,9 @@ export default function Allocations() {
                       </td>
                       <td style={{
                         position: 'sticky', right: 0, zIndex: 2,
-                        background: `${discColor}22`, boxShadow: 'inset 2px 0 0 #D5D5D5',
+                        background: `${discColor}38`, boxShadow: 'inset 2px 0 0 #D5D5D5',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
-                        padding: '8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
+                        padding: '5px 8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
                         color: discTotal > 0 ? discColor : '#CCCCCC',
                       }}>
                         {discTotal > 0 ? discTotal.toFixed(1) : '—'}
@@ -863,7 +863,7 @@ export default function Allocations() {
                               background: `${discColor}0D`,
                               boxShadow: `inset 3px 0 0 ${discColor}`,
                               borderTop: `1px solid ${discColor}33`, borderBottom: `1px solid ${discColor}33`,
-                              padding: '6px 14px 6px 28px', fontWeight: 600, fontSize: 12, color: discColor,
+                              padding: '4px 14px 4px 28px', fontWeight: 600, fontSize: 12, color: discColor,
                               whiteSpace: 'nowrap',
                             }}>
                               <span style={{ marginRight: 8, fontSize: 10, opacity: 0.7 }}>
@@ -920,7 +920,7 @@ export default function Allocations() {
                               position: 'sticky', right: 0, zIndex: 2,
                               background: `${discColor}0D`, boxShadow: 'inset 2px 0 0 #D5D5D5',
                               borderTop: `1px solid ${discColor}33`, borderBottom: `1px solid ${discColor}33`,
-                              padding: '6px 8px', textAlign: 'center',
+                              padding: '4px 8px', textAlign: 'center',
                               fontSize: 11, fontWeight: 700,
                               color: levelTotal > 0 ? discColor : '#CCCCCC',
                             }}>
@@ -939,29 +939,30 @@ export default function Allocations() {
                                 <td style={{
                                   position: 'sticky', left: 0, zIndex: 2,
                                   background: STICKY_BG, borderRight: '2px solid #E0E0E0',
-                                  padding: '5px 14px 5px 28px', maxWidth: 220, overflow: 'hidden',
+                                  padding: '3px 14px 3px 28px', maxWidth: 260, overflow: 'hidden',
                                 }}>
-                                  <div
-                                    onClick={() => setEditPerson(person)}
-                                    title="Click to edit"
-                                    style={{
-                                      fontSize: 13, color: '#111111', fontWeight: 500,
-                                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                      cursor: 'pointer', textDecoration: 'underline',
-                                      textDecorationColor: '#CCCCCC', textDecorationStyle: 'dotted',
-                                    }}>
-                                    {person.name}
-                                  </div>
-                                  <div style={{ display: 'flex', gap: 4, marginTop: 2, alignItems: 'center' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                                    <div
+                                      onClick={() => setEditPerson(person)}
+                                      title="Click to edit"
+                                      style={{
+                                        fontSize: 13, color: '#111111', fontWeight: 500,
+                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                        cursor: 'pointer', textDecoration: 'underline',
+                                        textDecorationColor: '#CCCCCC', textDecorationStyle: 'dotted',
+                                        flex: '1 1 auto', minWidth: 0,
+                                      }}>
+                                      {person.name}
+                                    </div>
                                     <span style={{
                                       fontSize: 9, padding: '1px 5px', borderRadius: 3,
                                       background: cc.bg, color: cc.color, border: `1px solid ${cc.border}`,
-                                      whiteSpace: 'nowrap',
+                                      whiteSpace: 'nowrap', flexShrink: 0,
                                     }}>
                                       {person.contract_type_code ?? 'FTE'}
                                     </span>
-                                    <span style={{ fontSize: 9, color: '#777777' }}>
-                                      {contracted.toFixed(1)} FTE
+                                    <span style={{ fontSize: 9, color: '#777777', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                      {contracted.toFixed(1)}
                                     </span>
                                   </div>
                                 </td>
