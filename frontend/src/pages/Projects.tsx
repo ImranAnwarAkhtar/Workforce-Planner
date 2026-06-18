@@ -340,10 +340,10 @@ export default function Projects() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const statItems = [
-    { label: 'Total',        value: stats.total,                  color: '#555555' },
+    { label: 'Total',        value: stats.total,                  color: '#AAAAAA' },
     { label: 'Approved',     value: stats.approved,               color: '#1E8A4A' },
-    { label: 'Seeded',       value: stats.seeded,                 color: '#D4870A' },
-    { label: 'Proposed',     value: stats.proposed,               color: '#4477EE' },
+    { label: 'Seeded',       value: stats.seeded,                 color: '#17A5B8' },
+    { label: 'Proposed',     value: stats.proposed,               color: '#9A5CC8' },
     { label: 'Retail',       value: stats.retail,                 color: '#1565C0' },
     { label: 'xScale',       value: stats.xscale,                 color: '#6A1B9A' },
     { label: 'Total Weight', value: stats.totalWeight.toFixed(1), color: '#E31837' },
