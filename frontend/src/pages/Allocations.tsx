@@ -513,50 +513,33 @@ export default function Allocations() {
       {/* ── Header ── */}
       <div style={{ flexShrink: 0 }}>
         <div style={{ background: '#181A1E', borderBottom: '2px solid #E31837' }}>
-          {/* Title row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Allocations Planning</div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Region</span>
-                <select
-                  value={selectedRegionId ?? ''}
-                  onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
-                  style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
-                >
-                  <option value="">All</option>
-                  {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
-                </select>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Cycle</span>
-                <select
-                  value={selectedCycleId ?? ''}
-                  onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
-                  style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
-                >
-                  <option value="">All Cycles</option>
-                  {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
+          {/* Title row: title left, Region + Cycle far right */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', gap: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1, flex: 1 }}>Allocations Planning</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Region</span>
+              <select
+                value={selectedRegionId ?? ''}
+                onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
+                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
+              >
+                <option value="">All</option>
+                {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
+              </select>
             </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              {pendingCount > 0 && (
-                <span style={{ fontSize: 11, color: '#D4870A', background: '#FFF8E1', padding: '3px 9px', borderRadius: 12, border: '1px solid #F9A825' }}>
-                  {pendingCount} unsaved
-                </span>
-              )}
-              <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
-                padding: '7px 18px', background: '#E31837',
-                color: '#FFF', border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600,
-                cursor: pendingCount > 0 ? 'pointer' : 'default',
-                opacity: pendingCount > 0 ? 1 : 0.45,
-              }}>
-                {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Cycle</span>
+              <select
+                value={selectedCycleId ?? ''}
+                onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
+                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="">All Cycles</option>
+                {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
           </div>
-          {/* Metrics row */}
+          {/* Metrics row: metrics left, save button far right */}
           {!loading && people.length > 0 && (() => {
             const util = bannerMetrics.totalAvailable > 0
               ? bannerMetrics.totalAllocated / bannerMetrics.totalAvailable : 0;
@@ -582,6 +565,21 @@ export default function Allocations() {
                     <span style={{ fontSize: 9, fontWeight: 600, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
                   </div>
                 ))}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+                  {pendingCount > 0 && (
+                    <span style={{ fontSize: 11, color: '#D4870A', background: '#2A2000', padding: '3px 9px', borderRadius: 12, border: '1px solid #6B4800' }}>
+                      {pendingCount} unsaved
+                    </span>
+                  )}
+                  <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
+                    padding: '5px 16px', background: '#E31837',
+                    color: '#FFF', border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600,
+                    cursor: pendingCount > 0 ? 'pointer' : 'default',
+                    opacity: pendingCount > 0 ? 1 : 0.45,
+                  }}>
+                    {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
+                  </button>
+                </div>
               </div>
             );
           })()}
