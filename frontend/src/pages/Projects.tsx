@@ -511,24 +511,26 @@ export default function Projects() {
                       </div>
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#111111', marginLeft: 4, flexShrink: 0 }}>{cs.total}</span>
                     </div>
-                    {/* Row 2: weight + type pills inline */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 9, color: '#E31837', fontWeight: 700, marginRight: 2, flexShrink: 0 }}>Wt {cs.weight.toFixed(1)}</span>
-                      {cs.retail > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
-                          R:{cs.retail}
-                        </span>
-                      )}
-                      {cs.xscale > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
-                          xS:{cs.xscale}
-                        </span>
-                      )}
-                      {cs.matrix > 0 && (
-                        <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
-                          M:{cs.matrix}
-                        </span>
-                      )}
+                    {/* Row 2: type pills left, weight bottom right */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+                        {cs.retail > 0 && (
+                          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
+                            R:{cs.retail}
+                          </span>
+                        )}
+                        {cs.xscale > 0 && (
+                          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
+                            xS:{cs.xscale}
+                          </span>
+                        )}
+                        {cs.matrix > 0 && (
+                          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
+                            M:{cs.matrix}
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 9, color: '#E31837', fontWeight: 700, flexShrink: 0 }}>Wt {cs.weight.toFixed(1)}</span>
                     </div>
                   </div>
                 </div>,
