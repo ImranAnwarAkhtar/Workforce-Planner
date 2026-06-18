@@ -688,11 +688,11 @@ export default function Allocations() {
             {/* ── Two-row sticky header ── */}
             <thead>
               <tr style={{ background: '#D0D3DA' }}>
-                <th rowSpan={2} style={{
+                <th style={{
                   position: 'sticky', top: 0, left: 0, zIndex: 5,
                   background: '#D0D3DA', borderRight: '2px solid #B0B4BC',
-                  borderBottom: '2px solid #B0B4BC', padding: '10px 14px',
-                  textAlign: 'left', fontSize: 11, color: '#333333',
+                  borderBottom: '1px solid #D0D3DA', padding: '10px 14px',
+                  textAlign: 'left', fontSize: 11, color: '#333333', height: ROW1_H,
                   textTransform: 'uppercase', letterSpacing: '0.08em', verticalAlign: 'middle',
                 }}>
                   Person
@@ -711,7 +711,7 @@ export default function Allocations() {
                           padding: '5px 6px', textAlign: 'center', cursor: 'pointer',
                           whiteSpace: 'nowrap', verticalAlign: 'middle',
                         }}>
-                        <div style={{ fontWeight: 700, color: '#333333', fontSize: 11 }}>{g.country}</div>
+                        <div style={{ fontWeight: 700, color, fontSize: 11 }}>{g.country}</div>
                         <div style={{ fontSize: 9, color: '#777777', marginTop: 2 }}>{g.projects.length}p ▶</div>
                       </th>
                     );
@@ -724,7 +724,7 @@ export default function Allocations() {
                         background: '#D0D3DA', borderLeft: `3px solid ${color}`,
                         borderBottom: '1px solid #B0B4BC', borderRight: '1px solid #B8BBC2',
                         padding: '6px 10px', textAlign: 'center', cursor: 'pointer',
-                        fontWeight: 700, color: '#333333', fontSize: 12, whiteSpace: 'nowrap',
+                        fontWeight: 700, color, fontSize: 12, whiteSpace: 'nowrap', height: ROW1_H,
                       }}>
                       {g.country} ▼
                       <span style={{ marginLeft: 6, fontSize: 9, color: '#666666', fontWeight: 400 }}>
@@ -733,10 +733,10 @@ export default function Allocations() {
                     </th>
                   );
                 })}
-                <th rowSpan={2} style={{
+                <th style={{
                   position: 'sticky', top: 0, right: 0, zIndex: 5,
                   background: '#D0D3DA', borderLeft: '2px solid #B0B4BC',
-                  borderBottom: '2px solid #B0B4BC', padding: '10px 8px',
+                  borderBottom: '1px solid #D0D3DA', padding: '10px 8px', height: ROW1_H,
                   fontSize: 10, color: '#333333', textTransform: 'uppercase',
                   textAlign: 'center', verticalAlign: 'middle',
                 }}>
@@ -745,6 +745,12 @@ export default function Allocations() {
               </tr>
 
               <tr style={{ background: '#D0D3DA' }}>
+                {/* Blank cell covering the Person column — ensures no transparency gap below row 1 */}
+                <th style={{
+                  position: 'sticky', top: ROW1_H, left: 0, zIndex: 5,
+                  background: '#D0D3DA', borderRight: '2px solid #B0B4BC',
+                  borderBottom: '2px solid #B0B4BC',
+                }} />
                 {displayedCountryGroups.map(g => {
                   if (collapsedCountries.has(g.country)) return null;
                   const color = countryColor(g.country);
@@ -754,7 +760,7 @@ export default function Allocations() {
                         <th key={p.id} style={{
                           position: 'sticky', top: ROW1_H, zIndex: 3,
                           background: '#D0D3DA', borderLeft: '1px solid #B8BBC2',
-                          borderBottom: '1px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
+                          borderBottom: '2px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
                         }}>
                           <div style={{
                             fontSize: 10, fontWeight: 600, color: '#333333',
@@ -763,23 +769,29 @@ export default function Allocations() {
                           }} title={p.name}>{p.name}</div>
                           <span style={{
                             fontSize: 9, padding: '1px 3px', borderRadius: 3,
-                            background: '#C4C7CE', color: STATUS_COLOURS[p.status] ?? '#444444',
+                            background: '#FFFFFF', color: STATUS_COLOURS[p.status] ?? '#444444',
                             border: `1px solid ${STATUS_COLOURS[p.status] ?? '#AAAAAA'}`,
                             display: 'inline-block', marginTop: 2,
                           }}>{p.status}</span>
                         </th>
                       ))}
                       <th style={{
-                        position: 'sticky', top: ROW1_H, zIndex: 3, background: '#C4C7CE',
+                        position: 'sticky', top: ROW1_H, zIndex: 3, background: '#D0D3DA',
                         borderLeft: '1px solid #B0B4BC', borderRight: '1px solid #B0B4BC',
-                        borderBottom: '1px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
-                        fontSize: 10, color: '#333333', fontWeight: 700, whiteSpace: 'nowrap',
+                        borderBottom: '2px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
+                        fontSize: 10, color: '#555555', fontWeight: 700, whiteSpace: 'nowrap',
                       }}>
                         Σ {g.country.slice(0, 3)}
                       </th>
                     </React.Fragment>
                   );
                 })}
+                {/* Blank cell covering the Total column */}
+                <th style={{
+                  position: 'sticky', top: ROW1_H, right: 0, zIndex: 5,
+                  background: '#D0D3DA', borderLeft: '2px solid #B0B4BC',
+                  borderBottom: '2px solid #B0B4BC',
+                }} />
               </tr>
             </thead>
 
