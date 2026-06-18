@@ -21,7 +21,7 @@ type ProjectStatus = typeof PROJECT_STATUSES[number];
 
 const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string; barBg: string; pill: string }> = {
   'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#1A6B3A', pill: '#2A9D5C' },
-  'Seeded':   { color: '#FFFFFF', bg: '#FFF3DC', border: '#F0C060', dot: '#E8A840', barBg: '#C25C00', pill: '#E06C00' },
+  'Seeded':   { color: '#FFFFFF', bg: '#FFFAE8', border: '#F5D060', dot: '#F0BE00', barBg: '#B8860B', pill: '#D4A000' },
   'Proposed': { color: '#FFFFFF', bg: '#EBF0FF', border: '#BDD0FF', dot: '#6699FF', barBg: '#1A3A8C', pill: '#3366DD' },
 };
 
@@ -370,13 +370,13 @@ export default function Projects() {
               padding: '10px 16px', flex: '1 1 auto',
               borderRight: '1px solid #2A2C32',
             }}>
-              <span style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>{value}</span>
+              <span style={{ fontSize: 17, fontWeight: 400, color, lineHeight: 1 }}>{value}</span>
               <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
             </div>
           ))}
           {/* Region selector */}
           <div style={{ padding: '0 12px', borderRight: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
             <select
               value={selectedRegionId ?? ''}
               onChange={e => { setSelectedRegionId(e.target.value ? parseInt(e.target.value, 10) : null); setCountryFilter(''); }}
@@ -388,7 +388,7 @@ export default function Projects() {
           </div>
           {/* Planning cycle selector */}
           <div style={{ padding: '0 12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
             <select
               value={selectedCycleId ?? ''}
               onChange={e => setSelectedCycleId(e.target.value ? parseInt(e.target.value, 10) : null)}
