@@ -132,6 +132,9 @@ export default function Allocations() {
   // Person edit panel
   const [editPerson, setEditPerson] = useState<Person | null>(null);
 
+  // Project column tooltip
+  const [tooltipInfo, setTooltipInfo] = useState<{ project: Project; x: number; y: number } | null>(null);
+
   // New headcount request modal
   const [requestModal, setRequestModal] = useState<{
     discipline: string; disciplineId?: number;
@@ -777,16 +780,23 @@ export default function Allocations() {
                   return (
                     <React.Fragment key={g.country}>
                       {g.projects.map(p => (
-                        <th key={p.id} style={{
-                          position: 'sticky', top: ROW1_H, zIndex: 3,
-                          background: '#D0D3DA', borderLeft: '1px solid #B8BBC2',
-                          borderBottom: '2px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
-                        }}>
+                        <th key={p.id}
+                          onMouseEnter={e => {
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setTooltipInfo({ project: p, x: rect.left, y: rect.bottom + 6 });
+                          }}
+                          onMouseLeave={() => setTooltipInfo(null)}
+                          style={{
+                            position: 'sticky', top: ROW1_H, zIndex: 3,
+                            background: '#D0D3DA', borderLeft: '1px solid #B8BBC2',
+                            borderBottom: '2px solid #B0B4BC', padding: '5px 4px', textAlign: 'center',
+                            cursor: 'default',
+                          }}>
                           <div style={{
                             fontSize: 10, fontWeight: 600, color: '#333333',
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                             maxWidth: 64, margin: '0 auto',
-                          }} title={p.name}>{p.name}</div>
+                          }}>{p.name}</div>
                           <span style={{
                             fontSize: 9, padding: '1px 3px', borderRadius: 3,
                             background: '#FFFFFF', color: STATUS_COLOURS[p.status] ?? '#444444',
@@ -1348,6 +1358,48 @@ export default function Allocations() {
           setEditPerson(null);
         }}
       />
+
+      {/* ── Project hover tooltip ── */}
+      {tooltipInfo && (() => {
+        const p = tooltipInfo.project;
+        const TYPE_COLOURS: Record<string, string> = {
+          'Retail': '#1565C0', 'xScale': '#6A1B9A', 'Matrix': '#006064',
+        };
+        const tc = TYPE_COLOURS[p.type] ?? '#555555';
+        // Clamp to viewport width
+        const x = Math.min(tooltipInfo.x, window.innerWidth - 220);
+        const rows: [string, string | number][] = [
+          ['Type',    p.type],
+          ['Weight',  Number(p.weight).toFixed(1)],
+          ...(p.metro      ? [['Metro',    p.metro]      as [string, string]] : []),
+          ...(p.phase_code ? [['Phase',    p.phase_code] as [string, string]] : []),
+          ...(p.year ? [['Year', p.year] as [string, number]] : []),
+        ];
+        return (
+          <div style={{
+            position: 'fixed', left: x, top: tooltipInfo.y,
+            zIndex: 1200, pointerEvents: 'none',
+            background: '#FFFFFF', border: '1px solid #D1D5DB',
+            borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.14)',
+            padding: '10px 14px', minWidth: 180, maxWidth: 260,
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#111', marginBottom: 8, lineHeight: 1.3, wordBreak: 'break-word' }}>
+              {p.name}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {rows.map(([label, val]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
+                  <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{label}</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600,
+                    color: label === 'Type' ? tc : label === 'Status' ? (STATUS_COLOURS[String(val)] ?? '#555') : '#374151',
+                  }}>{String(val)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── New headcount request modal ── */}
       {requestModal && (
