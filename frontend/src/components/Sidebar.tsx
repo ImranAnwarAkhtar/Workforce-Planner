@@ -22,7 +22,6 @@ const NAV = [
   { to: '/people',          label: 'People',          icon: 'people' },
   { to: '/allocations',     label: 'Allocations',     icon: 'allocations' },
   { to: '/headcount',       label: 'Headcount',       icon: 'headcount' },
-  { to: '/requests',        label: 'Hire Requests',   icon: 'requests' },
   { to: '/change-requests', label: 'Change Requests', icon: 'changes' },
   { to: '/recruitment',     label: 'Recruitment',     icon: 'recruitment' },
   { to: '/import',          label: 'Import Data',     icon: 'import' },

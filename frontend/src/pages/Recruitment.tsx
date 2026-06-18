@@ -117,6 +117,23 @@ export default function Recruitment() {
   const [deleteTarget, setDeleteTarget] = useState<TbhCode | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true); setImportMsg(null);
+    try {
+      const result = await tbhCodesApi.importExcel(file);
+      setImportMsg(`Import complete — ${result.inserted} added, ${result.updated} updated, ${result.skipped} skipped`);
+      loadData();
+    } catch (err: unknown) {
+      setImportMsg(`Import failed: ${(err as Error).message}`);
+    } finally { setImporting(false); }
+  }
+
   useEffect(() => { refDataApi.regions().then(setRegions).catch(() => {}); }, []);
 
   const loadData = useCallback(async () => {
@@ -209,8 +226,20 @@ export default function Recruitment() {
       {/* Page title bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Recruitment Pipeline</div>
-        <button style={{ ...btnPrimary, padding: '4px 10px', fontSize: 11, borderRadius: 4 }} onClick={openAdd}>+ Add TBH Code</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <label style={{ ...btnPrimary, padding: '4px 10px', fontSize: 11, borderRadius: 4, cursor: importing ? 'wait' : 'pointer', opacity: importing ? 0.6 : 1 }}>
+            {importing ? 'Importing…' : 'Import Excel'}
+            <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImport} disabled={importing} />
+          </label>
+          <button style={{ ...btnPrimary, padding: '4px 10px', fontSize: 11, borderRadius: 4 }} onClick={openAdd}>+ Add TBH Code</button>
+        </div>
       </div>
+      {importMsg && (
+        <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 6, fontSize: 12, background: importMsg.startsWith('Import failed') ? '#2B0D0D' : '#0D2B1E', color: importMsg.startsWith('Import failed') ? '#E31837' : '#33CC77', border: `1px solid ${importMsg.startsWith('Import failed') ? '#5E1A1A' : '#1A5E38'}` }}>
+          {importMsg}
+          <button onClick={() => setImportMsg(null)} style={{ marginLeft: 12, background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* Pipeline summary */}
       {!loading && <PipelineSummary data={tbhCodes} />}

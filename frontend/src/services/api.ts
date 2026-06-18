@@ -523,6 +523,15 @@ export const tbhCodesApi = {
 
   delete: (id: number) =>
     client.delete(`/tbh-codes/${id}`),
+
+  importExcel: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return client.post<{ inserted: number; updated: number; skipped: number; total: number }>(
+      '/tbh-codes/import', formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    ).then(r => r.data);
+  },
 };
 
 // ---------------------------------------------------------------------------
