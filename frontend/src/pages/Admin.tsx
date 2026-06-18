@@ -825,7 +825,7 @@ function PlanningCyclesTab() {
   }
 
   function fmtPeriod(c: PlanningCycle) {
-    const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const fmt = (d: string) => new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     return `${fmt(c.start_date)} – ${fmt(c.end_date)}`;
   }
 
