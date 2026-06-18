@@ -639,6 +639,7 @@ export default function Projects() {
                       width: COL_W, flexShrink: 0,
                       padding: '7px 8px',
                       borderRight: ci < countriesList.length - 1 ? '1px solid #B0B4BC' : 'none',
+                      display: 'flex', flexDirection: 'column',
                     }}>
                       {/* Total count + weight */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
@@ -676,7 +677,7 @@ export default function Projects() {
                         )}
                       </div>
                       {/* Divider */}
-                      <div style={{ height: 1, background: '#C4C7CE', marginBottom: 4 }} />
+                      <div style={{ height: 1, background: '#C4C7CE', marginBottom: 4, marginTop: 'auto' }} />
                       {/* Type breakdown */}
                       <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                         {cs.retail > 0 && (
