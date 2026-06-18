@@ -6,9 +6,9 @@ import {
   type Person, type Project, type Allocation, type Region, type GearingConstant,
 } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
+import PersonEditPanel from '../components/PersonEditPanel';
 
 const CURRENT_USER_ROLE = 'Workforce Planning';
-import PersonEditPanel from '../components/PersonEditPanel';
 
 interface PendingChange {
   personId: number;
