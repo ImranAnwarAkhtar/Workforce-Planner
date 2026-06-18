@@ -528,8 +528,7 @@ export const tbhCodesApi = {
     const formData = new FormData();
     formData.append('file', file);
     return client.post<{ inserted: number; updated: number; skipped: number; total: number }>(
-      '/tbh-codes/import', formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      '/tbh-codes/import', formData
     ).then(r => r.data);
   },
 };
