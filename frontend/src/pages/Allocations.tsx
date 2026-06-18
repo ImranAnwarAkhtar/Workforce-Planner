@@ -605,7 +605,7 @@ export default function Allocations() {
                         : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
                       }
                     </svg>
-                    Discipline/People
+                    Dept/People
                   </button>
                   <button onClick={handleSaveAll} disabled={saving || pendingCount === 0} style={{
                     padding: '5px 16px', background: '#E31837',
