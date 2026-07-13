@@ -765,6 +765,57 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                         })}
                       </React.Fragment>
                     ))}
+
+                    {/* ── Discipline totals row ── */}
+                    {!discCollapsed && (
+                      <tr style={{ background: dc.light }}>
+                        {/* Label cell (sticky) */}
+                        <td style={{
+                          position: 'sticky', left: 0, zIndex: 2,
+                          background: dc.light,
+                          padding: '5px 10px',
+                          borderTop: `1px solid ${dc.bg}44`,
+                          borderRight: `2px solid ${dc.bg}66`,
+                          borderBottom: `2px solid ${dc.bg}66`,
+                        }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: dc.bg, textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>
+                            {h.discipline} Total
+                          </span>
+                        </td>
+                        {/* Per-country totals */}
+                        {countryGroups.map(g => {
+                          const colTotal = h.allPeople.reduce((s, p) => s + (allocMap[p.id]?.[g.countryId] ?? 0), 0);
+                          const collapsed = collapsedCountries.has(g.country);
+                          return (
+                            <td key={g.country} style={{
+                              padding: collapsed ? '5px 2px' : '5px 8px',
+                              textAlign: 'center',
+                              background: dc.light,
+                              borderTop: `1px solid ${dc.bg}44`,
+                              borderRight: `1px solid ${dc.bg}33`,
+                              borderBottom: `2px solid ${dc.bg}66`,
+                            }}>
+                              {!collapsed && colTotal > 0 && (
+                                <span style={{ fontSize: 11, fontWeight: 700, color: dc.bg }}>
+                                  {colTotal.toFixed(colTotal % 1 === 0 ? 0 : 2)}
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        {/* Grand total for this discipline */}
+                        <td style={{
+                          padding: '5px 6px', textAlign: 'center',
+                          background: dc.light,
+                          borderTop: `1px solid ${dc.bg}44`,
+                          borderBottom: `2px solid ${dc.bg}66`,
+                        }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: dc.bg }}>
+                            {discTotal > 0 ? discTotal.toFixed(discTotal % 1 === 0 ? 0 : 2) : '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    )}
                   </React.Fragment>
                 );
               })}
