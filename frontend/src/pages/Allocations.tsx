@@ -602,65 +602,6 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                     <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
                   </div>
                 ))}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {pendingCount > 0 && (
-                    <span style={{ fontSize: 11, color: '#B45309', background: '#FEF3C7', padding: '3px 9px', borderRadius: 12, border: '1px solid #FDE68A' }}>
-                      {pendingCount} unsaved
-                    </span>
-                  )}
-                  <button
-                    title={allCollapsed ? 'Expand all countries' : 'Collapse all countries'}
-                    onClick={() => allCollapsed ? expandAllCountries() : collapseAllCountries()}
-                    style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                      {allCollapsed
-                        ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
-                        : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-                      }
-                    </svg>
-                    Countries
-                  </button>
-                  <button
-                    title={allDeptsCollapsed ? 'Expand all departments' : 'Collapse all departments'}
-                    onClick={() => allDeptsCollapsed ? expandAllDepts() : collapseAllDepts()}
-                    style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                      {allDeptsCollapsed
-                        ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
-                        : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-                      }
-                    </svg>
-                    Dept
-                  </button>
-                  <button
-                    title={allLevelsCollapsed ? 'Expand all levels' : 'Collapse all levels'}
-                    onClick={() => allLevelsCollapsed ? expandAllLevels() : collapseAllLevels()}
-                    style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                      {allLevelsCollapsed
-                        ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
-                        : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-                      }
-                    </svg>
-                    Levels
-                  </button>
-                  {!canEdit && selectedCycle && (
-                    <span style={{ fontSize: 11, color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '3px 9px', fontWeight: 600 }}>
-                      🔒 {selectedCycle.status === 'draft' ? 'Stage 1: Admin Setup' : selectedCycle.status === 'approved' ? 'Stage 4: Global Approval' : 'Closed'} — read only
-                    </span>
-                  )}
-                  <button onClick={handleSaveAll} disabled={saving || pendingCount === 0 || !canEdit} style={{
-                    padding: '4px 10px', background: '#E91C24',
-                    color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                    cursor: (pendingCount > 0 && canEdit) ? 'pointer' : 'default',
-                    opacity: (pendingCount > 0 && canEdit) ? 1 : 0.45,
-                  }}>
-                    {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
-                  </button>
-                </div>
               </div>
             );
           })()}
@@ -689,6 +630,66 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
           <span style={{ fontSize: 11, color: '#999999' }}>
             {visibleProjects.length} project{visibleProjects.length !== 1 ? 's' : ''} · {people.length} people
           </span>
+
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+            {pendingCount > 0 && (
+              <span style={{ fontSize: 11, color: '#B45309', background: '#FEF3C7', padding: '3px 9px', borderRadius: 12, border: '1px solid #FDE68A' }}>
+                {pendingCount} unsaved
+              </span>
+            )}
+            <button
+              title={allCollapsed ? 'Expand all countries' : 'Collapse all countries'}
+              onClick={() => allCollapsed ? expandAllCountries() : collapseAllCountries()}
+              style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                {allCollapsed
+                  ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                  : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                }
+              </svg>
+              Countries
+            </button>
+            <button
+              title={allDeptsCollapsed ? 'Expand all departments' : 'Collapse all departments'}
+              onClick={() => allDeptsCollapsed ? expandAllDepts() : collapseAllDepts()}
+              style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                {allDeptsCollapsed
+                  ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                  : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                }
+              </svg>
+              Dept
+            </button>
+            <button
+              title={allLevelsCollapsed ? 'Expand all levels' : 'Collapse all levels'}
+              onClick={() => allLevelsCollapsed ? expandAllLevels() : collapseAllLevels()}
+              style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                {allLevelsCollapsed
+                  ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/>
+                  : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+                }
+              </svg>
+              Levels
+            </button>
+            {!canEdit && selectedCycle && (
+              <span style={{ fontSize: 11, color: '#D97706', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 6, padding: '3px 9px', fontWeight: 600 }}>
+                🔒 {selectedCycle.status === 'draft' ? 'Stage 1: Admin Setup' : selectedCycle.status === 'approved' ? 'Stage 4: Global Approval' : 'Closed'} — read only
+              </span>
+            )}
+            <button onClick={handleSaveAll} disabled={saving || pendingCount === 0 || !canEdit} style={{
+              padding: '4px 10px', background: '#E91C24',
+              color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
+              cursor: (pendingCount > 0 && canEdit) ? 'pointer' : 'default',
+              opacity: (pendingCount > 0 && canEdit) ? 1 : 0.45,
+            }}>
+              {saving ? 'Saving…' : `Save${pendingCount > 0 ? ` (${pendingCount})` : ''}`}
+            </button>
+          </div>
         </div>
         </div>
       </div>
