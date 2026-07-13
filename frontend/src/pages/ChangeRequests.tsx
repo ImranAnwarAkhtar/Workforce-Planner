@@ -15,7 +15,7 @@ const CHANGE_TYPES = ['Region Transfer', 'Level Change', 'Contract Type Change',
 // Styles (same tokens as other pages)
 // ---------------------------------------------------------------------------
 
-const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E31837', muted: '#666666' };
+const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E91C24', muted: '#666666' };
 const card: React.CSSProperties = { background: tk.bg2, border: `1px solid ${tk.border}`, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
 const inputSt: React.CSSProperties = { width: '100%', padding: '8px 11px', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 6, color: '#111111', fontSize: 14, outline: 'none', boxSizing: 'border-box' };
 const selectSt: React.CSSProperties = { ...inputSt, cursor: 'pointer' };
@@ -27,15 +27,15 @@ const modalBox: React.CSSProperties = { background: '#FFFFFF', border: '1px soli
 const modalFooter: React.CSSProperties = { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22, paddingTop: 18, borderTop: '1px solid #EEEEEE' };
 
 const STATUS_STYLE: Record<string, React.CSSProperties> = {
-  Pending:        { background: '#2B1E0D', color: '#FFAA33', border: '1px solid #5E3A1A' },
-  Approved:       { background: '#0D2B1E', color: '#33CC77', border: '1px solid #1A5E38' },
-  'Auto-Approved':{ background: '#0D1B2B', color: '#5599FF', border: '1px solid #1A3A66' },
-  Rejected:       { background: '#2B0D0D', color: '#E31837', border: '1px solid #5E1A1A' },
+  Pending:        { background: '#FFF1CC', color: '#FDB90D', border: '1px solid #FEDC86' },
+  Approved:       { background: '#DFFBE5', color: '#2A8346', border: '1px solid #33A85C' },
+  'Auto-Approved':{ background: '#CCE3FF', color: '#086AE3', border: '1px solid #086AE3' },
+  Rejected:       { background: '#FFEBEE', color: '#AD050C', border: '1px solid #E91C24' },
 };
 
 function StatusBadge({ status, autoApproved }: { status: string; autoApproved: boolean }) {
   const displayStatus = autoApproved && status === 'Approved' ? 'Auto-Approved' : status;
-  const s = STATUS_STYLE[displayStatus] ?? { background: '#1A1A1A', color: '#888', border: '1px solid #333' };
+  const s = STATUS_STYLE[displayStatus] ?? { background: '#F2F3F4', color: '#5A657B', border: '1px solid #E0E3E8' };
   return <span style={{ padding: '2px 9px', borderRadius: 10, fontSize: 11, fontWeight: 600, ...s }}>{displayStatus}</span>;
 }
 
@@ -164,10 +164,10 @@ export default function ChangeRequests() {
   }), [requests]);
 
   return (
-    <div style={{ color: '#FFF' }}>
+    <div style={{ color: '#111111' }}>
       {/* Page title bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Change Requests</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FFFFFF', borderRadius: 8, marginBottom: 16, border: '1px solid #E0E3E8', borderBottom: '3px solid #E91C24', padding: '8px 16px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1 }}>Change Requests</div>
         <button style={btnPrimary} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>+ New Request</button>
       </div>
 
@@ -179,7 +179,7 @@ export default function ChangeRequests() {
           { label: `${counts.approved} Approved`, color: '#33CC77' },
           { label: `${counts.autoApproved} Auto-Approved`, color: '#5599FF' },
         ].map(({ label, color }) => (
-          <div key={label} style={{ padding: '5px 12px', background: '#111', border: '1px solid #222', borderRadius: 6, fontSize: 12, color }}>{label}</div>
+          <div key={label} style={{ padding: '5px 12px', background: '#F2F3F5', border: '1px solid #E0E3E8', borderRadius: 6, fontSize: 12, color: '#111827', fontWeight: 600 }}>{label}</div>
         ))}
       </div>
 
@@ -218,7 +218,7 @@ export default function ChangeRequests() {
                       {r.change_type}
                     </span>
                     <StatusBadge status={r.status} autoApproved={r.auto_approved} />
-                    {r.tbh_id && <span style={{ fontSize: 11, color: '#666', background: '#1A1A1A', padding: '2px 7px', borderRadius: 10, border: '1px solid #333' }}>TBH: {r.tbh_id}</span>}
+                    {r.tbh_id && <span style={{ fontSize: 11, color: '#5A657B', background: '#F2F3F4', padding: '2px 7px', borderRadius: 10, border: '1px solid #E0E3E8' }}>TBH: {r.tbh_id}</span>}
                   </div>
 
                   {/* Change detail */}
@@ -244,11 +244,11 @@ export default function ChangeRequests() {
                 {r.status === 'Pending' && (
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexDirection: 'column', alignItems: 'flex-end' }}>
                     <button onClick={() => setActionTarget({ req: r, action: 'approve' })}
-                      style={{ padding: '5px 12px', background: '#0D2B1E', color: '#33CC77', border: '1px solid #1A5E38', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      style={{ padding: '5px 12px', background: '#EBF7EF', color: '#1A6B3A', border: '1px solid #A8D8BF', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       Approve
                     </button>
                     <button onClick={() => { setActionTarget({ req: r, action: 'reject' }); setActionReason(''); }}
-                      style={{ padding: '5px 12px', background: '#2B0D0D', color: '#E31837', border: '1px solid #5E1A1A', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      style={{ padding: '5px 12px', background: '#FEF2F2', color: '#DC2626', border: '1px solid #FBBDBA', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       Reject
                     </button>
                   </div>

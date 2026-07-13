@@ -6,6 +6,7 @@ import {
   type Person, type Project, type Allocation, type Region, type GearingConstant,
 } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
+import { useTabDirty } from '../context/TabContext';
 import PersonEditPanel from '../components/PersonEditPanel';
 
 const CURRENT_USER_ROLE = 'Workforce Planning';
@@ -20,11 +21,29 @@ interface PendingChange {
 const DISCIPLINES = ['Construction', 'Design', 'Commercial', 'Commissioning', 'Other'];
 
 const DISCIPLINE_COLOURS: Record<string, string> = {
-  'Construction': '#1565C0',
-  'Design':       '#1E8A4A',
-  'Commercial':   '#A07200',
-  'Commissioning':'#6A1B9A',
-  'Other':        '#888888',
+  'Construction': '#086AE3',
+  'Design':       '#33A85C',
+  'Commercial':   '#FDB90D',
+  'Commissioning':'#00737A',
+  'Other':        '#8B93A3',
+};
+// Yellow (#FDB90D) is too light for text on white — use dark gold for label use
+const DISC_LABEL_COLOR = (disc: string): string => {
+  const c = DISCIPLINE_COLOURS[disc] ?? '#5A657B';
+  return c === '#FDB90D' ? '#C59000' : c;
+};
+// Text to use ON the discipline background (yellow needs dark text, others white)
+const DISC_ON_BG = (disc: string): string =>
+  DISCIPLINE_COLOURS[disc] === '#FDB90D' ? '#2F3541' : '#FFFFFF';
+const DISC_ON_BG_MUTED = (disc: string): string =>
+  DISCIPLINE_COLOURS[disc] === '#FDB90D' ? 'rgba(47,53,65,0.55)' : 'rgba(255,255,255,0.65)';
+
+const OTHER_SUB_DISCIPLINES = ['REIC PMO', 'Telecom', 'EHS', 'Project Controls'];
+const OTHER_SUB_COLOURS: Record<string, string> = {
+  'REIC PMO':         '#5A657B',
+  'Telecom':          '#6B7794',
+  'EHS':              '#7A8AAA',
+  'Project Controls': '#8A9ABB',
 };
 
 const LEVEL_ORDER: Record<string, number> = {
@@ -38,23 +57,23 @@ const CONTRACT_COLOURS: Record<string, { bg: string; color: string; border: stri
   'SNR':      { bg: '#F0F0F0', color: '#444444', border: '#D0D0D0' },
   'VP':       { bg: '#F0F0F0', color: '#444444', border: '#D0D0D0' },
   'Dr':       { bg: '#F0F0F0', color: '#444444', border: '#D0D0D0' },
-  'CON':      { bg: '#FFF8E1', color: '#E65100', border: '#F9A825' },
-  'A FTE':    { bg: '#FFF0F0', color: '#C0392B', border: '#E31837' },
-  'A CON':    { bg: '#FFF8E1', color: '#E65100', border: '#F9A825' },
+  'CON':      { bg: '#FFF8E1', color: '#E65100', border: '#FDB90D' },
+  'A FTE':    { bg: '#FFF0F0', color: '#AD050C', border: '#E91C24' },
+  'A CON':    { bg: '#FFF8E1', color: '#E65100', border: '#FDB90D' },
   'R FTE':    { bg: '#FDE8F6', color: '#AD1457', border: '#E91E8C' },
   'R CON':    { bg: '#FDE8F6', color: '#AD1457', border: '#E91E8C' },
   'R FTE 26': { bg: '#FDE8F6', color: '#AD1457', border: '#E91E8C' },
 };
 
 const STATUS_COLOURS: Record<string, string> = {
-  'Approved': '#33CC77',
-  'Seeded':   '#F9A825',
-  'Proposed': '#5599FF',
+  'Approved': '#E91C24',
+  'Seeded':   '#7739D9',
+  'Proposed': '#086AE3',
 };
 
 const COUNTRY_PALETTE = [
-  '#1565C0', '#1E8A4A', '#6A1B9A', '#B5600A',
-  '#006064', '#C0392B', '#4477EE', '#D4870A',
+  '#086AE3', '#33A85C', '#411980', '#FDB90D',
+  '#00737A', '#AD050C', '#7739D9', '#FE9234',
 ];
 
 function countryColor(name: string): string {
@@ -72,15 +91,15 @@ function fteCellColour(val: number): string {
   if (val <= 0)    return '#AAAAAA';
   if (val < 0.5)   return '#4477EE';
   if (val < 1.0)   return '#D4870A';
-  if (val === 1.0) return '#1E8A4A';
-  return '#C0392B';
+  if (val === 1.0) return '#33A85C';
+  return '#AD050C';
 }
 
 function rowTotalColour(total: number, contracted: number): string {
   if (total === 0)                return '#555555';
-  if (total > contracted + 0.01)  return '#E31837';
+  if (total > contracted + 0.01)  return '#E91C24';
   if (total >= contracted - 0.01) return '#33CC77';
-  return '#F9A825';
+  return '#FDB90D';
 }
 
 // Compact shared styles
@@ -98,7 +117,7 @@ const FOOT_BG   = '#F0F2F5';
 const FOOT_BG2  = '#E8EBF0';
 const FOOT_BORDER = '#C8CDD8';
 
-export default function Allocations() {
+export default function Allocations({ tabId }: { tabId?: string } = {}) {
   // ── Planning cycle context ────────────────────────────────────────────────
   const { cycles, selectedCycleId, setSelectedCycleId, selectedCycle, selectedRegionId, setSelectedRegionId } = usePlanningCycle();
   const canEdit = !selectedCycle || (STAGE_EDIT_ROLES[selectedCycle.status]?.includes(CURRENT_USER_ROLE) ?? true);
@@ -114,6 +133,8 @@ export default function Allocations() {
   const [collapsedCountries, setCollapsedCountries]     = useState<Set<string>>(new Set());
   const [collapsedDisciplines, setCollapsedDisciplines] = useState<Set<string>>(new Set());
   const [collapsedLevels, setCollapsedLevels]           = useState<Set<string>>(new Set());
+  const [expandedGearingDiscs, setExpandedGearingDiscs]       = useState<Set<string>>(new Set());
+  const [collapsedOtherSubGroups, setCollapsedOtherSubGroups] = useState<Set<string>>(new Set());
 
   // ── Data ─────────────────────────────────────────────────────────────────
   const [people, setPeople]               = useState<Person[]>([]);
@@ -146,6 +167,7 @@ export default function Allocations() {
   const [requestSaving, setRequestSaving] = useState(false);
 
   const pendingCount = Object.keys(pendingChanges).length;
+  useTabDirty(tabId, pendingCount > 0);
 
   // ── Load regions + gearing (once) ────────────────────────────────────────
 
@@ -292,6 +314,12 @@ export default function Allocations() {
   function toggleLevel(k: string) {
     setCollapsedLevels(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; });
   }
+  function toggleGearing(d: string) {
+    setExpandedGearingDiscs(prev => { const n = new Set(prev); n.has(d) ? n.delete(d) : n.add(d); return n; });
+  }
+  function toggleOtherSubGroup(key: string) {
+    setCollapsedOtherSubGroups(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
   const allCollapsed = allCountryNames.length > 0 && collapsedCountries.size >= allCountryNames.length;
   function collapseAllCountries() { setCollapsedCountries(new Set(allCountryNames)); }
   function expandAllCountries()   { setCollapsedCountries(new Set()); }
@@ -357,26 +385,21 @@ export default function Allocations() {
     return ppl.reduce((s, p) => s + getPersonTotal(p.id), 0);
   }
 
-  // Gearing calculation for a country's project set
-  function getCountryGearing(projs: Project[]) {
-    // Project counts by type
+  function getDisciplineCountryGearing(discipline: string, discPeople: Person[], projs: Project[]) {
     const typeCounts: Record<string, number> = {};
     for (const p of projs) typeCounts[p.type] = (typeCounts[p.type] ?? 0) + 1;
 
-    // Sum gearing across all disciplines that have constants
+    const discGearing = gearingMap[discipline] ?? {};
     let gearMin = 0, gearMax = 0;
-    for (const typeMap of Object.values(gearingMap)) {
-      for (const [pType, { min: minDiv, max: maxDiv }] of Object.entries(typeMap)) {
-        const cnt = typeCounts[pType] ?? 0;
-        if (cnt > 0 && minDiv > 0 && maxDiv > 0) {
-          gearMin += cnt / minDiv;
-          gearMax += cnt / maxDiv;
-        }
+    for (const [pType, { min: minDiv, max: maxDiv }] of Object.entries(discGearing)) {
+      const cnt = typeCounts[pType] ?? 0;
+      if (cnt > 0 && minDiv > 0 && maxDiv > 0) {
+        gearMin += cnt / minDiv;
+        gearMax += cnt / maxDiv;
       }
     }
 
-    // Total FTE allocated by all people for these projects
-    const allocated = people.reduce((sum, person) =>
+    const allocated = discPeople.reduce((sum, person) =>
       sum + projs.reduce((s, proj) => s + getCellValue(person.id, proj.id), 0), 0);
 
     return { gearMin, gearMax, allocated };
@@ -384,9 +407,9 @@ export default function Allocations() {
 
   function gearingStatusColor(allocated: number, gearMin: number, gearMax: number): string {
     if (gearMin === 0 && gearMax === 0) return '#777777';
-    if (allocated < gearMin - 0.05) return '#C0392B'; // understaffed
-    if (allocated > gearMax + 0.05)  return '#B5600A'; // overstaffed
-    return '#1E8A4A'; // within range
+    if (allocated < gearMin - 0.05) return '#AD050C'; // understaffed
+    if (allocated > gearMax + 0.05)  return '#FDB90D'; // overstaffed
+    return '#33A85C'; // within range
   }
 
   // ── Cell change + save ────────────────────────────────────────────────────
@@ -449,7 +472,6 @@ export default function Allocations() {
     s + (collapsedCountries.has(g.country) ? 1 : g.projects.length + 1), 0);
 
   const selectedRegionName = regions.find(r => r.id === selectedRegionId)?.name ?? '';
-  const hasGearing = Object.keys(gearingMap).length > 0;
 
   // ── Subtotal row ──────────────────────────────────────────────────────────
 
@@ -489,7 +511,7 @@ export default function Allocations() {
                 return (
                   <td key={proj.id} style={{
                     padding: '5px 4px', textAlign: 'center', fontSize: 11,
-                    color: pt > 0 ? '#1E8A4A' : '#CCCCCC',
+                    color: pt > 0 ? '#33A85C' : '#CCCCCC',
                     borderLeft: '1px solid #D8DFE8', borderTop: `1px solid ${labelColor}33`,
                   }}>
                     {pt > 0 ? pt.toFixed(1) : ''}
@@ -527,27 +549,27 @@ export default function Allocations() {
 
       {/* ── Header ── */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ background: '#181A1E', borderBottom: '2px solid #E31837' }}>
+        <div style={{ background: '#FFFFFF', borderBottom: '3px solid #E91C24' }}>
           {/* Title row: title left, Region + Cycle far right */}
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', gap: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1, flex: 1 }}>Allocations Planning</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, flex: 1 }}>Allocations Planning</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Region</span>
+              <span style={{ fontSize: 11, color: '#5A657B', fontWeight: 500 }}>Region</span>
               <select
                 value={selectedRegionId ?? ''}
                 onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
-                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
+                style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
               >
                 <option value="">All</option>
                 {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#A0A4B0', fontWeight: 500 }}>Cycle</span>
+              <span style={{ fontSize: 11, color: '#5A657B', fontWeight: 500 }}>Cycle</span>
               <select
                 value={selectedCycleId ?? ''}
                 onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
-                style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+                style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
               >
                 <option value="">All Cycles</option>
                 {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -558,38 +580,38 @@ export default function Allocations() {
           {!loading && people.length > 0 && (() => {
             const util = bannerMetrics.totalAvailable > 0
               ? bannerMetrics.totalAllocated / bannerMetrics.totalAvailable : 0;
-            const utilColour = util > 1.05 ? '#E31837' : util >= 0.85 ? '#33CC77' : util >= 0.6 ? '#F9A825' : '#AAAAAA';
+            const utilColour = util > 1.05 ? '#E91C24' : util >= 0.85 ? '#33A85C' : util >= 0.6 ? '#FDB90D' : '#AAAAAA';
             return (
-              <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #2A2C32', padding: '5px 16px', gap: 0, flexWrap: 'wrap' as const }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 17, fontWeight: 400, color: '#FFFFFF', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
-                  <span style={{ fontSize: 9, fontWeight: 600, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Available FTE</span>
+              <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #E0E3E8', padding: '5px 16px', gap: 0, flexWrap: 'wrap' as const }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #E0E3E8' }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Available FTE</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 17, fontWeight: 400, color: '#33CC77', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
-                  <span style={{ fontSize: 9, fontWeight: 600, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Allocated FTE</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 16, marginRight: 16, borderRight: '1px solid #E0E3E8' }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: '#33A85C', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Allocated FTE</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 20, marginRight: 20, borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 17, fontWeight: 400, color: utilColour, lineHeight: 1 }}>{Math.round(util * 100)}%</span>
-                  <span style={{ fontSize: 9, fontWeight: 600, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Utilisation</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 20, marginRight: 20, borderRight: '1px solid #E0E3E8' }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: utilColour, lineHeight: 1 }}>{Math.round(util * 100)}%</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Utilisation</span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#888', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginRight: 16, flexShrink: 0 }}>By Discipline</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginRight: 16, flexShrink: 0 }}>By Discipline</span>
                 {bannerMetrics.byDisc.filter(d => d.allocated > 0).map(d => (
                   <div key={d.discipline} style={{ display: 'flex', alignItems: 'center', gap: 5, marginRight: 20 }}>
-                    <span style={{ fontSize: 17, fontWeight: 400, color: DISCIPLINE_COLOURS[d.discipline] ?? '#AAAAAA', lineHeight: 1 }}>{d.allocated.toFixed(1)}</span>
-                    <span style={{ fontSize: 9, fontWeight: 600, color: '#999999', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
+                    <span style={{ fontSize: 17, fontWeight: 700, color: DISC_LABEL_COLOR(d.discipline), lineHeight: 1 }}>{d.allocated.toFixed(1)}</span>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
                   </div>
                 ))}
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                   {pendingCount > 0 && (
-                    <span style={{ fontSize: 11, color: '#D4870A', background: '#2A2000', padding: '3px 9px', borderRadius: 12, border: '1px solid #6B4800' }}>
+                    <span style={{ fontSize: 11, color: '#B45309', background: '#FEF3C7', padding: '3px 9px', borderRadius: 12, border: '1px solid #FDE68A' }}>
                       {pendingCount} unsaved
                     </span>
                   )}
                   <button
                     title={allCollapsed ? 'Expand all countries' : 'Collapse all countries'}
                     onClick={() => allCollapsed ? expandAllCountries() : collapseAllCountries()}
-                    style={{ padding: '4px 10px', background: '#E31837', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       {allCollapsed
@@ -602,7 +624,7 @@ export default function Allocations() {
                   <button
                     title={allDeptsCollapsed ? 'Expand all departments' : 'Collapse all departments'}
                     onClick={() => allDeptsCollapsed ? expandAllDepts() : collapseAllDepts()}
-                    style={{ padding: '4px 10px', background: '#E31837', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       {allDeptsCollapsed
@@ -615,7 +637,7 @@ export default function Allocations() {
                   <button
                     title={allLevelsCollapsed ? 'Expand all levels' : 'Collapse all levels'}
                     onClick={() => allLevelsCollapsed ? expandAllLevels() : collapseAllLevels()}
-                    style={{ padding: '4px 10px', background: '#E31837', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                    style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
                   >
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                       {allLevelsCollapsed
@@ -631,7 +653,7 @@ export default function Allocations() {
                     </span>
                   )}
                   <button onClick={handleSaveAll} disabled={saving || pendingCount === 0 || !canEdit} style={{
-                    padding: '4px 10px', background: '#E31837',
+                    padding: '4px 10px', background: '#E91C24',
                     color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600,
                     cursor: (pendingCount > 0 && canEdit) ? 'pointer' : 'default',
                     opacity: (pendingCount > 0 && canEdit) ? 1 : 0.45,
@@ -843,14 +865,14 @@ export default function Allocations() {
                         boxShadow: 'inset 4px 0 0 rgba(0,0,0,0.2)',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
                         borderRight: '2px solid #D5D5D5',
-                        padding: '4px 14px', fontWeight: 700, fontSize: 12, color: '#FFFFFF',
+                        padding: '4px 14px', fontWeight: 700, fontSize: 12, color: DISC_ON_BG(discipline),
                         whiteSpace: 'nowrap',
                       }}>
                         <span style={{ marginRight: 8, fontSize: 11, opacity: 0.8 }}>
                           {isDiscCollapsed ? '▶' : '▼'}
                         </span>
                         {discipline}
-                        <span style={{ marginLeft: 10, color: 'rgba(255,255,255,0.65)', fontWeight: 400, fontSize: 11 }}>
+                        <span style={{ marginLeft: 10, color: DISC_ON_BG_MUTED(discipline), fontWeight: 400, fontSize: 11 }}>
                           {allPeople.length} {allPeople.length === 1 ? 'person' : 'people'}
                         </span>
                       </td>
@@ -859,14 +881,286 @@ export default function Allocations() {
                         background: discColor, boxShadow: 'inset 2px 0 0 rgba(0,0,0,0.2)',
                         borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
                         padding: '4px 8px', textAlign: 'center', fontSize: 12, fontWeight: 700,
-                        color: discTotal > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
+                        color: discTotal > 0 ? DISC_ON_BG(discipline) : DISC_ON_BG_MUTED(discipline),
                       }}>
                         {discTotal > 0 ? discTotal.toFixed(1) : '—'}
                       </td>
                     </tr>
 
+                    {/* Sub-group rendering for "Other" discipline */}
+                    {!isDiscCollapsed && discipline === 'Other' && (() => {
+                      const subGroupsComputed = OTHER_SUB_DISCIPLINES
+                        .map(subName => {
+                          const subPeople = allPeople.filter(p => p.discipline_name === subName);
+                          if (!subPeople.length) return null;
+                          const lvlMap: Record<string, { levelName: string; people: Person[] }> = {};
+                          for (const p of subPeople) {
+                            const lcode = p.level_code ?? 'Unknown';
+                            if (!lvlMap[lcode]) lvlMap[lcode] = { levelName: p.level_name ?? lcode, people: [] };
+                            lvlMap[lcode].people.push(p);
+                          }
+                          Object.values(lvlMap).forEach(g => g.people.sort((a, b) => a.name.localeCompare(b.name)));
+                          const subLevels = Object.entries(lvlMap)
+                            .sort(([a], [b]) => (LEVEL_ORDER[a] ?? 99) - (LEVEL_ORDER[b] ?? 99))
+                            .map(([lcode, { levelName: lname, people: ppl }]) => ({ code: lcode, levelName: lname, people: ppl }));
+                          return { name: subName, colour: OTHER_SUB_COLOURS[subName] ?? discColor, allPeople: subPeople, levels: subLevels };
+                        })
+                        .filter((g): g is NonNullable<typeof g> => g !== null);
+
+                      // Catch-all: people in Other not matching any named sub-group
+                      const namedIds = new Set(subGroupsComputed.flatMap(g => g.allPeople.map(p => p.id)));
+                      const unnamedPeople = allPeople.filter(p => !namedIds.has(p.id));
+                      if (unnamedPeople.length > 0) {
+                        const lvlMap: Record<string, { levelName: string; people: Person[] }> = {};
+                        for (const p of unnamedPeople) {
+                          const lcode = p.level_code ?? 'Unknown';
+                          if (!lvlMap[lcode]) lvlMap[lcode] = { levelName: p.level_name ?? lcode, people: [] };
+                          lvlMap[lcode].people.push(p);
+                        }
+                        Object.values(lvlMap).forEach(g => g.people.sort((a, b) => a.name.localeCompare(b.name)));
+                        const subLevels = Object.entries(lvlMap)
+                          .sort(([a], [b]) => (LEVEL_ORDER[a] ?? 99) - (LEVEL_ORDER[b] ?? 99))
+                          .map(([lcode, { levelName: lname, people: ppl }]) => ({ code: lcode, levelName: lname, people: ppl }));
+                        subGroupsComputed.push({ name: 'Other', colour: discColor, allPeople: unnamedPeople, levels: subLevels });
+                      }
+
+                      return subGroupsComputed.map(subGroup => {
+                        const subKey       = `Other::${subGroup.name}`;
+                        const isSubCollapsed = collapsedOtherSubGroups.has(subKey);
+                        const subColor     = subGroup.colour;
+                        const subTotal     = getGroupGrandTotal(subGroup.allPeople);
+                        return (
+                          <React.Fragment key={subKey}>
+                            {/* Sub-group header */}
+                            <tr onClick={() => toggleOtherSubGroup(subKey)} style={{ cursor: 'pointer' }}>
+                              <td colSpan={totalColCount - 1} style={{
+                                position: 'sticky', left: 0, zIndex: 2,
+                                background: subColor,
+                                boxShadow: 'inset 4px 0 0 rgba(0,0,0,0.15)',
+                                borderTop: '1px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
+                                borderRight: '2px solid #D5D5D5',
+                                padding: '3px 14px 3px 28px', fontWeight: 600, fontSize: 11, color: '#FFFFFF',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                <span style={{ marginRight: 8, fontSize: 10, opacity: 0.8 }}>
+                                  {isSubCollapsed ? '▶' : '▼'}
+                                </span>
+                                {subGroup.name}
+                                <span style={{ marginLeft: 10, color: 'rgba(255,255,255,0.65)', fontWeight: 400, fontSize: 10 }}>
+                                  {subGroup.allPeople.length} {subGroup.allPeople.length === 1 ? 'person' : 'people'}
+                                </span>
+                              </td>
+                              <td style={{
+                                position: 'sticky', right: 0, zIndex: 2, background: subColor,
+                                boxShadow: 'inset 2px 0 0 rgba(0,0,0,0.2)',
+                                borderTop: '1px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
+                                padding: '3px 8px', textAlign: 'center', fontSize: 11, fontWeight: 700,
+                                color: subTotal > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
+                              }}>
+                                {subTotal > 0 ? subTotal.toFixed(1) : '—'}
+                              </td>
+                            </tr>
+
+                            {/* Levels within sub-group */}
+                            {!isSubCollapsed && subGroup.levels.map(({ code: lcode, levelName: lname, people: lPeople }) => {
+                              const levelKey = `Other::${subGroup.name}::${lcode}`;
+                              const isLvlCollapsed = collapsedLevels.has(levelKey);
+                              const levelTotal = getGroupGrandTotal(lPeople);
+                              return (
+                                <React.Fragment key={levelKey}>
+                                  <tr onClick={() => toggleLevel(levelKey)} style={{ cursor: 'pointer', background: `${subColor}0D` }}>
+                                    <td style={{
+                                      position: 'sticky', left: 0, zIndex: 2,
+                                      background: `${subColor}0D`, boxShadow: `inset 3px 0 0 ${subColor}`,
+                                      borderTop: `1px solid ${subColor}33`, borderBottom: `1px solid ${subColor}33`,
+                                      padding: '4px 14px 4px 42px', fontWeight: 600, fontSize: 12, color: subColor,
+                                      whiteSpace: 'nowrap',
+                                    }}>
+                                      <span style={{ marginRight: 8, fontSize: 10, opacity: 0.7 }}>{isLvlCollapsed ? '▶' : '▼'}</span>
+                                      {lname}
+                                      <span style={{ marginLeft: 10, color: '#888888', fontWeight: 400, fontSize: 11 }}>
+                                        {lPeople.length} {lPeople.length === 1 ? 'person' : 'people'}
+                                      </span>
+                                    </td>
+                                    {displayedCountryGroups.map(g => {
+                                      const col = countryColor(g.country);
+                                      const ct  = getGroupCountryTotal(lPeople, g.projects);
+                                      if (collapsedCountries.has(g.country)) {
+                                        return (
+                                          <td key={g.country} style={{
+                                            padding: '5px 6px', textAlign: 'center', fontSize: 11, fontWeight: 700,
+                                            color: ct > 0 ? col : '#CCCCCC',
+                                            boxShadow: `inset 2px 0 0 ${col}33`, borderRight: '1px solid #D8DFE8',
+                                            borderTop: `1px solid ${subColor}33`, borderBottom: `1px solid ${subColor}33`,
+                                          }}>
+                                            {ct > 0 ? ct.toFixed(1) : '—'}
+                                          </td>
+                                        );
+                                      }
+                                      return (
+                                        <React.Fragment key={g.country}>
+                                          {g.projects.map(proj => {
+                                            const pt = getGroupProjectTotal(lPeople, proj.id);
+                                            return (
+                                              <td key={proj.id} style={{
+                                                padding: '5px 4px', textAlign: 'center', fontSize: 11,
+                                                color: pt > 0 ? subColor : '#CCCCCC',
+                                                borderLeft: '1px solid #D8DFE8',
+                                                borderTop: `1px solid ${subColor}33`, borderBottom: `1px solid ${subColor}33`,
+                                              }}>
+                                                {pt > 0 ? pt.toFixed(1) : ''}
+                                              </td>
+                                            );
+                                          })}
+                                          <td style={{
+                                            padding: '5px 6px', textAlign: 'center', fontSize: 11, fontWeight: 700,
+                                            color: ct > 0 ? col : '#CCCCCC',
+                                            background: ct > 0 ? `${col}0A` : 'transparent',
+                                            borderLeft: '1px solid #C0C8E0', borderRight: '1px solid #C0C8E0',
+                                            borderTop: `1px solid ${subColor}33`, borderBottom: `1px solid ${subColor}33`,
+                                          }}>
+                                            {ct > 0 ? ct.toFixed(1) : '—'}
+                                          </td>
+                                        </React.Fragment>
+                                      );
+                                    })}
+                                    <td style={{
+                                      position: 'sticky', right: 0, zIndex: 2,
+                                      background: `${subColor}0D`, boxShadow: 'inset 2px 0 0 #D5D5D5',
+                                      borderTop: `1px solid ${subColor}33`, borderBottom: `1px solid ${subColor}33`,
+                                      padding: '4px 8px', textAlign: 'center', fontSize: 11, fontWeight: 700,
+                                      color: levelTotal > 0 ? subColor : '#CCCCCC',
+                                    }}>
+                                      {levelTotal > 0 ? levelTotal.toFixed(1) : '—'}
+                                    </td>
+                                  </tr>
+                                  {!isLvlCollapsed && lPeople.map(person => {
+                                    const total = getPersonTotal(person.id);
+                                    const contracted = parseFloat(String(person.contracted_fte ?? 1)) || 1;
+                                    const cc = contractColour(person.contract_type_code);
+                                    return (
+                                      <tr key={person.id} style={{ borderBottom: '1px solid #F0F0F0' }}>
+                                        <td style={{
+                                          position: 'sticky', left: 0, zIndex: 2,
+                                          background: STICKY_BG, borderRight: '2px solid #E0E0E0',
+                                          padding: '3px 14px 3px 42px', maxWidth: 260, overflow: 'hidden',
+                                        }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                                            <div onClick={() => setEditPerson(person)} title="Click to edit" style={{
+                                              fontSize: 13, color: '#111111', fontWeight: 500,
+                                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                              cursor: 'pointer', textDecoration: 'underline',
+                                              textDecorationColor: '#CCCCCC', textDecorationStyle: 'dotted',
+                                              flex: '1 1 auto', minWidth: 0,
+                                            }}>
+                                              {person.name}
+                                            </div>
+                                            <span style={{
+                                              fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                                              background: cc.bg, color: cc.color, border: `1px solid ${cc.border}`,
+                                              whiteSpace: 'nowrap', flexShrink: 0,
+                                            }}>
+                                              {person.contract_type_code ?? 'FTE'}
+                                            </span>
+                                            <span style={{ fontSize: 9, color: '#777777', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                              {contracted.toFixed(1)}
+                                            </span>
+                                          </div>
+                                        </td>
+                                        {displayedCountryGroups.map(g => {
+                                          const isCollapsedC = collapsedCountries.has(g.country);
+                                          const countryTotal = getPersonCountryTotal(person.id, g.projects);
+                                          const col = countryColor(g.country);
+                                          if (isCollapsedC) {
+                                            return (
+                                              <td key={g.country} style={{
+                                                padding: '4px 6px', textAlign: 'center', fontSize: 12, fontWeight: 600,
+                                                color: countryTotal > 0 ? col : '#CCCCCC',
+                                                boxShadow: `inset 2px 0 0 ${col}33`,
+                                                borderRight: '1px solid #EEEEEE',
+                                                background: countryTotal > 0 ? `${col}0A` : 'transparent',
+                                                verticalAlign: 'middle',
+                                              }}>
+                                                {countryTotal > 0 ? countryTotal.toFixed(1) : '—'}
+                                              </td>
+                                            );
+                                          }
+                                          return (
+                                            <React.Fragment key={g.country}>
+                                              {g.projects.map(proj => {
+                                                const val = getCellValue(person.id, proj.id);
+                                                const dirty = isCellDirty(person.id, proj.id);
+                                                return (
+                                                  <td key={proj.id} style={{
+                                                    padding: '3px 4px', textAlign: 'center',
+                                                    borderLeft: '1px solid #EEEEEE',
+                                                    background: dirty ? '#FFFBEB' : 'transparent',
+                                                    verticalAlign: 'middle',
+                                                  }}>
+                                                    <input
+                                                      type="number" min="0" max="2" step="0.1"
+                                                      defaultValue={val > 0 ? val.toString() : ''}
+                                                      key={`${person.id}_${proj.id}_${allocations.length}`}
+                                                      disabled={!canEdit}
+                                                      onBlur={e => canEdit && handleCellChange(person.id, proj.id, e.target.value)}
+                                                      style={{
+                                                        width: 52, padding: '3px 2px',
+                                                        background: !canEdit ? '#F3F4F6' : '#FFFFFF',
+                                                        border: dirty ? '2px solid #FDB90D' : '1px solid #E0E0E0',
+                                                        borderRadius: 3, color: fteCellColour(val),
+                                                        textAlign: 'center', fontSize: 12,
+                                                        fontFamily: 'monospace', outline: 'none',
+                                                        cursor: !canEdit ? 'not-allowed' : 'text',
+                                                      }}
+                                                    />
+                                                  </td>
+                                                );
+                                              })}
+                                              <td style={{
+                                                padding: '4px 6px', textAlign: 'center', fontSize: 12, fontWeight: 600,
+                                                color: countryTotal > 0 ? col : '#CCCCCC',
+                                                background: countryTotal > 0 ? `${col}0A` : '#F8F9FA',
+                                                borderLeft: '1px solid #C0C8E0', borderRight: '1px solid #C0C8E0',
+                                                verticalAlign: 'middle',
+                                              }}>
+                                                {countryTotal > 0 ? countryTotal.toFixed(1) : '—'}
+                                              </td>
+                                            </React.Fragment>
+                                          );
+                                        })}
+                                        <td style={{
+                                          position: 'sticky', right: 0, zIndex: 2,
+                                          background: STICKY_BG, boxShadow: 'inset 2px 0 0 #D5D5D5',
+                                          padding: '5px 8px', textAlign: 'center',
+                                          fontWeight: 700, fontSize: 13,
+                                          color: rowTotalColour(total, contracted),
+                                          verticalAlign: 'middle',
+                                        }}>
+                                          {total > 0 ? total.toFixed(2) : '—'}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </React.Fragment>
+                              );
+                            })}
+
+                            {/* Sub-group subtotal */}
+                            {!isSubCollapsed && (
+                              <SubtotalRow
+                                label={`${subGroup.name} · Total`}
+                                labelColor={subColor}
+                                bg={`${subColor}0D`}
+                                ppl={subGroup.allPeople}
+                              />
+                            )}
+                          </React.Fragment>
+                        );
+                      });
+                    })()}
+
                     {/* Level groups */}
-                    {!isDiscCollapsed && levels.map(({ code, levelName, people: levelPeople }) => {
+                    {!isDiscCollapsed && discipline !== 'Other' && levels.map(({ code, levelName, people: levelPeople }) => {
                       const levelKey       = `${discipline}::${code}`;
                       const isLvlCollapsed = collapsedLevels.has(levelKey);
                       const levelTotal     = getGroupGrandTotal(levelPeople);
@@ -1027,7 +1321,7 @@ export default function Allocations() {
                                               style={{
                                                 width: 52, padding: '3px 2px',
                                                 background: !canEdit ? '#F3F4F6' : '#FFFFFF',
-                                                border: dirty ? '2px solid #F9A825' : '1px solid #E0E0E0',
+                                                border: dirty ? '2px solid #FDB90D' : '1px solid #E0E0E0',
                                                 borderRadius: 3, color: fteCellColour(val),
                                                 textAlign: 'center', fontSize: 12,
                                                 fontFamily: 'monospace', outline: 'none',
@@ -1095,255 +1389,167 @@ export default function Allocations() {
                       </td>
                     </tr>
 
+                    {/* Per-discipline gearing section */}
+                    {Object.keys(gearingMap).length > 0 && (() => {
+                      const isGearExpanded = expandedGearingDiscs.has(discipline);
+                      return (
+                        <>
+                          {/* Toggle row */}
+                          <tr onClick={() => toggleGearing(discipline)} style={{ cursor: 'pointer' }}>
+                            <td colSpan={totalColCount} style={{
+                              padding: '4px 14px 4px 18px',
+                              background: `${discColor}08`,
+                              borderTop: `1px solid ${discColor}22`,
+                              borderBottom: `1px solid ${discColor}22`,
+                            }}>
+                              <span style={{ fontSize: 10, color: discColor, fontWeight: 600, userSelect: 'none' }}>
+                                {isGearExpanded ? '▼' : '▶'} Gearing Summary — {discipline}
+                              </span>
+                            </td>
+                          </tr>
+
+                          {isGearExpanded && (
+                            <>
+                              {/* Separator */}
+                              <tr><td colSpan={totalColCount} style={{ padding: 0, height: 1, background: `${discColor}33` }} /></tr>
+
+                              {/* Total Allocated */}
+                              <tr style={{ background: FOOT_BG }}>
+                                <td style={{ position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG, padding: '5px 14px', fontSize: 11, fontWeight: 700, color: discColor, borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap' }}>
+                                  Allocated — {discipline}
+                                </td>
+                                {displayedCountryGroups.map(g => {
+                                  const { allocated, gearMin, gearMax } = getDisciplineCountryGearing(discipline, allPeople, g.projects);
+                                  const gc = gearingStatusColor(allocated, gearMin, gearMax);
+                                  const isCollapsed = collapsedCountries.has(g.country);
+                                  if (isCollapsed) {
+                                    return (
+                                      <td key={g.country} style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: gc, background: FOOT_BG, padding: '5px 6px', boxShadow: `inset 2px 0 0 ${FOOT_BORDER}` }}>
+                                        {allocated > 0 ? allocated.toFixed(1) : '—'}
+                                      </td>
+                                    );
+                                  }
+                                  return (
+                                    <React.Fragment key={g.country}>
+                                      {g.projects.map(proj => {
+                                        const pt = allPeople.reduce((s, p) => s + getCellValue(p.id, proj.id), 0);
+                                        return <td key={proj.id} style={{ textAlign: 'center', fontSize: 11, color: '#555555', background: FOOT_BG, padding: '5px 4px', borderLeft: `1px solid ${FOOT_BORDER}` }}>{pt > 0 ? pt.toFixed(1) : ''}</td>;
+                                      })}
+                                      <td style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: gc, background: FOOT_BG, padding: '5px 6px', borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}` }}>
+                                        {allocated > 0 ? allocated.toFixed(1) : '—'}
+                                      </td>
+                                    </React.Fragment>
+                                  );
+                                })}
+                                <td style={{ position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG, boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: discColor }}>
+                                  {allPeople.reduce((s, p) => s + displayedProjectIds.reduce((ss, pid) => ss + getCellValue(p.id, pid), 0), 0).toFixed(1)}
+                                </td>
+                              </tr>
+
+                              {/* Gearing Min */}
+                              <tr style={{ background: FOOT_BG2 }}>
+                                <td style={{ position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2, padding: '4px 14px', fontSize: 10, color: '#33A85C', borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                  Gearing Min
+                                </td>
+                                {displayedCountryGroups.map(g => {
+                                  const { gearMin } = getDisciplineCountryGearing(discipline, allPeople, g.projects);
+                                  const isCollapsed = collapsedCountries.has(g.country);
+                                  if (isCollapsed) {
+                                    return <td key={g.country} style={{ textAlign: 'center', fontSize: 11, color: '#33A85C', background: FOOT_BG2, padding: '4px 6px', boxShadow: `inset 2px 0 0 ${FOOT_BORDER}` }}>{gearMin > 0 ? gearMin.toFixed(1) : '—'}</td>;
+                                  }
+                                  return (
+                                    <React.Fragment key={g.country}>
+                                      {g.projects.map(proj => <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />)}
+                                      <td style={{ textAlign: 'center', fontSize: 11, color: '#33A85C', background: FOOT_BG2, padding: '4px 6px', borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}` }}>{gearMin > 0 ? gearMin.toFixed(1) : '—'}</td>
+                                    </React.Fragment>
+                                  );
+                                })}
+                                <td style={{ position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2, boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '4px 8px', textAlign: 'center', fontSize: 10, color: '#888888' }}>—</td>
+                              </tr>
+
+                              {/* Gearing Max */}
+                              <tr style={{ background: FOOT_BG2 }}>
+                                <td style={{ position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2, padding: '4px 14px', fontSize: 10, color: '#FDB90D', borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                  Gearing Max
+                                </td>
+                                {displayedCountryGroups.map(g => {
+                                  const { gearMax } = getDisciplineCountryGearing(discipline, allPeople, g.projects);
+                                  const isCollapsed = collapsedCountries.has(g.country);
+                                  if (isCollapsed) {
+                                    return <td key={g.country} style={{ textAlign: 'center', fontSize: 11, color: '#FDB90D', background: FOOT_BG2, padding: '4px 6px', boxShadow: `inset 2px 0 0 ${FOOT_BORDER}` }}>{gearMax > 0 ? gearMax.toFixed(1) : '—'}</td>;
+                                  }
+                                  return (
+                                    <React.Fragment key={g.country}>
+                                      {g.projects.map(proj => <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />)}
+                                      <td style={{ textAlign: 'center', fontSize: 11, color: '#FDB90D', background: FOOT_BG2, padding: '4px 6px', borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}` }}>{gearMax > 0 ? gearMax.toFixed(1) : '—'}</td>
+                                    </React.Fragment>
+                                  );
+                                })}
+                                <td style={{ position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2, boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '4px 8px', textAlign: 'center', fontSize: 10, color: '#888888' }}>—</td>
+                              </tr>
+
+                              {/* Variance vs Min */}
+                              <tr style={{ background: FOOT_BG2 }}>
+                                <td style={{ position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2, padding: '4px 14px', fontSize: 10, color: '#555555', borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600, borderTop: `1px solid ${FOOT_BORDER}` }}>
+                                  Variance vs Min
+                                </td>
+                                {displayedCountryGroups.map(g => {
+                                  const { allocated, gearMin, gearMax } = getDisciplineCountryGearing(discipline, allPeople, g.projects);
+                                  const variance = allocated - gearMin;
+                                  const gc = gearingStatusColor(allocated, gearMin, gearMax);
+                                  const isCollapsed = collapsedCountries.has(g.country);
+                                  const varCell = (key?: string | number) => (
+                                    <td key={key} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc, background: FOOT_BG2, padding: '4px 6px', boxShadow: isCollapsed ? `inset 2px 0 0 ${FOOT_BORDER}` : undefined, borderLeft: isCollapsed ? undefined : `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}`, borderTop: `1px solid ${FOOT_BORDER}` }}>
+                                      {gearMin > 0 ? (variance >= 0 ? `+${variance.toFixed(1)}` : variance.toFixed(1)) : '—'}
+                                    </td>
+                                  );
+                                  if (isCollapsed) return varCell(g.country);
+                                  return (
+                                    <React.Fragment key={g.country}>
+                                      {g.projects.map(proj => <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}`, borderTop: `1px solid ${FOOT_BORDER}` }} />)}
+                                      {varCell()}
+                                    </React.Fragment>
+                                  );
+                                })}
+                                <td style={{ position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2, boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '4px 8px', textAlign: 'center', fontSize: 10, color: '#888888', borderTop: `1px solid ${FOOT_BORDER}` }}>—</td>
+                              </tr>
+
+                              {/* Variance vs Max */}
+                              <tr style={{ background: FOOT_BG2 }}>
+                                <td style={{ position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2, padding: '4px 14px', fontSize: 10, color: '#555555', borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600 }}>
+                                  Variance vs Max
+                                </td>
+                                {displayedCountryGroups.map(g => {
+                                  const { allocated, gearMin, gearMax } = getDisciplineCountryGearing(discipline, allPeople, g.projects);
+                                  const varianceMax = allocated - gearMax;
+                                  const gc = gearingStatusColor(allocated, gearMin, gearMax);
+                                  const isCollapsed = collapsedCountries.has(g.country);
+                                  const varMaxCell = (key?: string | number) => (
+                                    <td key={key} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc, background: FOOT_BG2, padding: '4px 6px', boxShadow: isCollapsed ? `inset 2px 0 0 ${FOOT_BORDER}` : undefined, borderLeft: isCollapsed ? undefined : `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}` }}>
+                                      {gearMax > 0 ? (varianceMax >= 0 ? `+${varianceMax.toFixed(1)}` : varianceMax.toFixed(1)) : '—'}
+                                    </td>
+                                  );
+                                  if (isCollapsed) return varMaxCell(g.country);
+                                  return (
+                                    <React.Fragment key={g.country}>
+                                      {g.projects.map(proj => <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />)}
+                                      {varMaxCell()}
+                                    </React.Fragment>
+                                  );
+                                })}
+                                <td style={{ position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2, boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '4px 8px', textAlign: 'center', fontSize: 10, color: '#888888' }}>—</td>
+                              </tr>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+
                   </React.Fragment>
                 );
               })}
             </tbody>
 
-            {/* ── Gearing footer ── */}
-            {hasGearing && (
-              <tfoot>
-                {/* Separator */}
-                <tr>
-                  <td colSpan={totalColCount} style={{ padding: 0, height: 2, background: FOOT_BORDER }} />
-                </tr>
-
-                {/* Total Allocated */}
-                <tr style={{ background: FOOT_BG }}>
-                  <td style={{
-                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG,
-                    padding: '7px 14px', fontSize: 11, fontWeight: 700, color: '#333333',
-                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap',
-                  }}>
-                    Total Allocated
-                  </td>
-                  {displayedCountryGroups.map(g => {
-                    const { allocated, gearMin, gearMax } = getCountryGearing(g.projects);
-                    const gc = gearingStatusColor(allocated, gearMin, gearMax);
-                    const isCollapsed = collapsedCountries.has(g.country);
-
-                    if (isCollapsed) {
-                      return (
-                        <td key={g.country} style={{
-                          textAlign: 'center', fontSize: 13, fontWeight: 700, color: gc,
-                          background: FOOT_BG, padding: '7px 6px',
-                          boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`,
-                        }}>
-                          {allocated > 0 ? allocated.toFixed(1) : '—'}
-                        </td>
-                      );
-                    }
-                    return (
-                      <React.Fragment key={g.country}>
-                        {g.projects.map(proj => {
-                          const pt = people.reduce((s, p) => s + getCellValue(p.id, proj.id), 0);
-                          return (
-                            <td key={proj.id} style={{
-                              textAlign: 'center', fontSize: 11, color: '#555555',
-                              background: FOOT_BG, padding: '7px 4px', borderLeft: `1px solid ${FOOT_BORDER}`,
-                            }}>
-                              {pt > 0 ? pt.toFixed(1) : ''}
-                            </td>
-                          );
-                        })}
-                        <td style={{
-                          textAlign: 'center', fontSize: 13, fontWeight: 700, color: gc,
-                          background: FOOT_BG, padding: '7px 6px',
-                          borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}`,
-                        }}>
-                          {allocated > 0 ? allocated.toFixed(1) : '—'}
-                        </td>
-                      </React.Fragment>
-                    );
-                  })}
-                  <td style={{
-                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG,
-                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '7px 8px',
-                    textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#333333',
-                  }}>
-                    {people.reduce((s, p) => s + displayedProjectIds.reduce((ss, pid) => ss + getCellValue(p.id, pid), 0), 0).toFixed(1)}
-                  </td>
-                </tr>
-
-                {/* Gearing Min */}
-                <tr style={{ background: FOOT_BG2 }}>
-                  <td style={{
-                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
-                    padding: '5px 14px', fontSize: 10, color: '#1E8A4A',
-                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
-                  }}>
-                    Gearing Min
-                  </td>
-                  {displayedCountryGroups.map(g => {
-                    const { gearMin } = getCountryGearing(g.projects);
-                    const isCollapsed = collapsedCountries.has(g.country);
-                    if (isCollapsed) {
-                      return (
-                        <td key={g.country} style={{
-                          textAlign: 'center', fontSize: 11, color: '#1E8A4A',
-                          background: FOOT_BG2, padding: '5px 6px', boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`,
-                        }}>
-                          {gearMin > 0 ? gearMin.toFixed(1) : '—'}
-                        </td>
-                      );
-                    }
-                    return (
-                      <React.Fragment key={g.country}>
-                        {g.projects.map(proj => (
-                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />
-                        ))}
-                        <td style={{
-                          textAlign: 'center', fontSize: 11, color: '#1E8A4A',
-                          background: FOOT_BG2, padding: '5px 6px',
-                          borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}`,
-                        }}>
-                          {gearMin > 0 ? gearMin.toFixed(1) : '—'}
-                        </td>
-                      </React.Fragment>
-                    );
-                  })}
-                  <td style={{
-                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
-                    textAlign: 'center', fontSize: 10, color: '#888888',
-                  }}>—</td>
-                </tr>
-
-                {/* Gearing Max */}
-                <tr style={{ background: FOOT_BG2 }}>
-                  <td style={{
-                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
-                    padding: '5px 14px', fontSize: 10, color: '#B5600A',
-                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
-                  }}>
-                    Gearing Max
-                  </td>
-                  {displayedCountryGroups.map(g => {
-                    const { gearMax } = getCountryGearing(g.projects);
-                    const isCollapsed = collapsedCountries.has(g.country);
-                    if (isCollapsed) {
-                      return (
-                        <td key={g.country} style={{
-                          textAlign: 'center', fontSize: 11, color: '#B5600A',
-                          background: FOOT_BG2, padding: '5px 6px', boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`,
-                        }}>
-                          {gearMax > 0 ? gearMax.toFixed(1) : '—'}
-                        </td>
-                      );
-                    }
-                    return (
-                      <React.Fragment key={g.country}>
-                        {g.projects.map(proj => (
-                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />
-                        ))}
-                        <td style={{
-                          textAlign: 'center', fontSize: 11, color: '#B5600A',
-                          background: FOOT_BG2, padding: '5px 6px',
-                          borderLeft: `1px solid ${FOOT_BORDER}`, borderRight: `1px solid ${FOOT_BORDER}`,
-                        }}>
-                          {gearMax > 0 ? gearMax.toFixed(1) : '—'}
-                        </td>
-                      </React.Fragment>
-                    );
-                  })}
-                  <td style={{
-                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
-                    textAlign: 'center', fontSize: 10, color: '#888888',
-                  }}>—</td>
-                </tr>
-
-                {/* Variance vs Min */}
-                <tr style={{ background: FOOT_BG2 }}>
-                  <td style={{
-                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
-                    padding: '5px 14px', fontSize: 10, color: '#555555',
-                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
-                    borderTop: `1px solid ${FOOT_BORDER}`,
-                  }}>
-                    Variance vs Min
-                  </td>
-                  {displayedCountryGroups.map(g => {
-                    const { allocated, gearMin, gearMax } = getCountryGearing(g.projects);
-                    const variance = allocated - gearMin;
-                    const gc       = gearingStatusColor(allocated, gearMin, gearMax);
-                    const isCollapsed = collapsedCountries.has(g.country);
-
-                    const varCell = (key?: number | string) => (
-                      <td key={key} style={{
-                        textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc,
-                        background: FOOT_BG2, padding: '5px 6px',
-                        boxShadow: isCollapsed ? `inset 2px 0 0 ${FOOT_BORDER}` : undefined,
-                        borderLeft: isCollapsed ? undefined : `1px solid ${FOOT_BORDER}`,
-                        borderRight: `1px solid ${FOOT_BORDER}`, borderTop: `1px solid ${FOOT_BORDER}`,
-                      }}>
-                        {gearMin > 0 ? (variance >= 0 ? `+${variance.toFixed(1)}` : variance.toFixed(1)) : '—'}
-                      </td>
-                    );
-
-                    if (isCollapsed) return varCell(g.country);
-                    return (
-                      <React.Fragment key={g.country}>
-                        {g.projects.map(proj => (
-                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}`, borderTop: `1px solid ${FOOT_BORDER}` }} />
-                        ))}
-                        {varCell()}
-                      </React.Fragment>
-                    );
-                  })}
-                  <td style={{
-                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
-                    textAlign: 'center', fontSize: 10, color: '#888888',
-                    borderTop: `1px solid ${FOOT_BORDER}`,
-                  }}>—</td>
-                </tr>
-
-                {/* Variance vs Max */}
-                <tr style={{ background: FOOT_BG2 }}>
-                  <td style={{
-                    position: 'sticky', left: 0, zIndex: 2, background: FOOT_BG2,
-                    padding: '5px 14px', fontSize: 10, color: '#555555',
-                    borderRight: `2px solid ${FOOT_BORDER}`, whiteSpace: 'nowrap', fontWeight: 600,
-                  }}>
-                    Variance vs Max
-                  </td>
-                  {displayedCountryGroups.map(g => {
-                    const { allocated, gearMin, gearMax } = getCountryGearing(g.projects);
-                    const varianceMax = allocated - gearMax;
-                    const gc          = gearingStatusColor(allocated, gearMin, gearMax);
-                    const isCollapsed = collapsedCountries.has(g.country);
-
-                    const varMaxCell = (key?: number | string) => (
-                      <td key={key} style={{
-                        textAlign: 'center', fontSize: 11, fontWeight: 700, color: gc,
-                        background: FOOT_BG2, padding: '5px 6px',
-                        boxShadow: isCollapsed ? `inset 2px 0 0 ${FOOT_BORDER}` : undefined,
-                        borderLeft: isCollapsed ? undefined : `1px solid ${FOOT_BORDER}`,
-                        borderRight: `1px solid ${FOOT_BORDER}`,
-                      }}>
-                        {gearMax > 0 ? (varianceMax >= 0 ? `+${varianceMax.toFixed(1)}` : varianceMax.toFixed(1)) : '—'}
-                      </td>
-                    );
-
-                    if (isCollapsed) return varMaxCell(g.country);
-                    return (
-                      <React.Fragment key={g.country}>
-                        {g.projects.map(proj => (
-                          <td key={proj.id} style={{ background: FOOT_BG2, borderLeft: `1px solid ${FOOT_BORDER}` }} />
-                        ))}
-                        {varMaxCell()}
-                      </React.Fragment>
-                    );
-                  })}
-                  <td style={{
-                    position: 'sticky', right: 0, zIndex: 2, background: FOOT_BG2,
-                    boxShadow: `inset 2px 0 0 ${FOOT_BORDER}`, padding: '5px 8px',
-                    textAlign: 'center', fontSize: 10, color: '#888888',
-                  }}>—</td>
-                </tr>
-              </tfoot>
-            )}
 
           </table>
         </div>
@@ -1363,7 +1569,7 @@ export default function Allocations() {
       {tooltipInfo && (() => {
         const p = tooltipInfo.project;
         const TYPE_COLOURS: Record<string, string> = {
-          'Retail': '#1565C0', 'xScale': '#6A1B9A', 'Matrix': '#006064',
+          'Retail': '#086AE3', 'xScale': '#411980', 'Matrix': '#006064',
         };
         const tc = TYPE_COLOURS[p.type] ?? '#555555';
         // Clamp to viewport width
@@ -1489,7 +1695,7 @@ export default function Allocations() {
               </button>
               <button onClick={handleCreateRequest} disabled={requestSaving} style={{
                 flex: 2, padding: '9px 0',
-                background: requestSaving ? '#CCCCCC' : '#E31837',
+                background: requestSaving ? '#CCCCCC' : '#E91C24',
                 border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600,
                 color: '#FFFFFF', cursor: requestSaving ? 'default' : 'pointer',
               }}>

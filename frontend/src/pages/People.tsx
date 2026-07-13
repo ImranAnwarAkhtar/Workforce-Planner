@@ -14,7 +14,7 @@ const S = {
   page: { color: '#111111' } as React.CSSProperties,
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 } as React.CSSProperties,
   title: { fontSize: 24, fontWeight: 700, margin: 0, color: '#111111' } as React.CSSProperties,
-  accent: { width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
+  accent: { width: 40, height: 3, background: '#E91C24', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
   statsBar:  { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, marginBottom: 20 } as React.CSSProperties,
   statCard:  (accent: string): React.CSSProperties => ({ background: '#FFFFFF', border: '1px solid #E5E5E5', borderTop: `3px solid ${accent}`, borderRadius: 8, padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }),
   statNum:   { fontSize: 22, fontWeight: 700, color: '#111111', lineHeight: 1 } as React.CSSProperties,
@@ -33,7 +33,7 @@ const S = {
     borderRadius: 6, color: '#111111', fontSize: 12, cursor: 'pointer', outline: 'none',
   } as React.CSSProperties,
   btnPrimary: {
-    padding: '9px 18px', background: '#E31837', color: '#FFFFFF',
+    padding: '9px 18px', background: '#E91C24', color: '#FFFFFF',
     border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600,
     cursor: 'pointer', whiteSpace: 'nowrap' as const,
   } as React.CSSProperties,
@@ -58,14 +58,14 @@ const S = {
     display: 'inline-block', padding: '2px 8px', borderRadius: 12,
     fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
     background: active ? '#E8F5EE' : '#FEF0F0',
-    color: active ? '#1E8A4A' : '#C0392B',
+    color: active ? '#33A85C' : '#AD050C',
     border: `1px solid ${active ? '#A8D8BF' : '#F5C0BB'}`,
   }),
   actionBtn: (danger?: boolean): React.CSSProperties => ({
     padding: '4px 10px', fontSize: 12, fontWeight: 500,
     background: 'transparent',
     border: `1px solid ${danger ? '#F5C0BB' : '#D5D5D5'}`,
-    color: danger ? '#C0392B' : '#555555',
+    color: danger ? '#AD050C' : '#555555',
     borderRadius: 4, cursor: 'pointer',
   }),
   overlay: {
@@ -103,14 +103,18 @@ const S = {
 // Region colours
 // ---------------------------------------------------------------------------
 
-const REGION_PALETTE = ['#1565C0', '#1E8A4A', '#6A1B9A', '#B5600A', '#006064', '#C0392B', '#4477EE', '#D4870A'];
+const REGION_PALETTE = ['#086AE3', '#33A85C', '#411980', '#FDB90D', '#00737A', '#AD050C', '#7739D9', '#FE9234'];
 
 const DISC_COLOURS: Record<string, string> = {
-  'Construction': '#E65100',
-  'Design':       '#1565C0',
-  'Commercial':   '#1E8A4A',
-  'Commissioning':'#6A1B9A',
-  'Other':        '#888888',
+  'Construction': '#086AE3',
+  'Design':       '#33A85C',
+  'Commercial':   '#FDB90D',
+  'Commissioning':'#00737A',
+  'Other':        '#8B93A3',
+};
+const DISC_LABEL_COLOR = (disc: string): string => {
+  const c = DISC_COLOURS[disc] ?? '#5A657B';
+  return c === '#FDB90D' ? '#C59000' : c;
 };
 
 function regionColor(name: string): string {
@@ -413,39 +417,39 @@ export default function People() {
     <div style={S.page}>
 
       {/* Title + stats strip */}
-      <div style={{ background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', overflow: 'hidden' }}>
+      <div style={{ background: '#FFFFFF', borderRadius: 8, marginBottom: 16, border: '1px solid #E0E3E8', borderBottom: '3px solid #E91C24', overflow: 'hidden' }}>
         {/* Row 1: title, total, region stats, add button */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>People</div>
+          <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1 }}>People</div>
           </div>
           {!loading && people.length > 0 && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRight: '1px solid #2A2C32' }}>
-                <span style={{ fontSize: 17, fontWeight: 400, color: '#E31837', lineHeight: 1 }}>{people.length}</span>
-                <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Total</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRight: '1px solid #E0E3E8' }}>
+                <span style={{ fontSize: 17, fontWeight: 700, color: '#E91C24', lineHeight: 1 }}>{people.length}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Total</span>
               </div>
               {regionStats.map(([region, count]) => (
-                <div key={region} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', flex: '1 1 auto', borderRight: '1px solid #2A2C32' }}>
-                  <span style={{ fontSize: 17, fontWeight: 400, color: regionColor(region), lineHeight: 1 }}>{count}</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{region}</span>
+                <div key={region} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', flex: '1 1 auto', borderRight: '1px solid #E0E3E8' }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: regionColor(region), lineHeight: 1 }}>{count}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{region}</span>
                 </div>
               ))}
             </>
           )}
           <div style={{ flex: 1 }} />
-          <div style={{ padding: '0 12px', borderLeft: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <button style={{ padding: '4px 10px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }} onClick={openAdd}>+ Person</button>
+          <div style={{ padding: '0 12px', borderLeft: '1px solid #E0E3E8', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <button style={{ padding: '4px 10px', background: '#E91C24', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }} onClick={openAdd}>+ Person</button>
           </div>
         </div>
         {/* Row 2: discipline breakdown */}
         {!loading && disciplineStats.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #2A2C32', padding: '6px 16px', gap: 20, flexWrap: 'wrap' as const }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#555', textTransform: 'uppercase' as const, letterSpacing: '0.1em', flexShrink: 0 }}>By Discipline</span>
+          <div style={{ display: 'flex', alignItems: 'center', borderTop: '1px solid #E0E3E8', padding: '6px 16px', gap: 20, flexWrap: 'wrap' as const }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', flexShrink: 0 }}>By Discipline</span>
             {disciplineStats.map(([disc, count]) => (
               <div key={disc} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 15, fontWeight: 800, color: DISC_COLOURS[disc] ?? '#AAAAAA', lineHeight: 1 }}>{count}</span>
-                <span style={{ fontSize: 9, fontWeight: 600, color: '#888888', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{disc}</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: DISC_LABEL_COLOR(disc), lineHeight: 1 }}>{count}</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{disc}</span>
               </div>
             ))}
           </div>
@@ -513,7 +517,7 @@ export default function People() {
             padding: '7px 14px', background: '#FEF0F0',
             border: '1px solid #F5C0BB', borderRadius: 6, marginLeft: 'auto',
           }}>
-            <span style={{ fontSize: 13, color: '#C0392B' }}>
+            <span style={{ fontSize: 13, color: '#AD050C' }}>
               {selectedIds.size} selected
             </span>
             <button
@@ -548,7 +552,7 @@ export default function People() {
           </div>
         ) : error ? (
           <div style={{ ...S.center, flexDirection: 'column', gap: 12 }}>
-            <span style={{ color: '#E31837' }}>Failed to load people</span>
+            <span style={{ color: '#E91C24' }}>Failed to load people</span>
             <span style={{ fontSize: 12, color: '#666' }}>{error}</span>
             <button style={S.btnSecondary} onClick={loadPeople}>Retry</button>
           </div>
@@ -568,7 +572,7 @@ export default function People() {
                       checked={allSelected}
                       ref={el => { if (el) el.indeterminate = someSelected; }}
                       onChange={toggleSelectAll}
-                      style={{ cursor: 'pointer', accentColor: '#E31837', width: 15, height: 15 }}
+                      style={{ cursor: 'pointer', accentColor: '#E91C24', width: 15, height: 15 }}
                       title="Select all"
                     />
                   </th>
@@ -604,13 +608,13 @@ export default function People() {
             <div style={S.fieldGroup}>
               <label style={S.label}>Name *</label>
               <input
-                style={{ ...S.input, borderColor: nameError ? '#E31837' : '#333333' }}
+                style={{ ...S.input, borderColor: nameError ? '#E91C24' : '#333333' }}
                 value={form.name}
                 onChange={e => setField('name', e.target.value)}
                 placeholder="Full name"
                 autoFocus
               />
-              {nameError && <span style={{ fontSize: 11, color: '#E31837', marginTop: 3, display: 'block' }}>{nameError}</span>}
+              {nameError && <span style={{ fontSize: 11, color: '#E91C24', marginTop: 3, display: 'block' }}>{nameError}</span>}
             </div>
 
             <div style={S.formRow}>
@@ -697,11 +701,11 @@ export default function People() {
       {permDeleteTarget && (
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setPermDeleteTarget(null); }}>
           <div style={{ ...S.modal, maxWidth: 420 }}>
-            <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E31837' }}>Permanently Delete Person</h2>
+            <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E91C24' }}>Permanently Delete Person</h2>
             <p style={{ color: '#555555', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
               This will permanently remove <strong style={{ color: '#111111' }}>{permDeleteTarget.name}</strong> and all their allocation records. This action cannot be undone.
             </p>
-            <div style={{ background: '#FEF0F0', border: '1px solid #F5C0BB', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#C0392B', marginBottom: 20 }}>
+            <div style={{ background: '#FEF0F0', border: '1px solid #F5C0BB', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#AD050C', marginBottom: 20 }}>
               All FTE allocations for this person will also be deleted.
             </div>
             <div style={S.modalFooter}>
@@ -718,7 +722,7 @@ export default function People() {
       {bulkDeleteOpen && (
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setBulkDeleteOpen(false); }}>
           <div style={{ ...S.modal, maxWidth: 460 }}>
-            <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E31837' }}>
+            <h2 style={{ ...S.modalTitle, marginBottom: 12, color: '#E91C24' }}>
               Permanently Delete {selectedIds.size} {selectedIds.size === 1 ? 'Person' : 'People'}
             </h2>
             <p style={{ color: '#555555', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>
@@ -738,7 +742,7 @@ export default function People() {
               ))}
             </div>
 
-            <div style={{ background: '#FEF0F0', border: '1px solid #F5C0BB', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#C0392B', marginBottom: 20 }}>
+            <div style={{ background: '#FEF0F0', border: '1px solid #F5C0BB', borderRadius: 6, padding: '10px 14px', fontSize: 13, color: '#AD050C', marginBottom: 20 }}>
               All FTE allocations for {selectedIds.size === 1 ? 'this person' : 'these people'} will also be deleted.
             </div>
 
@@ -783,7 +787,7 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
             type="checkbox"
             checked={!!selected}
             onChange={onToggle}
-            style={{ cursor: 'pointer', accentColor: '#E31837', width: 15, height: 15 }}
+            style={{ cursor: 'pointer', accentColor: '#E91C24', width: 15, height: 15 }}
           />
         </td>
       )}
@@ -793,9 +797,9 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
           <div style={{
             width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
             background: selected ? '#FDDDE2' : '#FEF0F2',
-            border: `1px solid ${selected ? '#E31837' : '#F5C0C8'}`,
+            border: `1px solid ${selected ? '#E91C24' : '#F5C0C8'}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, fontWeight: 700, color: '#E31837',
+            fontSize: 10, fontWeight: 700, color: '#E91C24',
           }}>
             {p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
           </div>
@@ -827,7 +831,7 @@ function PersonRow({ person: p, onEdit, onDelete, onPermDelete, selected, onTogg
       </td>
 
       <td style={S.td}>
-        <span style={{ color: Number(p.contracted_fte) >= 1 ? '#111111' : '#B5600A', fontWeight: 600 }}>
+        <span style={{ color: Number(p.contracted_fte) >= 1 ? '#111111' : '#FDB90D', fontWeight: 600 }}>
           {Number(p.contracted_fte).toFixed(1)}
         </span>
       </td>

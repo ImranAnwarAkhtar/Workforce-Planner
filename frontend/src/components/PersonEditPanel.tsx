@@ -255,7 +255,7 @@ export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
 
           {/* TBH Code */}
           <div style={FIELD}>
-            <label style={LBL}>TBH Code {isPlaceholder && <span style={{ color: '#C0392B' }}>*</span>}</label>
+            <label style={LBL}>TBH Code {isPlaceholder && <span style={{ color: '#AD050C' }}>*</span>}</label>
             <select style={SEL} value={form.tbh_code_id} onChange={e => set('tbh_code_id', e.target.value)}>
               <option value="">— Not assigned —</option>
               {tbhCodes.map(t => <option key={t.id} value={t.id}>{t.tbh_id}</option>)}
@@ -278,8 +278,8 @@ export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
                 return (
                   <button key={r.id} onClick={() => toggleRegion(r.id)} style={{
                     padding: '4px 10px', borderRadius: 12, fontSize: 11, cursor: 'pointer',
-                    border: `1px solid ${on ? '#1565C0' : '#DDDDDD'}`,
-                    background: on ? '#1565C0' : '#FFFFFF',
+                    border: `1px solid ${on ? '#086AE3' : '#DDDDDD'}`,
+                    background: on ? '#086AE3' : '#FFFFFF',
                     color: on ? '#FFFFFF' : '#555555',
                     fontWeight: on ? 600 : 400,
                   }}>
@@ -304,8 +304,8 @@ export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
                 return (
                   <button key={c.id} onClick={() => toggleCountry(c.id)} style={{
                     padding: '4px 10px', borderRadius: 12, fontSize: 11, cursor: 'pointer',
-                    border: `1px solid ${on ? '#1E8A4A' : '#DDDDDD'}`,
-                    background: on ? '#1E8A4A' : '#FFFFFF',
+                    border: `1px solid ${on ? '#33A85C' : '#DDDDDD'}`,
+                    background: on ? '#33A85C' : '#FFFFFF',
                     color: on ? '#FFFFFF' : '#555555',
                     fontWeight: on ? 600 : 400,
                   }}>
@@ -342,7 +342,7 @@ export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
             Cancel
           </button>
           <button onClick={handleSave} disabled={saving} style={{
-            flex: 2, padding: '9px 0', background: saving ? '#CCCCCC' : '#E31837',
+            flex: 2, padding: '9px 0', background: saving ? '#CCCCCC' : '#E91C24',
             border: 'none', borderRadius: 5, fontSize: 13,
             fontWeight: 600, color: '#FFFFFF',
             cursor: saving ? 'default' : 'pointer',

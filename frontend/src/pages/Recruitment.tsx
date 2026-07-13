@@ -22,7 +22,7 @@ const STATUS_BANNER_COLOR: Record<string, string> = {
   'Open':           '#60A5FA',
   'In Progress':    '#FBBF24',
   'Offer Extended': '#A78BFA',
-  'Filled':         '#34D399',
+  'Filled':         '#33A85C',
   'On Hold':        '#9CA3AF',
   'Cancelled':      '#F87171',
 };
@@ -40,7 +40,7 @@ function fmtDate(d: string | null) {
 // Styles
 // ---------------------------------------------------------------------------
 
-const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E31837', muted: '#666666' };
+const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E91C24', muted: '#666666' };
 const card: React.CSSProperties    = { background: tk.bg2, border: `1px solid ${tk.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
 const TH: React.CSSProperties     = { padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: tk.muted, background: '#F8F9FA', borderBottom: `1px solid ${tk.border}`, whiteSpace: 'nowrap' };
 const TD: React.CSSProperties     = { padding: '7px 12px', borderBottom: '1px solid #F0F0F0', verticalAlign: 'middle', fontSize: 13, color: '#111111' };
@@ -224,27 +224,27 @@ export default function Recruitment() {
       {/* ── Top banner: title + pipeline status counts + actions ── */}
       <div style={{
         display: 'flex', alignItems: 'center',
-        background: '#181A1E', borderRadius: 8, marginBottom: 16,
-        border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', overflow: 'hidden',
+        background: '#FFFFFF', borderRadius: 8, marginBottom: 16,
+        border: '1px solid #E0E3E8', borderBottom: '3px solid #E91C24', overflow: 'hidden',
       }}>
         {/* Title */}
-        <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1, whiteSpace: 'nowrap' }}>Recruitment Pipeline</div>
+        <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, whiteSpace: 'nowrap' }}>Talent Acquisition</div>
         </div>
 
         {/* Total */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
-          <span style={{ fontSize: 16, fontWeight: 500, color: '#AAAAAA', lineHeight: 1 }}>{tbhCodes.length}</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase', letterSpacing: '0.07em', lineHeight: 1.3 }}>Total</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+          <span style={{ fontSize: 16, fontWeight: 500, color: '#111827', lineHeight: 1 }}>{tbhCodes.length}</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.07em', lineHeight: 1.3 }}>Total</span>
         </div>
 
         {/* Per-status counts */}
         {REQ_STATUSES.map(s => (
-          <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
+          <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
             <span style={{ fontSize: 16, fontWeight: 500, color: STATUS_BANNER_COLOR[s], lineHeight: 1 }}>
               {statusCounts[s] ?? 0}
             </span>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.07em', lineHeight: 1.3 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.07em', lineHeight: 1.3 }}>
               {s}
             </span>
           </div>

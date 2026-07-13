@@ -5,22 +5,24 @@
 }
 
 :root {
-  --bg-primary: #F5F6FA;
+  --bg-primary: #FFFFFF;
   --bg-secondary: #FFFFFF;
   --bg-sidebar: #111111;
-  --accent: #E31837;
-  --accent-hover: #c41530;
+  --accent: #E91C24;
+  --accent-hover: #C0101B;
   --text: #111111;
-  --text-muted: #666666;
-  --border: #E0E0E0;
+  --text-muted: #5A657B;
+  --border: #E0E3E8;
 }
 
 html, body, #root {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #F5F6FA;
+  font-family: "Nexa Text", "Noto Sans", Arial, 'Helvetica Neue', Helvetica, sans-serif;
+  font-size: 15px;
+  background: #FFFFFF;
   color: #111111;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 @keyframes spin {
@@ -30,8 +32,8 @@ html, body, #root {
 .spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid rgba(227, 24, 55, 0.2);
-  border-top-color: #E31837;
+  border: 3px solid rgba(233, 28, 36, 0.2);
+  border-top-color: #E91C24;
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
 }

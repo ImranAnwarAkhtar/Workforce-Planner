@@ -306,6 +306,26 @@ export const projectsApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Project comments
+// ---------------------------------------------------------------------------
+
+export interface ProjectComment {
+  id: number;
+  project_id: number;
+  user_name: string;
+  user_role: string | null;
+  body: string;
+  created_at: string;
+}
+
+export const projectCommentsApi = {
+  list: (projectId: number) =>
+    client.get<ListResponse<ProjectComment>>(`/projects/${projectId}/comments`).then(r => r.data.data),
+  create: (projectId: number, body: string) =>
+    client.post<ItemResponse<ProjectComment>>(`/projects/${projectId}/comments`, { body }).then(r => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
 // Allocations
 // ---------------------------------------------------------------------------
 

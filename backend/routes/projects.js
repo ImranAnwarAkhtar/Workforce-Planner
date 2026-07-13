@@ -54,6 +54,34 @@ router.get('/:id', requireAuth, async (req, res) => {
   res.json({ data: rows[0] });
 });
 
+// GET /api/projects/:id/comments — must be registered before any catch-all /:id routes
+router.get('/:id/comments', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, project_id, user_name, user_role, body, created_at
+     FROM project_comments
+     WHERE project_id = $1
+     ORDER BY created_at ASC`,
+    [parseInt(req.params.id, 10)]
+  );
+  res.json({ data: rows });
+});
+
+// POST /api/projects/:id/comments
+router.post('/:id/comments', requireAuth, async (req, res) => {
+  const { body } = req.body;
+  if (!body?.trim()) return res.status(400).json({ error: 'Comment body is required' });
+  const projectId = parseInt(req.params.id, 10);
+  const { rows: [project] } = await pool.query('SELECT id FROM projects WHERE id = $1', [projectId]);
+  if (!project) return res.status(404).json({ error: 'Project not found' });
+  const { rows } = await pool.query(
+    `INSERT INTO project_comments (project_id, user_name, user_role, body)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, project_id, user_name, user_role, body, created_at`,
+    [projectId, req.user.name, req.user.role ?? null, body.trim()]
+  );
+  res.status(201).json({ data: rows[0] });
+});
+
 router.post('/', requireAuth, requireRole(...WRITER_ROLES), async (req, res) => {
   const { name, type, status, weight = 1.0, region_id, country_id, metro, phase_code, year, planning_cycle_id } = req.body;
   if (!name || !type || !status) return res.status(400).json({ error: 'name, type, and status are required' });

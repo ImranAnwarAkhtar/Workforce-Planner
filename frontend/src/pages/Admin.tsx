@@ -11,7 +11,7 @@ const rawClient = axios.create({ baseURL: BASE });
 // Styles
 // ---------------------------------------------------------------------------
 
-const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E31837', muted: '#666666' };
+const tk = { bg2: '#FFFFFF', border: '#E5E5E5', accent: '#E91C24', muted: '#666666' };
 const card: React.CSSProperties = { background: tk.bg2, border: `1px solid ${tk.border}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' };
 const th: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: tk.muted, background: '#F8F9FA', borderBottom: `1px solid ${tk.border}`, whiteSpace: 'nowrap' };
 const td: React.CSSProperties = { padding: '10px 14px', borderBottom: '1px solid #F0F0F0', fontSize: 14, color: '#333333' };
@@ -89,7 +89,7 @@ function DisciplinesTab() {
   }
 
   const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#AD050C', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
 
   return (
     <div>
@@ -141,7 +141,7 @@ function DisciplinesTab() {
                   <td style={td}>
                     {deletingId === d.id ? (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <span style={{ fontSize: 12, color: '#AD050C' }}>Delete?</span>
                         <button onClick={() => handleDelete(d.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
                         <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
                       </div>
@@ -150,7 +150,7 @@ function DisciplinesTab() {
                         <button onClick={() => { setEditingId(d.id); setEditName(d.name); setDeletingId(null); }}
                           style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
                         <button onClick={() => { setDeletingId(d.id); setEditingId(null); }}
-                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#AD050C', borderColor: '#FBBDBA' }}>Delete</button>
                       </div>
                     )}
                   </td>
@@ -213,7 +213,7 @@ function LevelsTab() {
   }
 
   const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#AD050C', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
 
   return (
     <div>
@@ -281,7 +281,7 @@ function LevelsTab() {
                   <td style={td}>
                     {deletingId === l.id ? (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <span style={{ fontSize: 12, color: '#AD050C' }}>Delete?</span>
                         <button onClick={() => handleDelete(l.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
                         <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
                       </div>
@@ -290,7 +290,7 @@ function LevelsTab() {
                         <button onClick={() => { setEditingId(l.id); setEditForm({ level_name: l.level_name, short_code: l.short_code, level_number: String(l.level_number ?? '') }); setDeletingId(null); }}
                           style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
                         <button onClick={() => { setDeletingId(l.id); setEditingId(null); }}
-                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#AD050C', borderColor: '#FBBDBA' }}>Delete</button>
                       </div>
                     )}
                   </td>
@@ -348,7 +348,7 @@ function ContractTypesTab() {
 
   const CATEGORIES = ['existing', 'approved', 'requested'];
   const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#AD050C', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
 
   function ColourInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
     const hex6 = value.replace('#', '').padEnd(6, '0').substring(0, 6).toUpperCase();
@@ -450,7 +450,7 @@ function ContractTypesTab() {
                   <td style={td}>
                     {deletingId === c.id ? (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <span style={{ fontSize: 12, color: '#AD050C' }}>Delete?</span>
                         <button onClick={() => handleDelete(c.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
                         <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
                       </div>
@@ -459,7 +459,7 @@ function ContractTypesTab() {
                         <button onClick={() => { setEditingId(c.id); setEditForm({ code: c.code, description: c.description, category: c.category ?? 'existing', colour_hex: hex || 'CCCCCC' }); setDeletingId(null); }}
                           style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
                         <button onClick={() => { setDeletingId(c.id); setEditingId(null); }}
-                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#AD050C', borderColor: '#FBBDBA' }}>Delete</button>
                       </div>
                     )}
                   </td>
@@ -516,7 +516,7 @@ function RegionsTab() {
   }
 
   const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
-  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#C0392B', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
+  const delConfirmBtn: React.CSSProperties = { padding: '4px 10px', background: '#AD050C', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' };
 
   return (
     <div>
@@ -584,7 +584,7 @@ function RegionsTab() {
                   <td style={td}>
                     {deletingId === r.id ? (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: '#C0392B' }}>Delete?</span>
+                        <span style={{ fontSize: 12, color: '#AD050C' }}>Delete?</span>
                         <button onClick={() => handleDelete(r.id)} disabled={saving} style={delConfirmBtn}>{saving ? '…' : 'Yes'}</button>
                         <button onClick={() => setDeletingId(null)} style={{ ...btnSecondary, padding: '4px 8px', fontSize: 11 }}>No</button>
                       </div>
@@ -593,7 +593,7 @@ function RegionsTab() {
                         <button onClick={() => { setEditingId(r.id); setEditForm({ name: r.name, code: r.code, sort_order: String(r.sort_order) }); setDeletingId(null); }}
                           style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
                         <button onClick={() => { setDeletingId(r.id); setEditingId(null); }}
-                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#C0392B', borderColor: '#FBBDBA' }}>Delete</button>
+                          style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12, color: '#AD050C', borderColor: '#FBBDBA' }}>Delete</button>
                       </div>
                     )}
                   </td>
@@ -632,7 +632,7 @@ function UsersTab() {
               <td style={td}>{u.email}</td>
               <td style={td}><span style={{ padding: '1px 8px', borderRadius: 10, background: '#F0ECFF', color: '#6644BB', border: '1px solid #C5B8F0', fontSize: 11, fontWeight: 600 }}>{u.role}</span></td>
               <td style={td}>
-                <span style={{ color: u.is_active ? '#33CC77' : '#E31837', fontSize: 12, fontWeight: 600 }}>
+                <span style={{ color: u.is_active ? '#33A85C' : '#E91C24', fontSize: 12, fontWeight: 600 }}>
                   {u.is_active ? 'Active' : 'Inactive'}
                 </span>
               </td>
@@ -690,7 +690,7 @@ function ChangeRulesTab() {
                       padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
                       cursor: saving === r.id ? 'wait' : 'pointer', border: 'none',
                       background: r.auto_approve ? '#E8F5EE' : '#FEF0F0',
-                      color: r.auto_approve ? '#1E8A4A' : '#C0392B',
+                      color: r.auto_approve ? '#33A85C' : '#AD050C',
                       outline: `1px solid ${r.auto_approve ? '#A8D8BF' : '#F5C0BB'}`,
                     }}
                   >
@@ -837,7 +837,7 @@ function PlanningCyclesTab() {
         </p>
         <button
           onClick={() => { setCreating(true); setEditingId(null); }}
-          style={{ padding: '4px 10px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 20, flexShrink: 0 }}
+          style={{ padding: '4px 10px', background: '#E91C24', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 20, flexShrink: 0 }}
         >+ New Cycle</button>
       </div>
 
@@ -869,7 +869,7 @@ function PlanningCyclesTab() {
             <button onClick={() => setCreating(false)} style={btnSecondary}>Cancel</button>
             <button
               onClick={handleCreate} disabled={saving || !form.name || !form.start_date || !form.end_date}
-              style={{ padding: '7px 16px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (!form.name || !form.start_date || !form.end_date) ? 0.6 : 1 }}
+              style={{ padding: '7px 16px', background: '#E91C24', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', opacity: (!form.name || !form.start_date || !form.end_date) ? 0.6 : 1 }}
             >{saving ? 'Creating…' : form.copy_from_cycle_id ? 'Create & Copy' : 'Create'}</button>
           </div>
         </div>
@@ -912,7 +912,7 @@ function PlanningCyclesTab() {
                         <td style={td}>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button onClick={() => handleUpdate(cycle.id)} disabled={saving}
-                              style={{ padding: '5px 12px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                              style={{ padding: '5px 12px', background: '#E91C24', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                               {saving ? '…' : 'Save'}
                             </button>
                             <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
@@ -1025,8 +1025,8 @@ export default function Admin() {
   return (
     <div style={{ color: '#111111' }}>
       {/* Page title bar */}
-      <div style={{ display: 'flex', alignItems: 'center', background: '#181A1E', borderRadius: 8, marginBottom: 16, border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Admin</div>
+      <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', borderRadius: 8, marginBottom: 16, border: '1px solid #E0E3E8', borderBottom: '3px solid #E91C24', padding: '8px 16px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1 }}>Admin</div>
       </div>
 
       {/* Tabs */}

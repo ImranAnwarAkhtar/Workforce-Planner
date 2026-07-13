@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../hooks/useAuth';
-import equinixLogoReversed from '../assets/equinix-logo-reversed.svg';
+import equinixFortressRed from '../assets/equinix-fortress-red.svg';
 
 const ROLES = [
   'Workforce Planning',
@@ -38,35 +38,37 @@ export default function Login() {
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: '#000000',
+      background: 'linear-gradient(160deg, #E91C24 0%, #411980 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
     }}>
       <div style={{
         width: 400,
-        background: '#111111',
+        background: '#FFFFFF',
         borderRadius: 12,
         padding: '48px 40px',
         textAlign: 'center',
-        border: '1px solid #333333',
-        boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.25)',
       }}>
         {/* Logo */}
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
-          <img src={equinixLogoReversed} alt="Equinix" style={{ height: 32, width: 'auto' }} />
+          <img src={equinixFortressRed} alt="Equinix" style={{ height: 28, width: 'auto' }} />
         </div>
 
-        <h1 style={{ color: '#FFFFFF', fontSize: 22, fontWeight: 700, lineHeight: 1.3, margin: '0 0 8px' }}>
-          GDC Workforce<br />Planning Platform
+        <h1 style={{ color: '#111827', fontSize: 20, fontWeight: 700, lineHeight: 1.3, margin: '0 0 8px' }}>
+          GDC Planning
         </h1>
+        <p style={{ color: '#5A657B', fontSize: 13, margin: '0 0 4px' }}>
+          GDC Workforce Planning Platform
+        </p>
 
-        <div style={{ width: 40, height: 3, background: '#E31837', margin: '16px auto 28px', borderRadius: 2 }} />
+        <div style={{ width: 36, height: 3, background: '#E91C24', margin: '16px auto 28px', borderRadius: 2 }} />
 
         {/* Your Name */}
         <div style={{ marginBottom: 14, textAlign: 'left' }}>
           <label style={{
-            display: 'block', fontSize: 11, fontWeight: 700, color: '#888888',
+            display: 'block', fontSize: 11, fontWeight: 700, color: '#5A657B',
             marginBottom: 6, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
           }}>
             Your Name
@@ -81,17 +83,17 @@ export default function Login() {
             style={{
               width: '100%',
               padding: '10px 13px',
-              background: '#1A1A1A',
-              border: `1px solid ${nameError ? '#E31837' : '#333333'}`,
+              background: '#FFFFFF',
+              border: `1px solid ${nameError ? '#E91C24' : '#E0E3E8'}`,
               borderRadius: 6,
-              color: '#FFFFFF',
+              color: '#111827',
               fontSize: 14,
               outline: 'none',
               boxSizing: 'border-box' as const,
             }}
           />
           {nameError && (
-            <span style={{ fontSize: 11, color: '#E31837', marginTop: 4, display: 'block' }}>
+            <span style={{ fontSize: 11, color: '#E91C24', marginTop: 4, display: 'block' }}>
               {nameError}
             </span>
           )}
@@ -100,7 +102,7 @@ export default function Login() {
         {/* Role */}
         <div style={{ marginBottom: 28, textAlign: 'left' }}>
           <label style={{
-            display: 'block', fontSize: 11, fontWeight: 700, color: '#888888',
+            display: 'block', fontSize: 11, fontWeight: 700, color: '#5A657B',
             marginBottom: 6, letterSpacing: '0.08em', textTransform: 'uppercase' as const,
           }}>
             Role
@@ -111,10 +113,10 @@ export default function Login() {
             style={{
               width: '100%',
               padding: '10px 13px',
-              background: '#1A1A1A',
-              border: '1px solid #333333',
+              background: '#F2F3F4',
+              border: '1px solid #E0E3E8',
               borderRadius: 6,
-              color: '#FFFFFF',
+              color: '#111827',
               fontSize: 14,
               outline: 'none',
               cursor: 'pointer',
@@ -133,7 +135,7 @@ export default function Login() {
             display: 'block',
             width: '100%',
             padding: '13px 0',
-            background: '#E31837',
+            background: '#E91C24',
             color: '#FFFFFF',
             border: 'none',
             borderRadius: 6,

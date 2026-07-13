@@ -14,23 +14,23 @@ import {
 // Colour palette (matches Excel)
 // ---------------------------------------------------------------------------
 const C = {
-  accent:   '#E31837',
-  retail:   '#1565C0',
-  xscale:   '#7B1FA2',
-  vpDir:    '#222222',
-  fte:      '#888888',
-  con:      '#F9A825',
-  apprFte:  '#1E8A4A',
-  apprCon:  '#26A69A',
-  reqFte:   '#E31837',
-  reqCon:   '#1565C0',
-  approved: '#1E8A4A',
-  seeded:   '#B5600A',
-  proposed: '#1565C0',
-  border:   '#E5E5E5',
-  muted:    '#888888',
-  bg:       '#FAFAFA',
-  discColors: { Construction: '#1565C0', Design: '#1E8A4A', Commercial: '#B5600A', Commissioning: '#7B1FA2', Other: '#555555' } as Record<string,string>,
+  accent:   '#E91C24',
+  retail:   '#00408C',
+  xscale:   '#411980',
+  vpDir:    '#2F3541',
+  fte:      '#8B93A3',
+  con:      '#FDB90D',
+  apprFte:  '#33A85C',
+  apprCon:  '#00737A',
+  reqFte:   '#E91C24',
+  reqCon:   '#086AE3',
+  approved: '#E91C24',
+  seeded:   '#7739D9',
+  proposed: '#086AE3',
+  border:   '#E0E3E8',
+  muted:    '#5A657B',
+  bg:       '#FFFFFF',
+  discColors: { Construction: '#086AE3', Design: '#33A85C', Commercial: '#FDB90D', Commissioning: '#00737A', Other: '#8B93A3' } as Record<string,string>,
 };
 
 const TABS = ['Projects', 'People', 'Requests', 'Gearing', 'Hire Status'] as const;
@@ -44,14 +44,14 @@ function fmt(n: number | undefined | null) { return n ?? 0; }
 
 function DeltaBadge({ a, b, size = 11 }: { a: number; b: number; size?: number }) {
   const d = b - a;
-  if (d === 0) return <span style={{ fontSize: size, color: '#AAAAAA' }}>● 0</span>;
+  if (d === 0) return <span style={{ fontSize: size, color: '#BDC1CA' }}>● 0</span>;
   const up = d > 0;
-  return <span style={{ fontSize: size, fontWeight: 700, color: up ? '#1E8A4A' : '#E31837' }}>{up ? '▲' : '▼'} {Math.abs(d)}</span>;
+  return <span style={{ fontSize: size, fontWeight: 700, color: up ? '#33A85C' : '#E91C24' }}>{up ? '▲' : '▼'} {Math.abs(d)}</span>;
 }
 
 function PctBadge({ pct }: { pct: number }) {
-  if (pct === 0) return <span style={{ fontSize: 11, color: '#AAAAAA' }}>● 0%</span>;
-  const color = pct > 0 ? '#1E8A4A' : '#E31837';
+  if (pct === 0) return <span style={{ fontSize: 11, color: '#BDC1CA' }}>● 0%</span>;
+  const color = pct > 0 ? '#33A85C' : '#E91C24';
   return <span style={{ fontSize: 11, fontWeight: 700, color }}>{pct > 0 ? '▲' : '▼'} {Math.abs(pct)}%</span>;
 }
 
@@ -62,9 +62,9 @@ const cardStyle: React.CSSProperties = {
 const sectionLabel: React.CSSProperties = {
   fontSize: 10, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.09em',
 };
-const TH: React.CSSProperties = { padding: '6px 10px', fontSize: 10, fontWeight: 700, color: C.muted, background: '#F8F9FA', borderBottom: `1px solid ${C.border}`, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' };
+const TH: React.CSSProperties = { padding: '6px 10px', fontSize: 10, fontWeight: 700, color: C.muted, background: '#F2F3F4', borderBottom: `1px solid ${C.border}`, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' };
 const THR: React.CSSProperties = { ...TH, textAlign: 'right' };
-const TD: React.CSSProperties  = { padding: '6px 10px', fontSize: 12, color: '#333', borderBottom: `1px solid #F3F3F3` };
+const TD: React.CSSProperties  = { padding: '6px 10px', fontSize: 12, color: '#2F3541', borderBottom: `1px solid ${C.border}` };
 const TDR: React.CSSProperties = { ...TD, textAlign: 'right', fontWeight: 600 };
 const TDM: React.CSSProperties = { ...TD, textAlign: 'right', color: C.muted };
 
@@ -112,57 +112,57 @@ function TopBanner({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
 
   return (
     <div style={{
-      background: 'linear-gradient(135deg, #0D0D0D 0%, #1A1A1A 100%)',
+      background: '#FFFFFF',
       borderBottom: `3px solid ${C.accent}`,
-      padding: '10px 20px',
+      padding: '16px 28px',
       display: 'flex', alignItems: 'stretch', gap: 0, overflowX: 'auto', flexShrink: 0,
     }}>
       {/* Logo */}
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', paddingRight: 20, borderRight: '1px solid #333', marginRight: 16, flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', paddingRight: 20, borderRight: '1px solid #E0E3E8', marginRight: 16, flexShrink: 0 }}>
         <img src={equinixFortressRed} alt="Equinix" style={{ height: 20, width: 'auto', display: 'block' }} />
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.15em', marginTop: 4 }}>HUB IQ</div>
-        <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>{yearA} vs {yearB}</div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#111827', letterSpacing: '0.15em', marginTop: 4 }}>HUB IQ</div>
+        <div style={{ fontSize: 9, color: '#5A657B', marginTop: 2 }}>{yearA} vs {yearB}</div>
       </div>
 
       {/* KPI groups */}
       {groups.map((grp, gi) => (
         <div key={grp.label} style={{
           display: 'flex', alignItems: 'stretch', gap: 0,
-          paddingRight: 16, marginRight: 16,
-          borderRight: gi < groups.length - 1 ? '1px solid #2A2A2A' : 'none',
+          paddingRight: 24, marginRight: 24,
+          borderRight: gi < groups.length - 1 ? '1px solid #E0E3E8' : 'none',
         }}>
-          {/* Group label — vertical, rotated 180° anti-clockwise, white */}
+          {/* Group label — vertical, rotated 180° anti-clockwise */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', marginRight: 12, flexShrink: 0 }}>
-            <span style={{ fontSize: 8, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.12em', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+            <span style={{ fontSize: 8, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.12em', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
               {grp.label}
             </span>
           </div>
 
           {/* Items */}
           {grp.items.map(item => (
-            <div key={item.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginRight: 14, minWidth: 52 }}>
+            <div key={item.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginRight: 20, minWidth: 64 }}>
               {/* Sub-metric label row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
                 {item.dotColor && (
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.dotColor, flexShrink: 0 }} />
                 )}
-                <span style={{ fontSize: 8, fontWeight: 700, color: '#CCCCCC', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.name}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{item.name}</span>
               </div>
               {/* Year A value */}
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#FFFFFF', lineHeight: 1 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>
                 {item.isFloat ? fmt(item.vA).toFixed(1) : fmt(item.vA)}
               </div>
               {/* Year B + delta row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                <span style={{ fontSize: 10, color: '#4A8CFF' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: '#086AE3' }}>
                   {item.isFloat ? fmt(item.vB).toFixed(1) : fmt(item.vB)}
                 </span>
-                <DeltaBadge a={item.vA} b={item.vB} size={10} />
+                <DeltaBadge a={item.vA} b={item.vB} size={11} />
               </div>
               {/* Year labels */}
-              <div style={{ display: 'flex', gap: 6, marginTop: 1 }}>
-                <span style={{ fontSize: 8, color: '#666' }}>{yearA}</span>
-                <span style={{ fontSize: 8, color: '#4A8CFF' }}>{yearB}</span>
+              <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                <span style={{ fontSize: 9, color: '#8B93A3' }}>{yearA}</span>
+                <span style={{ fontSize: 9, color: '#086AE3' }}>{yearB}</span>
               </div>
             </div>
           ))}
@@ -568,8 +568,8 @@ function PeopleTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
                   <div style={{ fontSize: 22, fontWeight: 800, color: row.color, lineHeight: 1 }}>{row.vA}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: 8, color: '#4A8CFF' }}>YR B · {yearB}</span>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#4A8CFF', lineHeight: 1 }}>{row.vB}</div>
+                  <span style={{ fontSize: 8, color: '#086AE3' }}>YR B · {yearB}</span>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#086AE3', lineHeight: 1 }}>{row.vB}</div>
                 </div>
               </div>
               <div style={{ marginTop: 6 }}><DeltaBadge a={row.vA} b={row.vB} /></div>
@@ -616,7 +616,7 @@ function RequestsTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: num
     'R CON':     { bg: '#FEF3F2', color: C.accent },
     'R CON>FTE': { bg: '#EBF2FB', color: C.retail },
   };
-  const DISC_PIE_COLORS = ['#1565C0','#1E8A4A','#B5600A','#7B1FA2','#555'];
+  const DISC_PIE_COLORS = ['#086AE3','#33A85C','#FDB90D','#00737A','#8B93A3'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -638,11 +638,11 @@ function RequestsTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: num
           </div>
           {/* KPI chips */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <div style={{ flex: 1, background: '#FFF8E1', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
+            <div style={{ flex: 1, background: '#FFF1CC', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
               <div style={{ fontSize: 20, fontWeight: 800, color: C.seeded }}>{totalRFte.toFixed(1)}</div>
               <div style={{ fontSize: 9, color: C.muted, fontWeight: 600 }}>R FTE</div>
             </div>
-            <div style={{ flex: 1, background: '#EBF2FB', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
+            <div style={{ flex: 1, background: '#CCE3FF', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
               <div style={{ fontSize: 20, fontWeight: 800, color: C.retail }}>{totalRCon.toFixed(1)}</div>
               <div style={{ fontSize: 9, color: C.muted, fontWeight: 600 }}>R CON</div>
             </div>
@@ -728,7 +728,7 @@ function RequestsTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: num
                   const tc = TYPE_COLOR[r.contract_code] ?? { bg: '#F5F5F5', color: '#555' };
                   return (
                     <tr key={i} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
-                      <td style={{ ...TD, fontSize: 11, color: C.discColors[r.discipline_name] ?? '#333', fontWeight: 600 }}>{r.discipline_name}</td>
+                      <td style={{ ...TD, fontSize: 11, color: C.discColors[r.discipline_name] === '#FDB90D' ? '#C59000' : (C.discColors[r.discipline_name] ?? '#333'), fontWeight: 600 }}>{r.discipline_name}</td>
                       <td style={{ ...TD, fontSize: 11 }}>{r.region_name}</td>
                       <td style={{ ...TD, fontSize: 11 }}>{r.country_name ?? '—'}</td>
                       <td style={{ ...TD, fontSize: 11 }}>{r.level_code ?? '—'}</td>
@@ -768,11 +768,11 @@ function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numb
 
   function gColor(pct: number) {
     if (pct === 0) return C.muted;
-    if (pct > 20)  return '#C0392B';
-    if (pct > 5)   return '#B5600A';
-    if (pct < -20) return '#1565C0';
-    if (pct < -5)  return '#4A8CFF';
-    return '#1E8A4A';
+    if (pct > 20)  return '#AD050C';
+    if (pct > 5)   return '#E91C24';
+    if (pct < -20) return '#086AE3';
+    if (pct < -5)  return '#086AE3';
+    return '#33A85C';
   }
 
   return (
@@ -793,9 +793,9 @@ function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numb
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
         {[
           { label: 'Total Proposed HC', value: totalProposed, bg: C.accent,    text: '#FFF' },
-          { label: 'Total Optimal HC',  value: totalOptimal,  bg: '#1A1A1A',   text: '#FFF' },
-          { label: 'Var vs Optimal',    value: `${totalVarOpt > 0 ? '+' : ''}${totalVarOpt}%`, bg: '#F0F5FF', text: gColor(totalVarOpt) },
-          { label: 'Var vs Min (HC)',   value: `${totalVarMin > 0 ? '+' : ''}${totalVarMin}%`, bg: '#F5FFF5', text: gColor(totalVarMin) },
+          { label: 'Total Optimal HC',  value: totalOptimal,  bg: '#2F3541',   text: '#FFF' },
+          { label: 'Var vs Optimal',    value: `${totalVarOpt > 0 ? '+' : ''}${totalVarOpt}%`, bg: '#CCE3FF', text: gColor(totalVarOpt) },
+          { label: 'Var vs Min (HC)',   value: `${totalVarMin > 0 ? '+' : ''}${totalVarMin}%`, bg: '#DFFBE5', text: gColor(totalVarMin) },
           { label: 'Var vs Max (HC)',   value: `${totalVarMax > 0 ? '+' : ''}${totalVarMax}%`, bg: '#FFF8F0', text: gColor(totalVarMax) },
         ].map(kpi => (
           <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 8, padding: '12px 16px', textAlign: 'center', border: `1px solid ${C.border}` }}>
@@ -808,7 +808,8 @@ function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numb
       {/* 4 discipline tables + bar charts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {data.gearing.map(disc => {
-          const color = C.discColors[disc.discipline] ?? C.accent;
+          const color      = C.discColors[disc.discipline] ?? C.accent;
+          const labelColor = color === '#FDB90D' ? '#C59000' : color;
           const barData = disc.regions.map(r => ({
             region: r.region_name.replace('AMER Matrix', 'Mtx'),
             Min: r.min, Max: r.max, Proposed: r.proposed,
@@ -817,8 +818,8 @@ function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numb
             <div key={disc.discipline} style={{ ...cardStyle, overflow: 'hidden' }}>
               {/* Discipline header */}
               <div style={{ padding: '10px 14px', borderTop: `3px solid ${color}`, borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color }}>{disc.discipline}</span>
-                <span style={{ fontSize: 11, background: `${color}22`, color, padding: '2px 10px', borderRadius: 10, fontWeight: 700 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: labelColor }}>{disc.discipline}</span>
+                <span style={{ fontSize: 11, background: `${color}22`, color: labelColor, padding: '2px 10px', borderRadius: 10, fontWeight: 700 }}>
                   Var–Opt: <PctBadge pct={disc.totals.variance_pct} />
                 </span>
               </div>
@@ -901,9 +902,9 @@ function HireStatusTab({ tbhStatus }: { tbhStatus: { req_status: string; count: 
   const total = sorted.reduce((s, r) => s + r.count, 0);
 
   const STAGE_COLORS: Record<string, string> = {
-    'Hired': '#1E8A4A', 'Closed': '#888', 'Offer Accepted': '#26A69A',
-    'Interview': '#1565C0', 'Screening': '#7B1FA2', 'Screen': '#7B1FA2',
-    'Not Raised': '#E31837', 'Req not raised': '#E31837',
+    'Hired': '#33A85C', 'Closed': '#8B93A3', 'Offer Accepted': '#00737A',
+    'Interview': '#086AE3', 'Screening': '#470063', 'Screen': '#470063',
+    'Not Raised': '#E91C24', 'Req not raised': '#E91C24',
   };
 
   return (
@@ -959,10 +960,10 @@ function HireStatusTab({ tbhStatus }: { tbhStatus: { req_status: string; count: 
             </div>
           </div>
 
-          <div style={{ ...cardStyle, padding: '14px 16px', background: 'linear-gradient(135deg, #1A1A1A, #2A2A2A)' }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Hire Stage Note</div>
-            <div style={{ fontSize: 12, color: '#AAA', lineHeight: 1.6 }}>
-              Hire stage data comes from TBH code records. Time-to-hire tracking and monthly hire volume charts will be available once <code style={{ background: '#333', padding: '1px 4px', borderRadius: 2, fontSize: 10 }}>hired_at</code> dates are recorded on person records.
+          <div style={{ ...cardStyle, padding: '14px 16px', background: '#F2F3F4', border: '1px solid #E0E3E8' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Hire Stage Note</div>
+            <div style={{ fontSize: 12, color: '#5A657B', lineHeight: 1.6 }}>
+              Hire stage data comes from TBH code records. Time-to-hire tracking and monthly hire volume charts will be available once <code style={{ background: '#E0E3E8', padding: '1px 4px', borderRadius: 2, fontSize: 10, color: '#2F3541' }}>hired_at</code> dates are recorded on person records.
             </div>
           </div>
         </div>
@@ -1034,8 +1035,8 @@ export default function Dashboard() {
           </div>
           <span style={{ fontSize: 13, color: C.muted }}>vs</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#1565C0' }}>YEAR B</span>
-            <select value={yearB ?? ''} onChange={e => setYearB(Number(e.target.value))} style={{ padding: '3px 8px', border: '1px solid #1565C0', borderRadius: 4, fontSize: 12, color: '#1565C0', fontWeight: 700, background: '#F0F5FF', cursor: 'pointer' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#086AE3' }}>YEAR B</span>
+            <select value={yearB ?? ''} onChange={e => setYearB(Number(e.target.value))} style={{ padding: '3px 8px', border: '1px solid #086AE3', borderRadius: 4, fontSize: 12, color: '#086AE3', fontWeight: 700, background: '#CCE3FF', cursor: 'pointer' }}>
               {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
@@ -1043,7 +1044,7 @@ export default function Dashboard() {
             {loading ? '…' : '↻'}
           </button>
         </div>
-        {backendOk === true && <span style={{ fontSize: 10, color: '#1E8A4A' }}>● Connected</span>}
+        {backendOk === true && <span style={{ fontSize: 10, color: '#33A85C' }}>● Connected</span>}
         {backendOk === false && <span style={{ fontSize: 10, color: C.accent }}>⚠ Not connected</span>}
       </div>
 

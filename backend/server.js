@@ -136,6 +136,28 @@ pool.query(`
   }
 })();
 
+// Project comments table
+(async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS project_comments (
+        id         SERIAL       PRIMARY KEY,
+        project_id INTEGER      NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        user_name  VARCHAR(255) NOT NULL,
+        user_role  VARCHAR(50),
+        body       TEXT         NOT NULL,
+        created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_project_comments_project_id ON project_comments(project_id)
+    `);
+    logger.info('Project comments migration complete');
+  } catch (err) {
+    logger.error('Project comments migration failed', { error: err.message });
+  }
+})();
+
 app.use('/api/planning-cycles', wrapAsync(planningCyclesRouter));
 app.use('/api/projects',        wrapAsync(projectsRouter));
 app.use('/api/people',          wrapAsync(peopleRouter));

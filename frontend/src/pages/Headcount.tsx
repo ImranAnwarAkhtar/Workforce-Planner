@@ -9,15 +9,22 @@ import PersonEditPanel from '../components/PersonEditPanel';
 const DISCIPLINES = ['Construction', 'Design', 'Commercial', 'Commissioning', 'Other'];
 
 const DISCIPLINE_COLOURS: Record<string, string> = {
-  'Construction': '#E65100', 'Design': '#1565C0', 'Commercial': '#1E8A4A',
-  'Commissioning': '#6A1B9A', 'Other': '#888888',
+  'Construction': '#086AE3',
+  'Design':       '#33A85C',
+  'Commercial':   '#FDB90D',
+  'Commissioning':'#00737A',
+  'Other':        '#8B93A3',
+};
+const DISC_LABEL_COLOR = (disc: string): string => {
+  const c = DISCIPLINE_COLOURS[disc] ?? '#444444';
+  return c === '#FDB90D' ? '#C59000' : c;
 };
 
 const TYPE_META: Record<string, { label: string; bg: string; color: string; border: string; bannerColor: string }> = {
-  'R FTE': { label: 'R FTE',             bg: '#FEF3F2', color: '#C0392B', border: '#FBBDBA', bannerColor: '#F87171' },
-  'R CON': { label: 'R CON',             bg: '#FFF8E1', color: '#B5600A', border: '#F9E2A0', bannerColor: '#FBBF24' },
-  'A FTE': { label: 'A FTE',             bg: '#EBF7EF', color: '#1E8A4A', border: '#A8DDB5', bannerColor: '#34D399' },
-  'A CON': { label: 'A CON',             bg: '#EBF2FB', color: '#1565C0', border: '#A8C4E8', bannerColor: '#60A5FA' },
+  'R FTE': { label: 'R FTE', bg: '#FFEBEE', color: '#AD050C', border: '#E91C24', bannerColor: '#E91C24' },
+  'R CON': { label: 'R CON', bg: '#FFF1CC', color: '#FDB90D', border: '#FEDC86', bannerColor: '#FDB90D' },
+  'A FTE': { label: 'A FTE', bg: '#DFFBE5', color: '#2A8346', border: '#33A85C', bannerColor: '#33A85C' },
+  'A CON': { label: 'A CON', bg: '#CCE3FF', color: '#00408C', border: '#086AE3', bannerColor: '#086AE3' },
 };
 
 const SEL: React.CSSProperties = {
@@ -255,7 +262,7 @@ export default function Headcount() {
         </td>
         <td style={{ padding: '8px 14px' }}>
           {r.tbh_id
-            ? <span style={{ fontSize: 11, fontWeight: 600, color: '#1E8A4A', background: '#EBF7EF',
+            ? <span style={{ fontSize: 11, fontWeight: 600, color: '#33A85C', background: '#EBF7EF',
                 padding: '2px 7px', borderRadius: 3, border: '1px solid #A8DDB5' }}>{r.tbh_id}</span>
             : <span style={{ fontSize: 11, color: '#AAAAAA' }}>—</span>}
         </td>
@@ -303,7 +310,7 @@ export default function Headcount() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const bannerStats = [
-    { label: 'Total',  value: counts.total, color: '#AAAAAA' },
+    { label: 'Total',  value: counts.total, color: '#2F3541' },
     { label: 'R FTE',  value: counts.rFte,  color: TYPE_META['R FTE'].bannerColor },
     { label: 'R CON',  value: counts.rCon,  color: TYPE_META['R CON'].bannerColor },
     { label: 'A FTE',  value: counts.aFte,  color: TYPE_META['A FTE'].bannerColor },
@@ -313,33 +320,33 @@ export default function Headcount() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', color: '#111111' }}>
 
-      {/* ── Dark banner: title + stats + new button ── */}
+      {/* ── Banner: title + stats + new button ── */}
       <div style={{ flexShrink: 0 }}>
         <div style={{
           display: 'flex', alignItems: 'stretch',
-          background: '#181A1E', borderBottom: '2px solid #E31837',
+          background: '#FFFFFF', borderBottom: '3px solid #E91C24',
           borderRadius: '8px 8px 0 0', overflow: 'hidden',
         }}>
           {/* Title */}
-          <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Headcount Requests</span>
+          <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Headcount Requests</span>
           </div>
 
           {/* Stats */}
           {bannerStats.map(s => (
             <div key={s.label} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2,
-              padding: '10px 16px', flex: '1 1 auto', borderRight: '1px solid #2A2C32',
+              padding: '10px 16px', flex: '1 1 auto', borderRight: '1px solid #E0E3E8',
             }}>
-              <span style={{ fontSize: 17, fontWeight: 400, color: s.color, lineHeight: 1 }}>{s.value}</span>
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: '0.07em', lineHeight: 1.4 }}>{s.label}</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.07em', lineHeight: 1.4 }}>{s.label}</span>
             </div>
           ))}
 
           {/* New request button */}
           <div style={{ padding: '0 14px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             <button onClick={() => setShowNew(true)} style={{
-              padding: '5px 12px', background: '#E31837', color: '#FFFFFF',
+              padding: '5px 12px', background: '#E91C24', color: '#FFFFFF',
               border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
             }}>
               + New Request
@@ -348,7 +355,7 @@ export default function Headcount() {
         </div>
 
         {/* Sub-bar: filters */}
-        <div style={{ padding: '10px 16px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ padding: '10px 16px', background: '#F2F3F5', borderBottom: '1px solid #E0E3E8', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={SEL}>
             <option value="">All types</option>
             <option value="R FTE">R FTE — Requested FTE</option>
@@ -407,7 +414,7 @@ export default function Headcount() {
                       padding: '8px 14px', background: '#F2F4F8',
                       borderLeft: `4px solid ${DISCIPLINE_COLOURS[discipline] ?? '#888888'}`,
                       borderTop: '2px solid #D8DDE8', borderBottom: '1px solid #D8DDE8',
-                      fontWeight: 700, fontSize: 12, color: DISCIPLINE_COLOURS[discipline] ?? '#444444',
+                      fontWeight: 700, fontSize: 12, color: DISC_LABEL_COLOR(discipline),
                     }}>
                       {discipline} · {rows.length} {rows.length === 1 ? 'record' : 'records'}
                     </td>
@@ -507,7 +514,7 @@ export default function Headcount() {
       {/* ── Reject confirm ── */}
       {rejectTarget && (
         <Modal onClose={() => setRejectTarget(null)}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, color: '#C0392B' }}>Reject Request?</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, color: '#AD050C' }}>Reject Request?</div>
           <p style={{ fontSize: 13, color: '#444444', margin: '0 0 16px' }}>
             This will reject and permanently remove the headcount request for{' '}
             <strong>{rejectTarget.name}</strong> ({rejectTarget.contract_type_code}).
@@ -515,7 +522,7 @@ export default function Headcount() {
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setRejectTarget(null)} style={CANCEL_BTN}>Cancel</button>
-            <button onClick={handleReject} disabled={rejecting} style={{ ...OK_BTN, background: '#C0392B' }}>
+            <button onClick={handleReject} disabled={rejecting} style={{ ...OK_BTN, background: '#AD050C' }}>
               {rejecting ? 'Rejecting…' : 'Reject Request'}
             </button>
           </div>
@@ -681,7 +688,7 @@ const CANCEL_BTN: React.CSSProperties = {
 };
 
 const OK_BTN: React.CSSProperties = {
-  flex: 2, padding: '9px 0', background: '#E31837',
+  flex: 2, padding: '9px 0', background: '#E91C24',
   border: 'none', borderRadius: 5, fontSize: 13,
   fontWeight: 600, color: '#FFFFFF', cursor: 'pointer',
 };
@@ -693,10 +700,10 @@ const BTN_BASE: React.CSSProperties = {
 };
 const BTN_VIEW:    React.CSSProperties = { ...BTN_BASE, background: '#F8F9FA',  color: '#374151', borderColor: '#D1D5DB' };
 const BTN_EDIT:    React.CSSProperties = { ...BTN_BASE, background: '#EFF6FF',  color: '#1D4ED8', borderColor: '#BFDBFE' };
-const BTN_APPROVE: React.CSSProperties = { ...BTN_BASE, background: '#EBF7EF',  color: '#1E8A4A', borderColor: '#A8DDB5' };
-const BTN_REJECT:  React.CSSProperties = { ...BTN_BASE, background: '#FEF3F2',  color: '#C0392B', borderColor: '#FBBDBA' };
-const BTN_TBH:     React.CSSProperties = { ...BTN_BASE, background: '#EBF2FB',  color: '#1565C0', borderColor: '#A8C4E8' };
-const BTN_CONVERT: React.CSSProperties = { ...BTN_BASE, background: '#FFF8E1',  color: '#B5600A', borderColor: '#F9E2A0' };
+const BTN_APPROVE: React.CSSProperties = { ...BTN_BASE, background: '#EBF7EF',  color: '#33A85C', borderColor: '#A8DDB5' };
+const BTN_REJECT:  React.CSSProperties = { ...BTN_BASE, background: '#FEF3F2',  color: '#AD050C', borderColor: '#FBBDBA' };
+const BTN_TBH:     React.CSSProperties = { ...BTN_BASE, background: '#EBF2FB',  color: '#086AE3', borderColor: '#A8C4E8' };
+const BTN_CONVERT: React.CSSProperties = { ...BTN_BASE, background: '#FFF1CC',  color: '#FDB90D', borderColor: '#FEDC86' };
 const BTN_DELETE:  React.CSSProperties = { ...BTN_BASE, background: 'transparent', color: '#9CA3AF', borderColor: '#E5E7EB', padding: '3px 7px' };
 
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {

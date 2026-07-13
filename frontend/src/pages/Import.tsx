@@ -492,15 +492,15 @@ export default function Import() {
     <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ background: '#181A1E', borderBottom: '2px solid #E31837', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Data Import</div>
+      <div style={{ background: '#FFFFFF', borderBottom: '3px solid #E91C24', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1 }}>Data Import</div>
         <button
           onClick={() => downloadTemplate(activeTab)}
           title="Download a blank Excel template for this tab"
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '6px 12px', background: 'transparent',
-            border: '1px solid #444444', color: '#AAAAAA',
+            border: '1px solid #E0E3E8', color: '#5A657B',
             borderRadius: 6, fontSize: 12, cursor: 'pointer',
             whiteSpace: 'nowrap', flexShrink: 0,
           }}
@@ -517,7 +517,7 @@ export default function Import() {
         {(Object.keys(TAB_LABELS) as Tab[]).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{
             padding: '12px 24px', background: 'transparent', border: 'none',
-            borderBottom: activeTab === tab ? '2px solid #E31837' : '2px solid transparent',
+            borderBottom: activeTab === tab ? '2px solid #E91C24' : '2px solid transparent',
             color: activeTab === tab ? '#111111' : '#999999',
             fontSize: 14, fontWeight: activeTab === tab ? 600 : 400,
             cursor: 'pointer',
@@ -541,7 +541,7 @@ export default function Import() {
             onDragLeave={() => setDragging(false)}
             onDrop={handleDrop}
             style={{
-              border: `2px dashed ${dragging ? '#E31837' : '#D5D5D5'}`,
+              border: `2px dashed ${dragging ? '#E91C24' : '#D5D5D5'}`,
               borderRadius: 10, padding: '48px 32px', textAlign: 'center',
               background: dragging ? '#FFF5F5' : '#FAFAFA',
               cursor: 'pointer', transition: 'all 0.15s',
@@ -556,7 +556,7 @@ export default function Import() {
               GDC HUB Summaries .xlsx file
             </div>
             <label style={{
-              padding: '10px 24px', background: '#E31837', color: '#FFF',
+              padding: '10px 24px', background: '#E91C24', color: '#FFF',
               borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer',
             }}>
               Browse File
@@ -585,7 +585,7 @@ export default function Import() {
                   Clear
                 </button>
                 <button onClick={handleImport} disabled={importing} style={{
-                  padding: '8px 24px', background: '#E31837', border: 'none',
+                  padding: '8px 24px', background: '#E91C24', border: 'none',
                   color: '#FFF', borderRadius: 6, fontSize: 13, fontWeight: 600,
                   cursor: importing ? 'default' : 'pointer', opacity: importing ? 0.7 : 1,
                 }}>
@@ -618,7 +618,7 @@ export default function Import() {
                           <span style={{
                             fontSize: 10, padding: '2px 6px', borderRadius: 3,
                             background: row._source === 'FTE' ? '#EBF0FF' : '#E8F5EE',
-                            color: row._source === 'FTE' ? '#2244BB' : '#1E8A4A',
+                            color: row._source === 'FTE' ? '#2244BB' : '#33A85C',
                             border: `1px solid ${row._source === 'FTE' ? '#BDD0FF' : '#A8D8BF'}`,
                           }}>
                             {row._source}
@@ -659,7 +659,7 @@ export default function Import() {
               {result.imported} records imported successfully
             </div>
             <button onClick={() => setResult(null)} style={{
-              marginTop: 20, padding: '10px 28px', background: '#E31837', border: 'none',
+              marginTop: 20, padding: '10px 28px', background: '#E91C24', border: 'none',
               color: '#FFF', borderRadius: 6, fontWeight: 600, cursor: 'pointer', fontSize: 14,
             }}>
               Import More

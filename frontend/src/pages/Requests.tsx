@@ -27,7 +27,7 @@ const LABEL: React.CSSProperties = {
   marginBottom: 4, letterSpacing: '0.07em', textTransform: 'uppercase',
 };
 const BTN_PRIMARY: React.CSSProperties = {
-  padding: '8px 18px', background: '#E31837', color: '#FFFFFF',
+  padding: '8px 18px', background: '#E91C24', color: '#FFFFFF',
   border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer',
 };
 const BTN_SECONDARY: React.CSSProperties = {
@@ -36,9 +36,9 @@ const BTN_SECONDARY: React.CSSProperties = {
 };
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; border: string }> = {
-  Pending:  { bg: '#FFF8E1', color: '#B5600A', border: '#F9A825' },
-  Approved: { bg: '#EBF7EF', color: '#1E8A4A', border: '#A8DDB5' },
-  Rejected: { bg: '#FEF3F2', color: '#C0392B', border: '#FBBDBA' },
+  Pending:  { bg: '#FFF1CC', color: '#FDB90D', border: '#FEDC86' },
+  Approved: { bg: '#DFFBE5', color: '#2A8346', border: '#33A85C' },
+  Rejected: { bg: '#FFEBEE', color: '#AD050C', border: '#E91C24' },
 };
 
 // ---------------------------------------------------------------------------
@@ -81,12 +81,12 @@ function StageProgress({ stage, status }: { stage: number; status: string }) {
         const done    = isApproved || (!isRejected && i < activeStep);
         const current = !isApproved && !isRejected && i === activeStep;
         const dotColor  = isRejected ? '#E0E0E0'
-                        : done       ? '#1E8A4A'
-                        : current    ? '#B5600A'
+                        : done       ? '#33A85C'
+                        : current    ? '#FDB90D'
                         : '#D0D0D0';
         const textColor = isRejected ? '#BBBBBB'
-                        : done       ? '#1E8A4A'
-                        : current    ? '#B5600A'
+                        : done       ? '#33A85C'
+                        : current    ? '#FDB90D'
                         : '#AAAAAA';
         return (
           <div key={lbl} style={{ display: 'flex', alignItems: 'center' }}>
@@ -95,7 +95,7 @@ function StageProgress({ stage, status }: { stage: number; status: string }) {
             }}>
               <div style={{
                 width: 22, height: 22, borderRadius: '50%',
-                background: done ? '#1E8A4A' : current ? '#FFF8E1' : '#F0F0F0',
+                background: done ? '#33A85C' : current ? '#FFF8E1' : '#F0F0F0',
                 border: `2px solid ${dotColor}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 10, fontWeight: 700, color: dotColor,
@@ -107,7 +107,7 @@ function StageProgress({ stage, status }: { stage: number; status: string }) {
             {i < 3 && (
               <div style={{
                 width: 28, height: 2, marginBottom: 14,
-                background: done && !isRejected ? '#1E8A4A' : '#E0E0E0',
+                background: done && !isRejected ? '#33A85C' : '#E0E0E0',
               }} />
             )}
           </div>
@@ -268,8 +268,8 @@ export default function HireRequests() {
 
       {/* Header */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#181A1E', borderBottom: '2px solid #E31837', padding: '8px 16px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>Hire Requests</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FFFFFF', borderBottom: '3px solid #E91C24', padding: '8px 16px' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1 }}>Hire Requests</div>
           <button style={{ ...BTN_PRIMARY, padding: '4px 10px', fontSize: 11, borderRadius: 4 }} onClick={() => { setForm(emptyForm); setModalOpen(true); }}>
             + New Request
           </button>
@@ -286,7 +286,7 @@ export default function HireRequests() {
           ].map(({ label, value, count }) => (
             <button key={value} onClick={() => setStatusFilter(value)} style={{
               padding: '8px 16px', background: 'transparent', border: 'none',
-              borderBottom: statusFilter === value ? '2px solid #E31837' : '2px solid transparent',
+              borderBottom: statusFilter === value ? '2px solid #E91C24' : '2px solid transparent',
               color: statusFilter === value ? '#111111' : '#888888',
               fontSize: 13, cursor: 'pointer', fontWeight: statusFilter === value ? 700 : 400,
               marginBottom: -1,
@@ -294,7 +294,7 @@ export default function HireRequests() {
               {label}
               <span style={{
                 marginLeft: 6, padding: '1px 7px', borderRadius: 10, fontSize: 11,
-                background: statusFilter === value ? '#E31837' : '#F0F0F0',
+                background: statusFilter === value ? '#E91C24' : '#F0F0F0',
                 color: statusFilter === value ? '#FFFFFF' : '#666666',
               }}>
                 {count}
@@ -312,7 +312,7 @@ export default function HireRequests() {
             <div className="spinner" />
           </div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#C0392B' }}>
+          <div style={{ textAlign: 'center', padding: 40, color: '#AD050C' }}>
             {error}
             <button style={{ ...BTN_SECONDARY, marginLeft: 12 }} onClick={loadRequests}>Retry</button>
           </div>
@@ -369,14 +369,14 @@ export default function HireRequests() {
                         {r.status === 'Pending' && (
                           <>
                             <button onClick={() => handleApprove(r.id)} style={{
-                              padding: '5px 12px', background: '#EBF7EF', color: '#1E8A4A',
+                              padding: '5px 12px', background: '#EBF7EF', color: '#33A85C',
                               border: '1px solid #A8DDB5', borderRadius: 4, fontSize: 12,
                               fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
                             }}>
                               ✓ Approve Stage {r.stage}
                             </button>
                             <button onClick={() => { setRejectTarget(r); setRejectReason(''); }} style={{
-                              padding: '5px 12px', background: '#FEF3F2', color: '#C0392B',
+                              padding: '5px 12px', background: '#FEF3F2', color: '#AD050C',
                               border: '1px solid #FBBDBA', borderRadius: 4, fontSize: 12,
                               fontWeight: 600, cursor: 'pointer',
                             }}>
@@ -510,7 +510,7 @@ export default function HireRequests() {
           </div>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22, paddingTop: 18, borderTop: '1px solid #EEEEEE' }}>
             <button style={BTN_SECONDARY} onClick={() => setRejectTarget(null)} disabled={rejecting}>Cancel</button>
-            <button style={{ ...BTN_PRIMARY, background: '#C0392B' }} onClick={handleReject} disabled={rejecting}>
+            <button style={{ ...BTN_PRIMARY, background: '#AD050C' }} onClick={handleReject} disabled={rejecting}>
               {rejecting ? 'Rejecting…' : 'Confirm Reject'}
             </button>
           </div>

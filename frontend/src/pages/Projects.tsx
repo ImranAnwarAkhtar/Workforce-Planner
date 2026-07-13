@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
-  projectsApi, refDataApi, STAGE_EDIT_ROLES,
+  projectsApi, projectCommentsApi, refDataApi, STAGE_EDIT_ROLES,
   type Project, type Region, type Country,
-  type CreateProjectBody,
+  type CreateProjectBody, type ProjectComment,
 } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
 
@@ -17,21 +17,21 @@ const PROJECT_TYPES    = ['Retail', 'xScale', 'Matrix'] as const;
 const PROJECT_STATUSES = ['Approved', 'Seeded', 'Proposed'] as const;
 const WEIGHT_OPTIONS   = [0.5, 1.0, 1.5, 2.0] as const;
 const STATUS_ORDER     = { Approved: 0, Seeded: 1, Proposed: 2 } as const;
-const COL_W            = 120; // column / card width in px
+const COL_W            = 185; // column / card width in px
 
 type ProjectType   = typeof PROJECT_TYPES[number];
 type ProjectStatus = typeof PROJECT_STATUSES[number];
 
 const STATUS_META: Record<string, { color: string; bg: string; border: string; dot: string; barBg: string; pill: string }> = {
-  'Approved': { color: '#FFFFFF', bg: '#E8F5EE', border: '#A8D8BF', dot: '#4DB875', barBg: '#1A6B3A', pill: '#2A9D5C' },
-  'Seeded':   { color: '#FFFFFF', bg: '#E8F8FA', border: '#7DD5E0', dot: '#17A5B8', barBg: '#0B6B7A', pill: '#138EA0' },
-  'Proposed': { color: '#FFFFFF', bg: '#F5EEFB', border: '#CFA8E8', dot: '#9A5CC8', barBg: '#5C3980', pill: '#7C48B8' },
+  'Approved': { color: '#FFFFFF', bg: '#FAC3C5', border: '#E91C24', dot: '#E91C24', barBg: '#AD050C', pill: '#E91C24' },
+  'Seeded':   { color: '#FFFFFF', bg: '#E9DBFF', border: '#7739D9', dot: '#7739D9', barBg: '#411980', pill: '#7739D9' },
+  'Proposed': { color: '#FFFFFF', bg: '#CCE3FF', border: '#086AE3', dot: '#086AE3', barBg: '#00408C', pill: '#086AE3' },
 };
 
 const TYPE_META: Record<ProjectType, { color: string; bg: string; border: string }> = {
-  Retail:  { color: '#1565C0', bg: '#E3F2FD', border: '#90CAF9' },
-  xScale:  { color: '#6A1B9A', bg: '#F3E5F7', border: '#CE93D8' },
-  Matrix:  { color: '#006064', bg: '#E0F5F6', border: '#80CBC4' },
+  Retail:  { color: '#086AE3', bg: '#CCE3FF', border: '#086AE3' },
+  xScale:  { color: '#7739D9', bg: '#E9DBFF', border: '#7739D9' },
+  Matrix:  { color: '#411980', bg: '#EDCCFF', border: '#411980' },
 };
 
 function statusMeta(s: string) {
@@ -39,6 +39,39 @@ function statusMeta(s: string) {
 }
 function typeMeta(t: string) {
   return TYPE_META[t as ProjectType] ?? { color: '#555555', bg: '#F0F0F0', border: '#D5D5D5' };
+}
+
+// ISO 3166-1 alpha-2 codes for flagcdn.com — covers all Equinix-present countries
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Australia':              'au', 'Austria':             'at', 'Bahrain':         'bh',
+  'Belgium':                'be', 'Brazil':              'br', 'Bulgaria':        'bg',
+  'Canada':                 'ca', 'Chile':               'cl', 'China':           'cn',
+  'Colombia':               'co', 'Costa Rica':         'cr', 'Croatia':         'hr',
+  'Czech Republic':         'cz', 'Denmark':            'dk', 'Egypt':           'eg',
+  'Finland':                'fi', 'France':             'fr', 'Germany':         'de',
+  'Greece':                 'gr', 'Hong Kong':          'hk', 'Hungary':         'hu',
+  'India':                  'in', 'Indonesia':          'id', 'Ireland':         'ie',
+  'Israel':                 'il', 'Italy':              'it', 'Japan':           'jp',
+  'Jordan':                 'jo', 'Kazakhstan':         'kz', 'Kenya':           'ke',
+  'Kuwait':                 'kw', 'Luxembourg':         'lu', 'Malaysia':        'my',
+  'Mexico':                 'mx', 'Morocco':            'ma', 'Netherlands':     'nl',
+  'New Zealand':            'nz', 'Nigeria':            'ng', 'Norway':          'no',
+  'Oman':                   'om', 'Panama':             'pa', 'Peru':            'pe',
+  'Philippines':            'ph', 'Poland':             'pl', 'Portugal':        'pt',
+  'Qatar':                  'qa', 'Romania':            'ro', 'Russia':          'ru',
+  'Saudi Arabia':           'sa', 'Serbia':             'rs', 'Singapore':       'sg',
+  'Slovakia':               'sk', 'South Africa':       'za', 'South Korea':     'kr',
+  'Spain':                  'es', 'Sweden':             'se', 'Switzerland':     'ch',
+  'Taiwan':                 'tw', 'Thailand':           'th', 'Turkey':          'tr',
+  'Ukraine':                'ua', 'United Arab Emirates':'ae', 'United Kingdom':  'gb',
+  'United States':          'us', 'Vietnam':            'vn',
+  // common abbreviations / alternates
+  'UK': 'gb', 'USA': 'us', 'UAE': 'ae', 'Korea': 'kr',
+};
+
+function flagUrl(country: string, w: 20 | 40 = 20): string | null {
+  const code = COUNTRY_FLAGS[country];
+  return code ? `https://flagcdn.com/w${w}/${code}.png` : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,9 +82,9 @@ const S = {
   page:        { color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' } as React.CSSProperties,
   header:      { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 } as React.CSSProperties,
   title:       { fontSize: 24, fontWeight: 700, margin: 0, color: '#111111' } as React.CSSProperties,
-  accent:      { width: 40, height: 3, background: '#E31837', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
-  btnPrimary:  { padding: '9px 18px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 } as React.CSSProperties,
-  btnCompact:  { padding: '4px 10px', background: '#E31837', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 } as React.CSSProperties,
+  accent:      { width: 40, height: 3, background: '#E91C24', borderRadius: 2, marginTop: 6 } as React.CSSProperties,
+  btnPrimary:  { padding: '9px 18px', background: '#E91C24', color: '#FFF', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 } as React.CSSProperties,
+  btnCompact:  { padding: '4px 10px', background: '#E91C24', color: '#FFF', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 } as React.CSSProperties,
   btnSecondary:{ padding: '9px 18px', background: 'transparent', color: '#555555', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 14, cursor: 'pointer' } as React.CSSProperties,
 
   statsRow:    { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10, marginBottom: 20 } as React.CSSProperties,
@@ -68,7 +101,7 @@ const S = {
   centerBox:   { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', color: '#999' } as React.CSSProperties,
 
   overlay:     { position: 'fixed' as const, inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
-  modal:       { background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto' as const, padding: '28px 32px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } as React.CSSProperties,
+  modal:       (wide?: boolean) => ({ background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: 10, width: '100%', maxWidth: wide ? 620 : 540, maxHeight: '90vh', overflowY: 'auto' as const, padding: '28px 32px', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' } as React.CSSProperties),
   modalTitle:  { fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#111111' } as React.CSSProperties,
   fg:          { marginBottom: 16 } as React.CSSProperties,
   lbl:         { display: 'block', fontSize: 11, fontWeight: 700, color: '#666666', marginBottom: 5, letterSpacing: '0.08em', textTransform: 'uppercase' as const } as React.CSSProperties,
@@ -89,6 +122,18 @@ const S = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? '?';
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 function groupByCountry(projects: Project[]): [string, Project[]][] {
   const map = new Map<string, Project[]>();
@@ -158,6 +203,14 @@ export default function Projects() {
   const [saving,       setSaving]       = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting,     setDeleting]     = useState(false);
+
+  const [comments,        setComments]        = useState<ProjectComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError,   setCommentsError]   = useState(false);
+  const [newComment,      setNewComment]      = useState('');
+  const [postingComment,  setPostingComment]  = useState(false);
+
+  const [hoveredCell, setHoveredCell] = useState<{ country: string; status: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -285,6 +338,18 @@ export default function Projects() {
     setEditTarget(null); setForm(emptyForm); setNameError(''); setModalOpen(true);
   }
 
+  function openAddPreset(country: string, status: string) {
+    const countryObj = countries.find(c => c.name === country);
+    const cycle      = cycles.find(c => c.id === selectedCycleId);
+    const year       = (cycle && /^\d{4}$/.test(cycle.name)) ? cycle.name : String(new Date().getFullYear());
+    setEditTarget(null);
+    setForm({ ...emptyForm, status, year,
+      country_id: countryObj ? String(countryObj.id) : '',
+      region_id:  countryObj ? String(countryObj.region_id) : '',
+    });
+    setNameError(''); setModalOpen(true);
+  }
+
   function openEdit(p: Project) {
     setEditTarget(p);
     setForm({
@@ -298,8 +363,23 @@ export default function Projects() {
       metro:      p.metro      ?? '',
       phase_code: p.phase_code ?? '',
     });
-    setNameError(''); setModalOpen(true);
+    setNameError(''); setNewComment('');
+    setComments([]); setCommentsError(false); setModalOpen(true);
   }
+
+  // Fetch comments whenever the edit modal opens for a specific project
+  const [commentsFetchTick, setCommentsFetchTick] = useState(0);
+  useEffect(() => {
+    if (!editTarget || !modalOpen) return;
+    let cancelled = false;
+    setCommentsLoading(true);
+    setCommentsError(false);
+    projectCommentsApi.list(editTarget.id)
+      .then(data => { if (!cancelled) { setComments(data); setCommentsError(false); } })
+      .catch(() => { if (!cancelled) { setComments([]); setCommentsError(true); } })
+      .finally(() => { if (!cancelled) setCommentsLoading(false); });
+    return () => { cancelled = true; };
+  }, [editTarget?.id, modalOpen, commentsFetchTick]);
 
   function setField(key: keyof FormState, value: string) {
     setForm(f => {
@@ -333,6 +413,16 @@ export default function Projects() {
     } finally { setSaving(false); }
   }
 
+  async function postComment() {
+    if (!newComment.trim() || !editTarget) return;
+    setPostingComment(true);
+    try {
+      const created = await projectCommentsApi.create(editTarget.id, newComment.trim());
+      setComments(prev => [...prev, created]);
+      setNewComment('');
+    } finally { setPostingComment(false); }
+  }
+
   async function handleDeactivate() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -346,13 +436,13 @@ export default function Projects() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   const statItems = [
-    { label: 'Total',        value: stats.total,                  color: '#AAAAAA' },
-    { label: 'Approved',     value: stats.approved,               color: '#1E8A4A' },
-    { label: 'Seeded',       value: stats.seeded,                 color: '#17A5B8' },
-    { label: 'Proposed',     value: stats.proposed,               color: '#9A5CC8' },
-    { label: 'Retail',       value: stats.retail,                 color: '#1565C0' },
-    { label: 'xScale',       value: stats.xscale,                 color: '#6A1B9A' },
-    { label: 'Total Weight', value: stats.totalWeight.toFixed(1), color: '#E31837' },
+    { label: 'Total',        value: stats.total,                  color: '#2F3541' },
+    { label: 'Approved',     value: stats.approved,               color: '#E91C24' },
+    { label: 'Seeded',       value: stats.seeded,                 color: '#7739D9' },
+    { label: 'Proposed',     value: stats.proposed,               color: '#086AE3' },
+    { label: 'Retail',       value: stats.retail,                 color: '#00408C' },
+    { label: 'xScale',       value: stats.xscale,                 color: '#411980' },
+    { label: 'Total Weight', value: stats.totalWeight.toFixed(1), color: '#E91C24' },
   ];
 
   return (
@@ -361,32 +451,32 @@ export default function Projects() {
       {/* ── Fixed top section ── */}
       <div style={{ flexShrink: 0 }}>
 
-        {/* Title + stats banner — single dark strip */}
+        {/* Title + stats banner */}
         <div style={{
           display: 'flex', alignItems: 'center',
-          background: '#181A1E', borderRadius: 8, marginBottom: 16,
-          border: '1px solid #2A2C32', borderBottom: '2px solid #E31837', overflow: 'hidden',
+          background: '#FFFFFF', borderRadius: 8, marginBottom: 16,
+          border: '1px solid #E0E3E8', borderBottom: '3px solid #E91C24', overflow: 'hidden',
         }}>
-          <div style={{ padding: '9px 16px', borderRight: '1px solid #2A2C32', flexShrink: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', lineHeight: 1, whiteSpace: 'nowrap' }}>Projects</div>
+          <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, whiteSpace: 'nowrap' }}>Projects</div>
           </div>
           {statItems.map(({ label, value, color }, i) => (
             <div key={label} style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '10px 16px', flex: '1 1 auto',
-              borderRight: '1px solid #2A2C32',
+              borderRight: '1px solid #E0E3E8',
             }}>
-              <span style={{ fontSize: 17, fontWeight: 400, color, lineHeight: 1 }}>{value}</span>
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
+              <span style={{ fontSize: 17, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
             </div>
           ))}
           {/* Region selector */}
-          <div style={{ padding: '0 12px', borderRight: '1px solid #2A2C32', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
+          <div style={{ padding: '0 12px', borderRight: '1px solid #E0E3E8', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
             <select
               value={selectedRegionId ?? ''}
               onChange={e => { setSelectedRegionId(e.target.value ? parseInt(e.target.value, 10) : null); setCountryFilter(''); }}
-              style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
+              style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}
             >
               <option value="">All</option>
               {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
@@ -394,11 +484,11 @@ export default function Projects() {
           </div>
           {/* Planning cycle selector */}
           <div style={{ padding: '0 12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#AAAAAA', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
             <select
               value={selectedCycleId ?? ''}
               onChange={e => setSelectedCycleId(e.target.value ? parseInt(e.target.value, 10) : null)}
-              style={{ background: '#252830', border: '1px solid #3A3C42', color: '#FFFFFF', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+              style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
             >
               <option value="">All cycles</option>
               {cycles.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -493,7 +583,7 @@ export default function Projects() {
           <div style={S.centerBox}><div className="spinner" /></div>
         ) : error ? (
           <div style={{ ...S.centerBox, flexDirection: 'column', gap: 12 }}>
-            <span style={{ color: '#E31837' }}>Failed to load projects</span>
+            <span style={{ color: '#E91C24' }}>Failed to load projects</span>
             <span style={{ fontSize: 12, color: '#666' }}>{error}</span>
             <button style={S.btnSecondary} onClick={loadProjects}>Retry</button>
           </div>
@@ -504,45 +594,30 @@ export default function Projects() {
         ) : (
         <div style={{ minWidth: 'max-content' }}>
 
-          {/* Country header row — sticky, table-style */}
-          <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#F7F8FA', paddingTop: 4, paddingBottom: 4 }}>
-            <div style={{ display: 'flex', border: '1px solid #B0B4BC', background: '#D0D3DA', overflow: 'hidden' }}>
+          {/* Country header row — sticky, black */}
+          <div style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+            <div style={{ display: 'flex', background: '#000000', overflow: 'hidden' }}>
               {countriesList.map((country, ci) => {
-                const cs = countryStats[country];
+                const flag16 = flagUrl(country, 20);
+                const flag32 = flagUrl(country, 40);
                 return (
                   <div key={country} style={{
                     width: COL_W, flexShrink: 0,
-                    padding: '6px 8px 5px',
-                    borderRight: ci < countriesList.length - 1 ? '1px solid #B0B4BC' : 'none',
+                    padding: '7px 10px',
+                    borderRight: ci < countriesList.length - 1 ? '1px solid rgba(255,255,255,0.30)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 7,
                   }}>
-                    {/* Row 1: country name + project count */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
-                        {country}
-                      </div>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#111111', marginLeft: 4, flexShrink: 0 }}>{cs.total}</span>
-                    </div>
-                    {/* Row 2: type pills left, weight bottom right */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 3 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-                        {cs.retail > 0 && (
-                          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E3F2FD', color: '#1565C0', border: '1px solid #90CAF9', fontWeight: 600 }}>
-                            R:{cs.retail}
-                          </span>
-                        )}
-                        {cs.xscale > 0 && (
-                          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#F3E5F7', color: '#6A1B9A', border: '1px solid #CE93D8', fontWeight: 600 }}>
-                            xS:{cs.xscale}
-                          </span>
-                        )}
-                        {cs.matrix > 0 && (
-                          <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 8, background: '#E0F5F6', color: '#006064', border: '1px solid #80CBC4', fontWeight: 600 }}>
-                            M:{cs.matrix}
-                          </span>
-                        )}
-                      </div>
-                      <span style={{ fontSize: 9, color: '#E31837', fontWeight: 700, flexShrink: 0 }}>Wt {cs.weight.toFixed(1)}</span>
-                    </div>
+                    {flag16 && (
+                      <img
+                        src={flag16}
+                        srcSet={flag32 ? `${flag32} 2x` : undefined}
+                        alt={country}
+                        style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2, flexShrink: 0, display: 'block' }}
+                      />
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {country}
+                    </span>
                   </div>
                 );
               })}
@@ -550,6 +625,7 @@ export default function Projects() {
           </div>
 
           {/* Status rows — collapsible */}
+          <div style={{ marginTop: 4 }}>
           {PROJECT_STATUSES.map(status => {
             const sm          = statusMeta(status);
             const statusItems = filtered.filter(p => p.status === status);
@@ -594,28 +670,49 @@ export default function Projects() {
                     border: `1px solid ${sm.border}`, borderTop: 'none',
                   }}>
                     {countriesList.map((country, ci) => {
-                      const cards = projectMatrix[country]?.[status] ?? [];
+                      const cards     = projectMatrix[country]?.[status] ?? [];
+                      const isCellHov = canEdit && hoveredCell?.country === country && hoveredCell?.status === status;
                       return (
                         <div
                           key={country}
+                          onClick={() => { if (canEdit) openAddPreset(country, status); }}
+                          onMouseEnter={() => { if (canEdit) setHoveredCell({ country, status }); }}
+                          onMouseLeave={() => setHoveredCell(null)}
                           style={{
                             width: COL_W, flexShrink: 0,
                             display: 'flex', flexDirection: 'column', gap: 6,
                             padding: '6px',
                             borderRight: ci < countriesList.length - 1 ? `1px solid ${sm.border}` : 'none',
                             minHeight: 40,
+                            cursor: canEdit ? 'pointer' : 'default',
+                            background: isCellHov ? `${sm.bg}CC` : 'transparent',
+                            transition: 'background 0.12s',
                           }}
                         >
                           {cards.map(p => (
-                            <ProjectCard key={p.id} project={p} onClick={canEdit ? () => openEdit(p) : undefined} />
+                            <ProjectCard key={p.id} project={p} onClick={canEdit ? () => openEdit(p) : undefined} stopParent />
                           ))}
-                          {cards.length === 0 && (
+                          {cards.length === 0 ? (
                             <div style={{
-                              height: 28,
-                              border: '1px dashed #D8D8D8',
-                              background: 'rgba(255,255,255,0.4)',
-                            }} />
-                          )}
+                              height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              border: `1px dashed ${isCellHov ? sm.border : '#D8D8D8'}`,
+                              background: isCellHov ? `${sm.bg}60` : 'rgba(255,255,255,0.4)',
+                              borderRadius: 4,
+                              transition: 'all 0.12s',
+                            }}>
+                              {isCellHov && (
+                                <span style={{ fontSize: 16, color: sm.border, lineHeight: 1, opacity: 0.8 }}>+</span>
+                              )}
+                            </div>
+                          ) : isCellHov ? (
+                            <div style={{
+                              fontSize: 10, fontWeight: 700, color: sm.border, textAlign: 'center',
+                              padding: '3px 0', border: `1px dashed ${sm.border}`,
+                              borderRadius: 3, opacity: 0.75,
+                            }}>
+                              + Add project
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })}
@@ -624,22 +721,32 @@ export default function Projects() {
               </div>
             );
           })}
+          </div>
 
           {/* ── Totals row ── table style */}
           {countriesList.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              {/* Totals header bar */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '5px 10px',
-                background: '#1A1A1A', border: '1px solid #333333', borderBottom: 'none',
-              }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.12em', flex: 1 }}>
-                  Totals
-                </span>
-                <span style={{ fontSize: 10, color: '#888' }}>
-                  {filtered.length} projects · Wt {filtered.reduce((s, p) => s + (Number(p.weight) || 1), 0).toFixed(1)}
-                </span>
+              {/* Totals header bar — per-column cells so dividers align with country header */}
+              <div style={{ display: 'flex', background: '#000000', border: '1px solid #333333', borderBottom: 'none', overflow: 'hidden' }}>
+                {countriesList.map((_, ci) => (
+                  <div key={ci} style={{
+                    width: COL_W, flexShrink: 0,
+                    padding: '5px 10px',
+                    borderRight: ci < countriesList.length - 1 ? '1px solid rgba(255,255,255,0.30)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    {ci === 0 && (
+                      <>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: '#FFFFFF', textTransform: 'uppercase' as const, letterSpacing: '0.12em', flex: 1 }}>
+                          Totals
+                        </span>
+                        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)' }}>
+                          {filtered.length} · Wt {filtered.reduce((s, p) => s + (Number(p.weight) || 1), 0).toFixed(1)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
 
               {/* Per-country totals — table cells */}
@@ -656,7 +763,7 @@ export default function Projects() {
                       {/* Total count + weight */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
                         <span style={{ fontSize: 17, fontWeight: 800, color: '#111111', lineHeight: 1 }}>{cs.total}</span>
-                        <span style={{ fontSize: 9, fontWeight: 700, color: '#E31837' }}>Wt {cs.weight.toFixed(1)}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#E91C24' }}>Wt {cs.weight.toFixed(1)}</span>
                       </div>
                       {/* Status breakdown */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
@@ -693,12 +800,12 @@ export default function Projects() {
                       {/* Type breakdown */}
                       <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                         {cs.retail > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#E3F2FD', color: '#1565C0', fontWeight: 700 }}>
+                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#E3F2FD', color: '#086AE3', fontWeight: 700 }}>
                             R {cs.retail}
                           </span>
                         )}
                         {cs.xscale > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#F3E5F7', color: '#6A1B9A', fontWeight: 700 }}>
+                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#F3E5F7', color: '#411980', fontWeight: 700 }}>
                             xS {cs.xscale}
                           </span>
                         )}
@@ -722,19 +829,19 @@ export default function Projects() {
       {/* Add / Edit modal */}
       {modalOpen && (
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setModalOpen(false); }}>
-          <div style={S.modal}>
+          <div style={S.modal(!!editTarget)}>
             <h2 style={S.modalTitle}>{editTarget ? 'Edit Project' : 'Add Project'}</h2>
 
             <div style={S.fg}>
               <label style={S.lbl}>Project Name *</label>
               <input
-                style={{ ...S.inp, borderColor: nameError ? '#E31837' : '#D5D5D5' }}
+                style={{ ...S.inp, borderColor: nameError ? '#E91C24' : '#D5D5D5' }}
                 value={form.name}
                 onChange={e => setField('name', e.target.value)}
                 placeholder="Enter project name"
                 autoFocus
               />
-              {nameError && <span style={{ fontSize: 11, color: '#E31837', display: 'block', marginTop: 3 }}>{nameError}</span>}
+              {nameError && <span style={{ fontSize: 11, color: '#E91C24', display: 'block', marginTop: 3 }}>{nameError}</span>}
             </div>
 
             <div style={S.row3}>
@@ -810,10 +917,84 @@ export default function Projects() {
               />
             </div>
 
+            {/* Comments — edit mode only */}
+            {editTarget && (
+              <div style={{ marginTop: 8, paddingTop: 20, borderTop: '2px solid #E0E3E8' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 12 }}>
+                  Comments{comments.length > 0 ? ` (${comments.length})` : ''}
+                </div>
+
+                {/* Existing comments */}
+                {commentsLoading ? (
+                  <div style={{ color: '#8B93A3', fontSize: 12, padding: '6px 0 12px' }}>Loading…</div>
+                ) : commentsError ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 12px' }}>
+                    <span style={{ color: '#AD050C', fontSize: 12 }}>Could not load comments.</span>
+                    <button
+                      style={{ background: 'none', border: 'none', color: '#086AE3', fontSize: 12, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      onClick={() => setCommentsFetchTick(t => t + 1)}
+                    >Retry</button>
+                  </div>
+                ) : comments.length === 0 ? (
+                  <div style={{ color: '#8B93A3', fontSize: 12, padding: '6px 0 12px', fontStyle: 'italic' }}>No comments yet — be the first to add one.</div>
+                ) : (
+                  <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16, paddingRight: 4 }}>
+                    {comments.map(c => (
+                      <div key={c.id} style={{ display: 'flex', gap: 10 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                          background: 'linear-gradient(135deg, #E91C24 0%, #411980 100%)',
+                          color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 10, fontWeight: 700, letterSpacing: '0.03em',
+                        }}>
+                          {initials(c.user_name)}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' as const }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#111111' }}>{c.user_name}</span>
+                            {c.user_role && (
+                              <span style={{ fontSize: 9, color: '#FFFFFF', background: '#5A657B', borderRadius: 3, padding: '1px 5px', fontWeight: 600, whiteSpace: 'nowrap' as const }}>
+                                {c.user_role}
+                              </span>
+                            )}
+                            <span style={{ fontSize: 10, color: '#8B93A3', marginLeft: 'auto', whiteSpace: 'nowrap' as const }}>
+                              {fmtDateTime(c.created_at)}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 13, color: '#2F3541', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' as const, background: '#F7F8FA', borderRadius: 6, padding: '8px 10px', border: '1px solid #E8EAED' }}>
+                            {c.body}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* New comment input */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <textarea
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    placeholder="Add a comment… (Ctrl+Enter to post)"
+                    rows={2}
+                    style={{ ...S.inp, flex: 1, resize: 'vertical' as const, minHeight: 60, fontFamily: 'inherit', lineHeight: 1.5 }}
+                    onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); postComment(); } }}
+                  />
+                  <button
+                    style={{ ...S.btnPrimary, alignSelf: 'flex-end', padding: '9px 14px', fontSize: 12, opacity: !newComment.trim() || postingComment ? 0.5 : 1 }}
+                    onClick={postComment}
+                    disabled={!newComment.trim() || postingComment}
+                  >
+                    {postingComment ? 'Posting…' : 'Post'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div style={S.mFooter}>
               {editTarget && editTarget.is_active && (
                 <button
-                  style={{ ...S.btnSecondary, color: '#C0392B', borderColor: '#F5C0BB', marginRight: 'auto' }}
+                  style={{ ...S.btnSecondary, color: '#AD050C', borderColor: '#F5C0BB', marginRight: 'auto' }}
                   onClick={() => { setModalOpen(false); setDeleteTarget(editTarget); }}
                   disabled={saving}
                 >
@@ -832,14 +1013,14 @@ export default function Projects() {
       {/* Archive confirmation */}
       {deleteTarget && (
         <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
-          <div style={{ ...S.modal, maxWidth: 420 }}>
+          <div style={{ ...S.modal(), maxWidth: 420 }}>
             <h2 style={{ ...S.modalTitle, marginBottom: 12 }}>Archive Project</h2>
             <p style={{ color: '#555555', fontSize: 14, lineHeight: 1.6, marginBottom: 20 }}>
               Archive <strong style={{ color: '#111111' }}>{deleteTarget.name}</strong>? It will be hidden from active views but all data and allocations are preserved.
             </p>
             <div style={S.mFooter}>
               <button style={S.btnSecondary} onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
-              <button style={{ ...S.btnPrimary, background: '#C0392B' }} onClick={handleDeactivate} disabled={deleting}>
+              <button style={{ ...S.btnPrimary, background: '#AD050C' }} onClick={handleDeactivate} disabled={deleting}>
                 {deleting ? 'Archiving…' : 'Archive'}
               </button>
             </div>
@@ -854,7 +1035,7 @@ export default function Projects() {
 // Project card
 // ---------------------------------------------------------------------------
 
-function ProjectCard({ project: p, onClick }: { project: Project; onClick?: () => void }) {
+function ProjectCard({ project: p, onClick, stopParent }: { project: Project; onClick?: () => void; stopParent?: boolean }) {
   const [hover, setHover] = useState(false);
   const tm     = typeMeta(p.type);
   const weight = Number(p.weight) || 1;
@@ -862,9 +1043,9 @@ function ProjectCard({ project: p, onClick }: { project: Project; onClick?: () =
 
   return (
     <div
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onClick={onClick ? (e) => { if (stopParent) e.stopPropagation(); onClick(); } : undefined}
+      onMouseEnter={(e) => { e.stopPropagation(); setHover(true); }}
+      onMouseLeave={(e) => { e.stopPropagation(); setHover(false); }}
       title="Click to edit"
       style={{
         background: hover ? '#FAFAFA' : '#FFFFFF',
@@ -879,26 +1060,23 @@ function ProjectCard({ project: p, onClick }: { project: Project; onClick?: () =
         boxSizing: 'border-box' as const,
       }}
     >
-      {/* Type badge + weight */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ ...S.badge(tm.bg, tm.color, tm.border), fontSize: 9, padding: '1px 5px' }}>{p.type}</span>
-        <span style={{ fontSize: 13, fontWeight: 800, color: tm.color, lineHeight: 1 }}>
-          {weight.toFixed(1)}
-        </span>
-      </div>
-
-      {/* Project name */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', lineHeight: 1.35, marginBottom: 4, wordBreak: 'break-word' as const }}>
+      {/* Row 1: project name */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#111111', lineHeight: 1.3, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
         {p.name}
       </div>
 
-      {/* Meta — compact single line */}
-      {(meta || p.year) && (
-        <div style={{ fontSize: 9, color: '#AAAAAA', display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-          {p.year && <span>FY{p.year}</span>}
-          {meta && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>{meta}</span>}
-        </div>
-      )}
+      {/* Row 2: type badge + meta + weight */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ ...S.badge(tm.bg, tm.color, tm.border), fontSize: 9, padding: '1px 5px', flexShrink: 0 }}>{p.type}</span>
+        {(p.year || meta) && (
+          <span style={{ fontSize: 9, color: '#8B93A3', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+            {p.year ? `FY${p.year}` : ''}{p.year && meta ? ' · ' : ''}{meta}
+          </span>
+        )}
+        <span style={{ fontSize: 12, fontWeight: 800, color: tm.color, flexShrink: 0, lineHeight: 1 }}>
+          {weight.toFixed(1)}
+        </span>
+      </div>
     </div>
   );
 }
