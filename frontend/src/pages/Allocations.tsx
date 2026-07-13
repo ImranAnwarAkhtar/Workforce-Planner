@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
 import {
-  peopleApi, projectsApi, refDataApi, countryAllocationsApi, personCommentsApi,
-  type Person, type Project, type Region,
+  peopleApi, projectsApi, refDataApi, gearingApi, countryAllocationsApi, personCommentsApi,
+  type Person, type Project, type Region, type GearingConstant,
   type CountryAllocation, type PersonComment,
 } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
@@ -133,6 +133,7 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
   const [allPeople, setAllPeople]       = useState<Person[]>([]);
   const [projects, setProjects]         = useState<Project[]>([]);
   const [countryAllocs, setCountryAllocs] = useState<CountryAllocation[]>([]);
+  const [gearingConstants, setGearingConstants] = useState<GearingConstant[]>([]);
   const [loading, setLoading]           = useState(false);
   const [backendError, setBackendError] = useState(false);
 
@@ -170,7 +171,7 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
   const loadData = useCallback(async () => {
     setLoading(true); setBackendError(false);
     try {
-      const [ppl, projs, allocs] = await Promise.all([
+      const [ppl, projs, allocs, gc] = await Promise.all([
         peopleApi.list({ is_active: 'true', limit: 500,
           ...(selectedRegionId ? { region_id: selectedRegionId } : {}) }).catch(() => [] as Person[]),
         projectsApi.list({ is_active: 'true', limit: 500,
@@ -179,10 +180,12 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
           ...(selectedCycleId  ? { planning_cycle_id: selectedCycleId }  : {}),
           ...(selectedRegionId ? { region_id: selectedRegionId } : {}),
         }).catch(() => [] as CountryAllocation[]),
+        gearingApi.list().catch(() => [] as GearingConstant[]),
       ]);
       setAllPeople(ppl);
       setProjects(projs);
       setCountryAllocs(allocs);
+      setGearingConstants(gc);
     } catch { setBackendError(true); }
     finally   { setLoading(false); }
   }, [selectedCycleId, selectedRegionId]);
@@ -316,6 +319,35 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
     })).filter(d => d.allocated > 0);
     return { totalAvailable, totalAllocated, byDisc };
   }, [allPeople, countryAllocs]);
+
+  // ── Footer totals (Proposed/Min/Max per country) ──────────────────────────
+  const footerTotals = useMemo(() => {
+    // Average gearing per project type across all disciplines
+    const avgGearing: Record<string, { min: number; max: number; count: number }> = {};
+    for (const g of gearingConstants) {
+      if (!avgGearing[g.project_type]) avgGearing[g.project_type] = { min: 0, max: 0, count: 0 };
+      avgGearing[g.project_type].min += Number(g.min_divisor);
+      avgGearing[g.project_type].max += Number(g.max_divisor);
+      avgGearing[g.project_type].count += 1;
+    }
+    return countryGroups.map(g => {
+      const proposed = countryAllocs
+        .filter(a => a.country_id === g.countryId)
+        .reduce((s, a) => s + Number(a.fte_value), 0);
+      let minFte = 0, maxFte = 0;
+      for (const proj of g.projects) {
+        const ptype = proj.type ?? 'Retail';
+        const ag = avgGearing[ptype];
+        if (ag && ag.count > 0) {
+          const avgMin = ag.min / ag.count;
+          const avgMax = ag.max / ag.count;
+          if (avgMin > 0) minFte += Number(proj.weight) / avgMin;
+          if (avgMax > 0) maxFte += Number(proj.weight) / avgMax;
+        }
+      }
+      return { countryId: g.countryId, country: g.country, proposed, min: minFte, max: maxFte };
+    });
+  }, [countryGroups, countryAllocs, gearingConstants]);
 
   // ── Add allocation modal helpers ──────────────────────────────────────────
   function openAddModal(preDisciplineId?: number) {
@@ -737,6 +769,61 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                 );
               })}
             </tbody>
+
+            {/* ── Footer totals: Proposed / Min / Max ── */}
+            <tfoot>
+              {[
+                { label: 'Proposed', key: 'proposed' as const, color: '#086AE3', title: 'Total FTE currently allocated to this country' },
+                { label: 'Min',      key: 'min'      as const, color: '#33A85C', title: 'Minimum required headcount from gearing model' },
+                { label: 'Max',      key: 'max'      as const, color: '#C59000', title: 'Maximum required headcount from gearing model' },
+              ].map(({ label, key, color, title }) => (
+                <tr key={label}>
+                  <td title={title} style={{
+                    position: 'sticky', left: 0, zIndex: 2,
+                    padding: '6px 10px', fontWeight: 700, fontSize: 11,
+                    background: '#1A1A2E', color: '#FFFFFF',
+                    borderTop: label === 'Proposed' ? '2px solid #333355' : '1px solid #2E2E4E',
+                    borderRight: '2px solid #333355',
+                    textTransform: 'uppercase' as const, letterSpacing: '0.07em',
+                  }}>
+                    {label}
+                  </td>
+                  {countryGroups.map(g => {
+                    const ft = footerTotals.find(f => f.countryId === g.countryId);
+                    const val = ft ? ft[key] : 0;
+                    const collapsed = collapsedCountries.has(g.country);
+                    return (
+                      <td key={g.country} style={{
+                        padding: collapsed ? '6px 2px' : '6px 8px',
+                        textAlign: 'center',
+                        background: '#1A1A2E',
+                        borderTop: label === 'Proposed' ? '2px solid #333355' : '1px solid #2E2E4E',
+                        borderRight: '1px solid #2E2E4E',
+                      }}>
+                        {!collapsed && val > 0 && (
+                          <span style={{ fontSize: 12, fontWeight: 700, color }}>{val.toFixed(1)}</span>
+                        )}
+                        {!collapsed && val === 0 && (
+                          <span style={{ fontSize: 11, color: '#555577' }}>—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td style={{
+                    padding: '6px 6px', textAlign: 'center',
+                    background: '#1A1A2E',
+                    borderTop: label === 'Proposed' ? '2px solid #333355' : '1px solid #2E2E4E',
+                  }}>
+                    {(() => {
+                      const total = footerTotals.reduce((s, f) => s + f[key], 0);
+                      return total > 0
+                        ? <span style={{ fontSize: 12, fontWeight: 700, color }}>{total.toFixed(1)}</span>
+                        : <span style={{ fontSize: 11, color: '#555577' }}>—</span>;
+                    })()}
+                  </td>
+                </tr>
+              ))}
+            </tfoot>
           </table>
 
           {allocatedPeople.length === 0 && !loading && (
@@ -765,7 +852,11 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 8 }}>
               {group.country} — {group.projects.length} project{group.projects.length !== 1 ? 's' : ''}
             </div>
-            {group.projects.map(proj => (
+            {[...group.projects].sort((a, b) => {
+              const order = ['Approved', 'Seeded', 'Proposed'];
+              return (order.indexOf(a.status) === -1 ? 99 : order.indexOf(a.status)) -
+                     (order.indexOf(b.status) === -1 ? 99 : order.indexOf(b.status));
+            }).map(proj => (
               <div key={proj.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                 <span style={{
                   width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
@@ -829,6 +920,19 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                   </option>
                 ))}
               </select>
+              {/* Quick-access to full person details */}
+              {modalPersonId && (() => {
+                const selPerson = allPeople.find(p => p.id === Number(modalPersonId));
+                return selPerson ? (
+                  <button
+                    type="button"
+                    onClick={() => { setAddModal(null); setEditPerson(selPerson); }}
+                    style={{ marginTop: 6, width: '100%', padding: '6px 0', background: '#F0F4FF', border: '1px solid #BFD0FF', borderRadius: 4, fontSize: 12, fontWeight: 600, color: '#086AE3', cursor: 'pointer', textAlign: 'center' }}
+                  >
+                    ✏ Edit {selPerson.name}'s Full Details (Type, TBH Code, etc.)
+                  </button>
+                ) : null;
+              })()}
             </div>
 
             {/* Country FTE inputs */}
