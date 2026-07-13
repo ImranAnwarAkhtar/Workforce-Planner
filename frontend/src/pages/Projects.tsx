@@ -466,8 +466,8 @@ export default function Projects() {
               padding: '10px 16px', flex: '1 1 auto',
               borderRight: '1px solid #E0E3E8',
             }}>
-              <span style={{ fontSize: 17, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
-              <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', lineHeight: 1.4 }}>{label}</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', lineHeight: 1.4 }}>{label}</span>
             </div>
           ))}
           {/* Region selector */}
@@ -769,29 +769,29 @@ export default function Projects() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 4 }}>
                         {cs.approved > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, color: STATUS_META.Approved.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ fontSize: 10, color: STATUS_META.Approved.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                               <span style={{ width: 5, height: 5, borderRadius: '50%', background: STATUS_META.Approved.dot, display: 'inline-block' }} />
-                              Appr
+                              Approved
                             </span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: STATUS_META.Approved.barBg }}>{cs.approved}</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: STATUS_META.Approved.barBg }}>{cs.approved}</span>
                           </div>
                         )}
                         {cs.seeded > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, color: STATUS_META.Seeded.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ fontSize: 10, color: STATUS_META.Seeded.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                               <span style={{ width: 5, height: 5, borderRadius: '50%', background: STATUS_META.Seeded.dot, display: 'inline-block' }} />
-                              Seed
+                              Seeded
                             </span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: STATUS_META.Seeded.barBg }}>{cs.seeded}</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: STATUS_META.Seeded.barBg }}>{cs.seeded}</span>
                           </div>
                         )}
                         {cs.proposed > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 9, color: STATUS_META.Proposed.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <span style={{ fontSize: 10, color: STATUS_META.Proposed.barBg, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                               <span style={{ width: 5, height: 5, borderRadius: '50%', background: STATUS_META.Proposed.dot, display: 'inline-block' }} />
-                              Prop
+                              Proposed
                             </span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: STATUS_META.Proposed.barBg }}>{cs.proposed}</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: STATUS_META.Proposed.barBg }}>{cs.proposed}</span>
                           </div>
                         )}
                       </div>
@@ -800,18 +800,18 @@ export default function Projects() {
                       {/* Type breakdown */}
                       <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                         {cs.retail > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#E3F2FD', color: '#086AE3', fontWeight: 700 }}>
-                            R {cs.retail}
+                          <span style={{ fontSize: 10, padding: '2px 5px', background: '#E3F2FD', color: '#086AE3', fontWeight: 700, borderRadius: 3 }}>
+                            Retail {cs.retail}
                           </span>
                         )}
                         {cs.xscale > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#F3E5F7', color: '#411980', fontWeight: 700 }}>
-                            xS {cs.xscale}
+                          <span style={{ fontSize: 10, padding: '2px 5px', background: '#F3E5F7', color: '#411980', fontWeight: 700, borderRadius: 3 }}>
+                            xScale {cs.xscale}
                           </span>
                         )}
                         {cs.matrix > 0 && (
-                          <span style={{ fontSize: 8, padding: '1px 4px', background: '#E0F5F6', color: '#006064', fontWeight: 700 }}>
-                            M {cs.matrix}
+                          <span style={{ fontSize: 10, padding: '2px 5px', background: '#E0F5F6', color: '#006064', fontWeight: 700, borderRadius: 3 }}>
+                            Matrix {cs.matrix}
                           </span>
                         )}
                       </div>
