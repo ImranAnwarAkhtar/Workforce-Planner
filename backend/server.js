@@ -22,6 +22,8 @@ const adminRouter         = require('./routes/admin');
 const commentsRouter      = require('./routes/comments');
 const importsRouter       = require('./routes/imports');
 const headcountRouter     = require('./routes/headcount');
+const countryAllocationsRouter = require('./routes/countryAllocations');
+const personCommentsRouter     = require('./routes/personComments');
 
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -158,8 +160,54 @@ pool.query(`
   }
 })();
 
+// Country allocations table (new simplified model: person → country → FTE)
+(async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS country_allocations (
+        id                SERIAL PRIMARY KEY,
+        person_id         INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        country_id        INTEGER NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+        planning_cycle_id INTEGER REFERENCES planning_cycles(id) ON DELETE CASCADE,
+        fte_value         DECIMAL(4,2) NOT NULL DEFAULT 0,
+        created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ca_person ON country_allocations(person_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ca_country ON country_allocations(country_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_ca_cycle ON country_allocations(planning_cycle_id)`);
+    logger.info('Country allocations migration complete');
+  } catch (err) {
+    logger.error('Country allocations migration failed', { error: err.message });
+  }
+})();
+
+// Person comments table
+(async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS person_comments (
+        id         SERIAL       PRIMARY KEY,
+        person_id  INTEGER      NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        user_name  VARCHAR(255) NOT NULL,
+        user_role  VARCHAR(50),
+        body       TEXT         NOT NULL,
+        created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_person_comments_pid ON person_comments(person_id)`);
+    logger.info('Person comments migration complete');
+  } catch (err) {
+    logger.error('Person comments migration failed', { error: err.message });
+  }
+})();
+
+app.use('/api/country-allocations', wrapAsync(countryAllocationsRouter));
+app.use('/api/person-comments',     wrapAsync(personCommentsRouter));
 app.use('/api/planning-cycles', wrapAsync(planningCyclesRouter));
 app.use('/api/projects',        wrapAsync(projectsRouter));
+
 app.use('/api/people',          wrapAsync(peopleRouter));
 app.use('/api/allocations',     wrapAsync(allocationsRouter));
 app.use('/api/tbh-codes',       wrapAsync(tbhCodesRouter));

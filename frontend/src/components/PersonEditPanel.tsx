@@ -1,14 +1,70 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
-  peopleApi, refDataApi, tbhCodesApi,
+  peopleApi, refDataApi, tbhCodesApi, countryAllocationsApi, personCommentsApi,
   type Person, type Discipline, type Level, type ContractType, type Region, type Country,
+  type CountryAllocation, type PersonComment,
 } from '../services/api';
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? '?';
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+const AVATAR_GRADIENT = [
+  ['#086AE3', '#3A8FF5'],
+  ['#33A85C', '#5BC87E'],
+  ['#C59000', '#F0B400'],
+  ['#00737A', '#009EA8'],
+  ['#7739D9', '#9A5FF0'],
+];
+
+function avatarGradient(name: string): string {
+  const idx = name.charCodeAt(0) % AVATAR_GRADIENT.length;
+  const [a, b] = AVATAR_GRADIENT[idx];
+  return `linear-gradient(135deg, ${a}, ${b})`;
+}
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Australia': 'au', 'Austria': 'at', 'Bahrain': 'bh', 'Belgium': 'be',
+  'Brazil': 'br', 'Canada': 'ca', 'Chile': 'cl', 'China': 'cn',
+  'Colombia': 'co', 'Czech Republic': 'cz', 'Denmark': 'dk', 'Egypt': 'eg',
+  'Finland': 'fi', 'France': 'fr', 'Germany': 'de', 'Greece': 'gr',
+  'Hong Kong': 'hk', 'Hungary': 'hu', 'India': 'in', 'Indonesia': 'id',
+  'Ireland': 'ie', 'Israel': 'il', 'Italy': 'it', 'Japan': 'jp',
+  'Jordan': 'jo', 'Kenya': 'ke', 'Kuwait': 'kw', 'Luxembourg': 'lu',
+  'Malaysia': 'my', 'Mexico': 'mx', 'Morocco': 'ma', 'Netherlands': 'nl',
+  'New Zealand': 'nz', 'Nigeria': 'ng', 'Norway': 'no', 'Oman': 'om',
+  'Panama': 'pa', 'Peru': 'pe', 'Philippines': 'ph', 'Poland': 'pl',
+  'Portugal': 'pt', 'Qatar': 'qa', 'Romania': 'ro', 'Saudi Arabia': 'sa',
+  'Singapore': 'sg', 'Slovakia': 'sk', 'South Africa': 'za', 'South Korea': 'kr',
+  'Spain': 'es', 'Sweden': 'se', 'Switzerland': 'ch', 'Taiwan': 'tw',
+  'Thailand': 'th', 'Turkey': 'tr', 'United Arab Emirates': 'ae',
+  'United Kingdom': 'gb', 'United States': 'us', 'Vietnam': 'vn',
+  'UK': 'gb', 'USA': 'us', 'UAE': 'ae', 'Korea': 'kr', 'Serbia': 'rs',
+};
+
+function flagUrl(country: string): string | null {
+  const code = COUNTRY_FLAGS[country];
+  return code ? `https://flagcdn.com/w20/${code}.png` : null;
+}
 
 interface Props {
   person: Person | null;
   onClose: () => void;
   onSaved: (updated: Person) => void;
+  // Allocation context (optional — only passed from Allocations page)
+  countryAllocs?: CountryAllocation[];
+  countryGroups?: { countryId: number; countryName: string }[];
+  selectedCycleId?: number | null;
+  onAllocsSaved?: () => void;
 }
 
 const FIELD: React.CSSProperties = {
@@ -32,7 +88,7 @@ const CONTRACT_CATEGORY_LABELS: Record<string, string> = {
 
 const PLACEHOLDER_TYPES = ['R FTE', 'R CON', 'A FTE', 'A CON'];
 
-export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
+export default function PersonEditPanel({ person, onClose, onSaved, countryAllocs, countryGroups, selectedCycleId, onAllocsSaved }: Props) {
   const [disciplines, setDisciplines]   = useState<Discipline[]>([]);
   const [levels, setLevels]             = useState<Level[]>([]);
   const [contractTypes, setContractTypes] = useState<ContractType[]>([]);
@@ -40,6 +96,18 @@ export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
   const [countries, setCountries]       = useState<Country[]>([]);
   const [tbhCodes, setTbhCodes]         = useState<{ id: number; tbh_id: string }[]>([]);
   const [saving, setSaving]             = useState(false);
+
+  // Country allocation editing state
+  const [allocEntries, setAllocEntries] = useState<Record<number, string>>({});
+  const [allocSaving, setAllocSaving]   = useState(false);
+
+  // Comments state
+  const [comments, setComments]             = useState<PersonComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError]   = useState(false);
+  const [newComment, setNewComment]         = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+  const [commentsTick, setCommentsTick]     = useState(0);
 
   const [form, setForm] = useState({
     name:             '',
@@ -98,6 +166,64 @@ export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
       }).catch(() => {});
     }
   }, [person]);
+
+  // Initialise alloc entries from passed prop
+  useEffect(() => {
+    if (!countryAllocs) { setAllocEntries({}); return; }
+    const entries: Record<number, string> = {};
+    for (const a of countryAllocs) {
+      entries[a.country_id] = String(a.fte_value);
+    }
+    setAllocEntries(entries);
+  }, [countryAllocs]);
+
+  // Load comments whenever the person changes
+  useEffect(() => {
+    if (!person?.id) { setComments([]); return; }
+    setCommentsLoading(true);
+    setCommentsError(false);
+    personCommentsApi.list(person.id)
+      .then(rows => setComments(rows))
+      .catch(() => setCommentsError(true))
+      .finally(() => setCommentsLoading(false));
+  }, [person?.id, commentsTick]);
+
+  const allocTotal = countryGroups
+    ? countryGroups.reduce((s, g) => s + (parseFloat(allocEntries[g.countryId] ?? '0') || 0), 0)
+    : 0;
+
+  async function saveAllocs() {
+    if (!person) return;
+    const allocs = (countryGroups ?? []).map(g => ({
+      country_id: g.countryId,
+      fte_value: parseFloat(allocEntries[g.countryId] ?? '0') || 0,
+    })).filter(a => a.fte_value > 0);
+    if (allocTotal > 1.001) { toast.error(`Total FTE ${allocTotal.toFixed(2)} exceeds 1.0`); return; }
+    setAllocSaving(true);
+    try {
+      await countryAllocationsApi.save(person.id, selectedCycleId ?? null, allocs);
+      toast.success('Allocations saved');
+      onAllocsSaved?.();
+    } catch {
+      toast.error('Failed to save allocations');
+    } finally {
+      setAllocSaving(false);
+    }
+  }
+
+  async function postComment() {
+    if (!person || !newComment.trim()) return;
+    setPostingComment(true);
+    try {
+      await personCommentsApi.create(person.id, newComment.trim());
+      setNewComment('');
+      setCommentsTick(t => t + 1);
+    } catch {
+      toast.error('Failed to post comment');
+    } finally {
+      setPostingComment(false);
+    }
+  }
 
   function set(field: string, value: unknown) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -327,6 +453,144 @@ export default function PersonEditPanel({ person, onClose, onSaved }: Props) {
               placeholder="Add notes, context, or comments about this person or role…"
             />
           </div>
+
+          {/* ── Country Allocations (only shown when context is passed from Allocations page) ── */}
+          {countryGroups && countryGroups.length > 0 && (
+            <div style={{ borderTop: '1px solid #EEEEEE', paddingTop: 16 }}>
+              <label style={{ ...LBL, display: 'block', marginBottom: 10 }}>Country Allocations</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {countryGroups.map(g => {
+                  const flag = flagUrl(g.countryName);
+                  const val = allocEntries[g.countryId] ?? '';
+                  return (
+                    <div key={g.countryId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1, minWidth: 0 }}>
+                        {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />}
+                        <span style={{ fontSize: 13, color: '#111111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.countryName}</span>
+                      </div>
+                      <input
+                        type="number" min="0" max="1" step="0.1"
+                        value={val}
+                        onChange={e => setAllocEntries(prev => ({ ...prev, [g.countryId]: e.target.value }))}
+                        placeholder="0.0"
+                        style={{ width: 70, padding: '5px 8px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13, textAlign: 'center', outline: 'none' }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{
+                marginTop: 10, padding: '6px 10px', borderRadius: 5,
+                background: allocTotal > 1.001 ? '#FFF0F0' : allocTotal > 0 ? '#F0FFF4' : '#F5F5F5',
+                border: `1px solid ${allocTotal > 1.001 ? '#E91C24' : allocTotal > 0 ? '#33A85C' : '#E0E0E0'}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: 10,
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#444444' }}>Total FTE</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: allocTotal > 1.001 ? '#AD050C' : allocTotal > 0 ? '#1A7A40' : '#888888' }}>
+                  {allocTotal.toFixed(2)}
+                </span>
+              </div>
+              <button
+                onClick={saveAllocs}
+                disabled={allocSaving || allocTotal > 1.001}
+                style={{
+                  width: '100%', padding: '8px 0',
+                  background: (allocSaving || allocTotal > 1.001) ? '#CCCCCC' : '#086AE3',
+                  border: 'none', borderRadius: 5, fontSize: 13, fontWeight: 600, color: '#FFFFFF',
+                  cursor: (allocSaving || allocTotal > 1.001) ? 'default' : 'pointer',
+                }}
+              >
+                {allocSaving ? 'Saving…' : 'Save Allocations'}
+              </button>
+            </div>
+          )}
+
+          {/* ── Comments ── */}
+          <div style={{ borderTop: '1px solid #EEEEEE', paddingTop: 16 }}>
+            <label style={{ ...LBL, display: 'block', marginBottom: 10 }}>
+              Comments {comments.length > 0 && `(${comments.length})`}
+            </label>
+
+            {commentsLoading && (
+              <div style={{ fontSize: 12, color: '#999999', padding: '8px 0' }}>Loading comments…</div>
+            )}
+            {commentsError && (
+              <div style={{ fontSize: 12, color: '#AD050C', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                Failed to load comments.
+                <button onClick={() => setCommentsTick(t => t + 1)} style={{ fontSize: 11, color: '#086AE3', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Retry</button>
+              </div>
+            )}
+
+            {!commentsLoading && !commentsError && comments.length === 0 && (
+              <div style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', marginBottom: 10 }}>No comments yet.</div>
+            )}
+
+            {comments.map(c => (
+              <div key={c.id} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  {/* Avatar */}
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: avatarGradient(c.user_name),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, color: '#FFFFFF', fontSize: 10, fontWeight: 700,
+                  }}>
+                    {initials(c.user_name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#111111' }}>{c.user_name}</span>
+                      {c.user_role && (
+                        <span style={{
+                          fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                          background: '#F0F0F0', color: '#555555', border: '1px solid #DDDDDD',
+                          fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em',
+                        }}>{c.user_role}</span>
+                      )}
+                      <span style={{ fontSize: 10, color: '#AAAAAA', marginLeft: 'auto' }}>{fmtDateTime(c.created_at)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  marginLeft: 36, padding: '7px 10px', borderRadius: 6,
+                  background: '#F5F6F8', border: '1px solid #EBEBEB',
+                  fontSize: 12, color: '#333333', lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap',
+                }}>
+                  {c.body}
+                </div>
+              </div>
+            ))}
+
+            {/* Post new comment */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+              <textarea
+                rows={2}
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); postComment(); } }}
+                placeholder="Add a comment… (Ctrl+Enter to post)"
+                style={{
+                  ...INPUT, resize: 'vertical', fontFamily: 'inherit',
+                  fontSize: 12, padding: '7px 10px',
+                }}
+              />
+              <button
+                onClick={postComment}
+                disabled={!newComment.trim() || postingComment}
+                style={{
+                  alignSelf: 'flex-end', padding: '6px 14px',
+                  background: (!newComment.trim() || postingComment) ? '#CCCCCC' : '#E91C24',
+                  border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF',
+                  cursor: (!newComment.trim() || postingComment) ? 'default' : 'pointer',
+                }}
+              >
+                {postingComment ? 'Posting…' : 'Post'}
+              </button>
+            </div>
+          </div>
+
         </div>
 
         {/* Footer */}

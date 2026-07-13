@@ -326,6 +326,49 @@ export const projectCommentsApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Country Allocations
+// ---------------------------------------------------------------------------
+
+export interface CountryAllocation {
+  id: number;
+  person_id: number;
+  country_id: number;
+  planning_cycle_id: number | null;
+  fte_value: number;
+  country_name: string;
+  person_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const countryAllocationsApi = {
+  list: (params: { planning_cycle_id?: number | null; region_id?: number | null; person_id?: number }) =>
+    client.get<ListResponse<CountryAllocation>>('/country-allocations', { params }).then(r => r.data.data),
+  save: (personId: number, planning_cycle_id: number | null, allocations: { country_id: number; fte_value: number }[]) =>
+    client.put<ListResponse<CountryAllocation>>(`/country-allocations/${personId}`, { planning_cycle_id, allocations }).then(r => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
+// Person Comments
+// ---------------------------------------------------------------------------
+
+export interface PersonComment {
+  id: number;
+  person_id: number;
+  user_name: string;
+  user_role: string | null;
+  body: string;
+  created_at: string;
+}
+
+export const personCommentsApi = {
+  list: (personId: number) =>
+    client.get<ListResponse<PersonComment>>('/person-comments', { params: { person_id: personId } }).then(r => r.data.data),
+  create: (personId: number, body: string) =>
+    client.post<ItemResponse<PersonComment>>('/person-comments', { person_id: personId, body }).then(r => r.data.data),
+};
+
+// ---------------------------------------------------------------------------
 // Allocations
 // ---------------------------------------------------------------------------
 
