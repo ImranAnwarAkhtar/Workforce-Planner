@@ -623,9 +623,12 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                           }}
                           onClick={() => toggleDisc(h.discipline)}
                         >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, transform: discCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s' }}>
-                            <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-                          </svg>
+                          <span style={{
+                            fontSize: 9, fontWeight: 900, color: dc.text,
+                            transform: discCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.15s',
+                            display: 'inline-block', width: 10, textAlign: 'center' as const, flexShrink: 0,
+                          }}>▼</span>
                           <span style={{ fontSize: 12, fontWeight: 700 }}>
                             {h.discipline}
                           </span>
