@@ -713,7 +713,7 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                                       onMouseMove={e => setHoveredPill(prev => prev?.personId === p.id ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
                                       onMouseLeave={() => setHoveredPill(null)}
                                       style={{
-                                        display: 'flex', alignItems: 'center',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         padding: '4px 10px', borderRadius: 6,
                                         background: ps.bg, color: ps.color,
                                         border: `1px solid ${ps.border}`,
@@ -722,7 +722,7 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                                         width: '100%', boxSizing: 'border-box' as const,
                                       }}
                                     >
-                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' as const }}>{p.name}</span>
                                     </div>
                                   </td>
                                 );
@@ -851,8 +851,31 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
               )}
             </div>
             {hovP.discipline_name && (
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginBottom: cachedComment !== undefined ? 6 : 0 }}>{hovP.discipline_name}{hovP.contract_type_code ? ` · ${hovP.contract_type_code}` : ''}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginBottom: 8 }}>{hovP.discipline_name}{hovP.contract_type_code ? ` · ${hovP.contract_type_code}` : ''}</div>
             )}
+            {/* Country allocations */}
+            {(() => {
+              const personAllocs = countryGroups
+                .map(g => ({ country: g.country, countryId: g.countryId, val: allocMap[hovP.id]?.[g.countryId] ?? 0 }))
+                .filter(a => a.val > 0);
+              if (personAllocs.length === 0) return null;
+              return (
+                <div style={{ borderTop: '1px solid #2E2E50', paddingTop: 8, marginBottom: 6 }}>
+                  {personAllocs.map(a => {
+                    const f = flagUrl(a.country);
+                    return (
+                      <div key={a.countryId} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        {f && <img src={f} alt="" width={14} height={10} style={{ borderRadius: 1, objectFit: 'cover', flexShrink: 0 }} />}
+                        <span style={{ fontSize: 11, flex: 1, color: 'rgba(255,255,255,0.85)' }}>{a.country}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#7BC8FF', flexShrink: 0 }}>
+                          {a.val % 1 === 0 ? a.val.toFixed(0) : a.val.toFixed(2)} FTE
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             {cachedComment === undefined && (
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', borderTop: '1px solid #2E2E50', paddingTop: 6 }}>Loading…</div>
             )}
