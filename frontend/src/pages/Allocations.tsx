@@ -118,6 +118,9 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
   const [modalPersonId, setModalPersonId]   = useState<number | ''>('');
   const [modalAllocs, setModalAllocs]       = useState<Record<number, string>>({});
   const [modalSaving, setModalSaving]       = useState(false);
+  const [allocMode, setAllocMode]           = useState<'equal' | 'custom'>('equal');
+  const [equalCountries, setEqualCountries] = useState<Set<number>>(new Set());
+  const [lockedPerson, setLockedPerson]     = useState<Person | null>(null);
 
   useTabDirty(tabId, false);
 
@@ -273,61 +276,96 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
     return { totalAvailable, totalAllocated, byDisc };
   }, [allPeople, countryAllocs]);
 
-  // ── Footer totals (Proposed/Min/Max per country) ──────────────────────────
-  const footerTotals = useMemo(() => {
-    // Average gearing per project type across all disciplines
-    const avgGearing: Record<string, { min: number; max: number; count: number }> = {};
+  // ── Footer totals: Proposed/Min/Max per discipline per country ───────────
+  const disciplineFooterTotals = useMemo(() => {
+    // Build gearing lookup by discipline_name + project_type
+    const gearingByDisc: Record<string, Record<string, { min: number; max: number }>> = {};
     for (const g of gearingConstants) {
-      if (!avgGearing[g.project_type]) avgGearing[g.project_type] = { min: 0, max: 0, count: 0 };
-      avgGearing[g.project_type].min += Number(g.min_divisor);
-      avgGearing[g.project_type].max += Number(g.max_divisor);
-      avgGearing[g.project_type].count += 1;
+      if (!gearingByDisc[g.discipline_name]) gearingByDisc[g.discipline_name] = {};
+      gearingByDisc[g.discipline_name][g.project_type] = {
+        min: Number(g.min_divisor),
+        max: Number(g.max_divisor),
+      };
     }
-    return countryGroups.map(g => {
-      const proposed = countryAllocs
-        .filter(a => a.country_id === g.countryId)
-        .reduce((s, a) => s + Number(a.fte_value), 0);
-      let minFte = 0, maxFte = 0;
-      for (const proj of g.projects) {
-        const ptype = proj.type ?? 'Retail';
-        const ag = avgGearing[ptype];
-        if (ag && ag.count > 0) {
-          const avgMin = ag.min / ag.count;
-          const avgMax = ag.max / ag.count;
-          if (avgMin > 0) minFte += Number(proj.weight) / avgMin;
-          if (avgMax > 0) maxFte += Number(proj.weight) / avgMax;
+    return displayedHierarchy.map(h => {
+      const discGearing = gearingByDisc[h.discipline] ?? {};
+      const countries = countryGroups.map(g => {
+        const proposed = h.allPeople.reduce(
+          (s, p) => s + (allocMap[p.id]?.[g.countryId] ?? 0), 0
+        );
+        let minFte = 0, maxFte = 0;
+        for (const proj of g.projects) {
+          const gc = discGearing[proj.type ?? 'Retail'];
+          if (gc) {
+            if (gc.min > 0) minFte += Number(proj.weight) / gc.min;
+            if (gc.max > 0) maxFte += Number(proj.weight) / gc.max;
+          }
         }
-      }
-      return { countryId: g.countryId, country: g.country, proposed, min: minFte, max: maxFte };
+        return { countryId: g.countryId, proposed, min: minFte, max: maxFte };
+      });
+      return { discipline: h.discipline, countries };
     });
-  }, [countryGroups, countryAllocs, gearingConstants]);
+  }, [displayedHierarchy, allocMap, countryGroups, gearingConstants]);
 
-  // ── Add allocation modal helpers ──────────────────────────────────────────
-  function openAddModal(preDisciplineId?: number) {
+  // ── Add / Edit allocation modal helpers ──────────────────────────────────
+  function closeModal() {
+    setAddModal(null);
+    setLockedPerson(null);
     setModalPersonId('');
     setModalAllocs({});
+    setAllocMode('equal');
+    setEqualCountries(new Set());
+  }
+
+  function openAddModal(preDisciplineId?: number) {
+    setLockedPerson(null);
+    setModalPersonId('');
+    setModalAllocs({});
+    setAllocMode('equal');
+    setEqualCountries(new Set());
     setAddModal({ preDisciplineId });
+  }
+
+  function openEditModal(p: Person) {
+    const existing: Record<number, string> = {};
+    for (const a of countryAllocs.filter(a => a.person_id === p.id)) {
+      existing[a.country_id] = String(a.fte_value);
+    }
+    setModalPersonId(p.id);
+    setLockedPerson(p);
+    setModalAllocs(existing);
+    setAllocMode(Object.keys(existing).length > 0 ? 'custom' : 'equal');
+    setEqualCountries(new Set());
+    setAddModal({});
   }
 
   async function saveModalAllocs() {
     if (!modalPersonId) return;
-    const allocs = countryGroups.map(g => ({
-      country_id: g.countryId,
-      fte_value: parseFloat(modalAllocs[g.countryId] ?? '0') || 0,
-    })).filter(a => a.fte_value > 0);
-    const total = allocs.reduce((s, a) => s + a.fte_value, 0);
-    if (total > 1.001) { toast.error(`Total FTE ${total.toFixed(2)} exceeds 1.0`); return; }
+    let allocs: { country_id: number; fte_value: number }[];
+    if (allocMode === 'equal') {
+      if (equalCountries.size === 0) { toast.error('Select at least one country'); return; }
+      const fte = parseFloat((1.0 / equalCountries.size).toFixed(4));
+      allocs = Array.from(equalCountries).map(cid => ({ country_id: cid, fte_value: fte }));
+    } else {
+      allocs = countryGroups
+        .map(g => ({ country_id: g.countryId, fte_value: parseFloat(modalAllocs[g.countryId] ?? '0') || 0 }))
+        .filter(a => a.fte_value > 0);
+      const total = allocs.reduce((s, a) => s + a.fte_value, 0);
+      if (total > 1.001) { toast.error(`Total FTE ${total.toFixed(2)} exceeds 1.0`); return; }
+    }
     setModalSaving(true);
     try {
       await countryAllocationsApi.save(Number(modalPersonId), selectedCycleId ?? null, allocs);
       toast.success('Allocations saved');
-      setAddModal(null);
+      closeModal();
       await loadData();
     } catch { toast.error('Failed to save'); }
     finally { setModalSaving(false); }
   }
 
-  const modalTotal = countryGroups.reduce((s, g) => s + (parseFloat(modalAllocs[g.countryId] ?? '0') || 0), 0);
+  const modalTotal = allocMode === 'equal'
+    ? equalCountries.size > 0 ? 1.0 : 0
+    : countryGroups.reduce((s, g) => s + (parseFloat(modalAllocs[g.countryId] ?? '0') || 0), 0);
 
   // People available in the add modal (filtered by region, optionally by discipline)
   const modalPeople = useMemo(() => {
@@ -551,9 +589,15 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                 const discCollapsed = collapsedDisciplines.has(h.discipline);
                 const discTotal = h.allPeople.reduce((s, p) =>
                   s + countryGroups.reduce((cs, g) => cs + (allocMap[p.id]?.[g.countryId] ?? 0), 0), 0);
+                const dft = disciplineFooterTotals.find(d => d.discipline === h.discipline);
 
                 return (
                   <React.Fragment key={h.discipline}>
+                    {/* White gap row before each discipline section */}
+                    <tr>
+                      <td colSpan={countryGroups.length + 2} style={{ padding: 0, height: 8, background: '#FFFFFF', borderBottom: '1px solid #E8EAED' }} />
+                    </tr>
+
                     {/* Discipline header row */}
                     <tr>
                       <td colSpan={countryGroups.length + 2} style={{ padding: 0 }}>
@@ -590,13 +634,12 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                     {/* Person rows (within discipline) */}
                     {!discCollapsed && h.groups.map(grp => (
                       <React.Fragment key={grp.group}>
-                        {/* Contract group sub-header (only if there are multiple groups in this discipline) */}
+                        {/* Contract group sub-header */}
                         {h.groups.length > 1 && (
                           <tr>
                             <td colSpan={countryGroups.length + 2} style={{
                               padding: '3px 10px 3px 16px',
-                              background: dc.light,
-                              color: dc.bg,
+                              background: dc.light, color: dc.bg,
                               fontSize: 10, fontWeight: 700,
                               letterSpacing: '0.05em',
                               borderBottom: `1px solid ${dc.bg}22`,
@@ -606,76 +649,112 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                           </tr>
                         )}
 
-                        {/* Person rows — no level sub-headers, sorted by level order */}
+                        {/* Person rows — spanning pills across consecutive allocated countries */}
                         {grp.people.map((p, pi) => {
                           const personTotal = countryGroups.reduce((s, g) => s + (allocMap[p.id]?.[g.countryId] ?? 0), 0);
                           const rowBg = pi % 2 === 0 ? '#FFFFFF' : '#FAFBFC';
+                          const ps = CONTRACT_PILL[p.contract_type_code ?? ''] ?? CONTRACT_PILL['FTE'];
+
+                          // Compute spanning segments
+                          type Seg =
+                            | { type: 'empty'; key: string; collapsed: boolean }
+                            | { type: 'dot'; key: string }
+                            | { type: 'span'; colSpan: number; entries: { country: string; countryId: number; val: number }[]; key: string };
+                          const segs: Seg[] = [];
+                          let si = 0;
+                          while (si < countryGroups.length) {
+                            const cg = countryGroups[si];
+                            const val = allocMap[p.id]?.[cg.countryId] ?? 0;
+                            const collapsed = collapsedCountries.has(cg.country);
+                            if (val > 0 && collapsed) {
+                              segs.push({ type: 'dot', key: cg.country });
+                              si++;
+                            } else if (val > 0 && !collapsed) {
+                              const entries = [{ country: cg.country, countryId: cg.countryId, val }];
+                              let sj = si + 1;
+                              while (sj < countryGroups.length) {
+                                const ng = countryGroups[sj];
+                                const nval = allocMap[p.id]?.[ng.countryId] ?? 0;
+                                const nc = collapsedCountries.has(ng.country);
+                                if (nval > 0 && !nc) { entries.push({ country: ng.country, countryId: ng.countryId, val: nval }); sj++; }
+                                else break;
+                              }
+                              segs.push({ type: 'span', colSpan: sj - si, entries, key: cg.country });
+                              si = sj;
+                            } else {
+                              segs.push({ type: 'empty', key: cg.country, collapsed });
+                              si++;
+                            }
+                          }
+
                           return (
                             <tr key={p.id} style={{ background: rowBg }}>
-                              {/* Narrow label cell — shows level badge only */}
+                              {/* Label cell — level badge */}
                               <td style={{
-                                position: 'sticky', left: 0, zIndex: 2,
-                                background: rowBg,
-                                padding: '5px 6px',
-                                textAlign: 'center',
-                                borderRight: '1px solid #E0E3E8',
-                                borderBottom: '1px solid #EEF0F3',
+                                position: 'sticky', left: 0, zIndex: 2, background: rowBg,
+                                padding: '5px 6px', textAlign: 'center',
+                                borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3',
                               }}>
                                 {p.level_code && (
-                                  <span style={{
-                                    fontSize: 9, fontWeight: 700, color: dc.bg,
-                                    background: dc.light, border: `1px solid ${dc.bg}44`,
-                                    borderRadius: 3, padding: '1px 4px',
-                                  }}>{p.level_code}</span>
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: dc.bg, background: dc.light, border: `1px solid ${dc.bg}44`, borderRadius: 3, padding: '1px 4px' }}>
+                                    {p.level_code}
+                                  </span>
                                 )}
                               </td>
 
-                              {/* Country cells — pill shows person name + FTE */}
-                              {countryGroups.map(g => {
-                                const val = allocMap[p.id]?.[g.countryId] ?? 0;
-                                const collapsed = collapsedCountries.has(g.country);
-                                const ps = CONTRACT_PILL[p.contract_type_code ?? ''] ?? CONTRACT_PILL['FTE'];
-                                return (
-                                  <td key={g.country} style={{
-                                    padding: collapsed ? '4px 2px' : '4px 6px',
-                                    textAlign: 'left',
-                                    borderRight: '1px solid #E0E3E8',
-                                    borderBottom: '1px solid #EEF0F3',
-                                    background: rowBg,
-                                  }}>
-                                    {val > 0 && !collapsed && (
-                                      <span
-                                        onClick={() => setEditPerson(p)}
-                                        title={`${p.name} — ${val} FTE. Click to edit`}
-                                        style={{
-                                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                                          padding: '3px 8px', borderRadius: 10,
-                                          background: ps.bg, color: ps.color,
-                                          border: `1px solid ${ps.border}`,
-                                          fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                                          maxWidth: COL_W - 20, overflow: 'hidden',
-                                          whiteSpace: 'nowrap' as const,
-                                        }}
-                                      >
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{p.name}</span>
-                                        <span style={{ flexShrink: 0, opacity: 0.8 }}>
-                                          {val % 1 === 0 ? val.toFixed(0) : val.toFixed(2)}
-                                        </span>
-                                      </span>
-                                    )}
-                                    {val > 0 && collapsed && (
+                              {/* Segmented country cells (spanning pill) */}
+                              {segs.map(seg => {
+                                if (seg.type === 'dot') {
+                                  return (
+                                    <td key={seg.key} style={{ padding: '4px 2px', textAlign: 'center', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
                                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: dc.bg, display: 'inline-block' }} />
-                                    )}
+                                    </td>
+                                  );
+                                }
+                                if (seg.type === 'empty') {
+                                  return (
+                                    <td key={seg.key} style={{ padding: seg.collapsed ? '4px 2px' : '4px 6px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }} />
+                                  );
+                                }
+                                // span type — spanning pill
+                                return (
+                                  <td key={seg.key} colSpan={seg.colSpan} style={{ padding: '4px 6px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
+                                    <span
+                                      onClick={() => openEditModal(p)}
+                                      title={`${p.name} — ${seg.entries.map(e => `${e.country}: ${e.val}`).join(', ')}. Click to edit`}
+                                      style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 0,
+                                        borderRadius: 10,
+                                        background: ps.bg, color: ps.color,
+                                        border: `1px solid ${ps.border}`,
+                                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                        maxWidth: '100%', overflow: 'hidden',
+                                        whiteSpace: 'nowrap' as const,
+                                      }}
+                                    >
+                                      <span style={{ padding: '3px 8px 3px 10px', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>{p.name}</span>
+                                      {seg.entries.map((e, ei) => {
+                                        const f = flagUrl(e.country);
+                                        return (
+                                          <span key={e.countryId} style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                                            padding: '3px 8px 3px 6px',
+                                            borderLeft: `1px solid ${ps.border}`,
+                                            background: ei % 2 === 0 ? 'rgba(0,0,0,0.04)' : 'transparent',
+                                            flexShrink: 0,
+                                          }}>
+                                            {f && <img src={f} alt="" width={12} height={9} style={{ borderRadius: 1, objectFit: 'cover' }} />}
+                                            <span style={{ opacity: 0.85, fontSize: 10 }}>{e.val % 1 === 0 ? e.val.toFixed(0) : e.val.toFixed(2)}</span>
+                                          </span>
+                                        );
+                                      })}
+                                    </span>
                                   </td>
                                 );
                               })}
 
                               {/* Total cell */}
-                              <td style={{
-                                padding: '5px 6px', textAlign: 'center', fontWeight: 700,
-                                fontSize: 12, borderBottom: '1px solid #EEF0F3',
-                                color: personTotal > 0 ? '#33A85C' : '#CCCCCC',
-                              }}>
+                              <td style={{ padding: '5px 6px', textAlign: 'center', fontWeight: 700, fontSize: 12, borderBottom: '1px solid #EEF0F3', color: personTotal > 0 ? '#33A85C' : '#CCCCCC' }}>
                                 {personTotal > 0 ? personTotal.toFixed(personTotal % 1 === 0 ? 0 : 2) : '—'}
                               </td>
                             </tr>
@@ -687,114 +766,63 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                     {/* ── Discipline totals row ── */}
                     {!discCollapsed && (
                       <tr style={{ background: '#F5F7FA' }}>
-                        {/* Label cell (sticky) */}
-                        <td style={{
-                          position: 'sticky', left: 0, zIndex: 2,
-                          background: '#F5F7FA',
-                          padding: '5px 8px',
-                          borderTop: '1px solid #DEE2E8',
-                          borderRight: '1px solid #DEE2E8',
-                          borderBottom: '2px solid #DEE2E8',
-                        }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B' }}>
-                            {h.discipline} total
-                          </span>
+                        <td style={{ position: 'sticky', left: 0, zIndex: 2, background: '#F5F7FA', padding: '5px 8px', borderTop: '1px solid #DEE2E8', borderRight: '1px solid #DEE2E8', borderBottom: '1px solid #DEE2E8' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B' }}>{h.discipline} total</span>
                         </td>
-                        {/* Per-country totals */}
                         {countryGroups.map(g => {
                           const colTotal = h.allPeople.reduce((s, p) => s + (allocMap[p.id]?.[g.countryId] ?? 0), 0);
                           const collapsed = collapsedCountries.has(g.country);
                           return (
-                            <td key={g.country} style={{
-                              padding: collapsed ? '5px 2px' : '5px 8px',
-                              textAlign: 'center',
-                              background: '#F5F7FA',
-                              borderTop: '1px solid #DEE2E8',
-                              borderRight: '1px solid #DEE2E8',
-                              borderBottom: '2px solid #DEE2E8',
-                            }}>
-                              {!collapsed && colTotal > 0 && (
-                                <span style={{ fontSize: 11, fontWeight: 700, color: '#444444' }}>
-                                  {colTotal.toFixed(colTotal % 1 === 0 ? 0 : 2)}
-                                </span>
-                              )}
+                            <td key={g.country} style={{ padding: collapsed ? '5px 2px' : '5px 8px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #DEE2E8', borderRight: '1px solid #DEE2E8', borderBottom: '1px solid #DEE2E8' }}>
+                              {!collapsed && colTotal > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#444444' }}>{colTotal.toFixed(colTotal % 1 === 0 ? 0 : 2)}</span>}
                             </td>
                           );
                         })}
-                        {/* Grand total for this discipline */}
-                        <td style={{
-                          padding: '5px 6px', textAlign: 'center',
-                          background: '#F5F7FA',
-                          borderTop: '1px solid #DEE2E8',
-                          borderBottom: '2px solid #DEE2E8',
-                        }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#444444' }}>
-                            {discTotal > 0 ? discTotal.toFixed(discTotal % 1 === 0 ? 0 : 2) : '—'}
-                          </span>
+                        <td style={{ padding: '5px 6px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #DEE2E8', borderBottom: '1px solid #DEE2E8' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#444444' }}>{discTotal > 0 ? discTotal.toFixed(discTotal % 1 === 0 ? 0 : 2) : '—'}</span>
                         </td>
                       </tr>
+                    )}
+
+                    {/* ── Per-discipline Proposed / Min / Max rows ── */}
+                    {!discCollapsed && dft && (
+                      [
+                        { label: 'Proposed', key: 'proposed' as const, color: '#086AE3' },
+                        { label: 'Min',      key: 'min'      as const, color: '#33A85C' },
+                        { label: 'Max',      key: 'max'      as const, color: '#C59000' },
+                      ].map(({ label, key, color }) => (
+                        <tr key={label} style={{ background: '#F5F7FA' }}>
+                          <td style={{ position: 'sticky', left: 0, zIndex: 2, background: '#F5F7FA', padding: '4px 8px', borderTop: '1px solid #ECEEF2', borderRight: '1px solid #DEE2E8', borderBottom: '1px solid #ECEEF2' }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#8A939F' }}>{label}</span>
+                          </td>
+                          {countryGroups.map(g => {
+                            const ft = dft.countries.find(c => c.countryId === g.countryId);
+                            const val = ft ? ft[key] : 0;
+                            const collapsed = collapsedCountries.has(g.country);
+                            return (
+                              <td key={g.country} style={{ padding: collapsed ? '4px 2px' : '4px 8px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #ECEEF2', borderRight: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
+                                {!collapsed && (val > 0
+                                  ? <span style={{ fontSize: 11, fontWeight: 700, color }}>{val.toFixed(1)}</span>
+                                  : <span style={{ fontSize: 10, color: '#CCCCCC' }}>—</span>)}
+                              </td>
+                            );
+                          })}
+                          <td style={{ padding: '4px 6px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
+                            {(() => {
+                              const total = dft.countries.reduce((s, c) => s + c[key], 0);
+                              return total > 0
+                                ? <span style={{ fontSize: 11, fontWeight: 700, color }}>{total.toFixed(1)}</span>
+                                : <span style={{ fontSize: 10, color: '#CCCCCC' }}>—</span>;
+                            })()}
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </React.Fragment>
                 );
               })}
             </tbody>
 
-            {/* ── Footer totals: Proposed / Min / Max ── */}
-            <tfoot>
-              {[
-                { label: 'Proposed', key: 'proposed' as const, color: '#086AE3', title: 'Total FTE currently allocated to this country' },
-                { label: 'Min',      key: 'min'      as const, color: '#33A85C', title: 'Minimum required headcount from gearing model' },
-                { label: 'Max',      key: 'max'      as const, color: '#C59000', title: 'Maximum required headcount from gearing model' },
-              ].map(({ label, key, color, title }) => (
-                <tr key={label}>
-                  <td title={title} style={{
-                    position: 'sticky', left: 0, zIndex: 2,
-                    padding: '6px 8px', fontWeight: 700, fontSize: 10,
-                    background: '#F5F7FA', color: '#5A657B',
-                    borderTop: label === 'Proposed' ? '2px solid #DEE2E8' : '1px solid #E8EAED',
-                    borderRight: '1px solid #DEE2E8',
-                    borderBottom: '1px solid #E8EAED',
-                  }}>
-                    {label}
-                  </td>
-                  {countryGroups.map(g => {
-                    const ft = footerTotals.find(f => f.countryId === g.countryId);
-                    const val = ft ? ft[key] : 0;
-                    const collapsed = collapsedCountries.has(g.country);
-                    return (
-                      <td key={g.country} style={{
-                        padding: collapsed ? '6px 2px' : '6px 8px',
-                        textAlign: 'center',
-                        background: '#F5F7FA',
-                        borderTop: label === 'Proposed' ? '2px solid #DEE2E8' : '1px solid #E8EAED',
-                        borderRight: '1px solid #E8EAED',
-                        borderBottom: '1px solid #E8EAED',
-                      }}>
-                        {!collapsed && val > 0 && (
-                          <span style={{ fontSize: 12, fontWeight: 700, color }}>{val.toFixed(1)}</span>
-                        )}
-                        {!collapsed && val === 0 && (
-                          <span style={{ fontSize: 11, color: '#BBBBBB' }}>—</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                  <td style={{
-                    padding: '6px 6px', textAlign: 'center',
-                    background: '#F5F7FA',
-                    borderTop: label === 'Proposed' ? '2px solid #DEE2E8' : '1px solid #E8EAED',
-                    borderBottom: '1px solid #E8EAED',
-                  }}>
-                    {(() => {
-                      const total = footerTotals.reduce((s, f) => s + f[key], 0);
-                      return total > 0
-                        ? <span style={{ fontSize: 12, fontWeight: 700, color }}>{total.toFixed(1)}</span>
-                        : <span style={{ fontSize: 11, color: '#BBBBBB' }}>—</span>;
-                    })()}
-                  </td>
-                </tr>
-              ))}
-            </tfoot>
           </table>
 
           {allocatedPeople.length === 0 && !loading && (
@@ -846,129 +874,205 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
         );
       })()}
 
-      {/* ── Add / Edit Allocation Modal ── */}
-      {addModal !== null && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
-          zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }} onClick={e => { if (e.target === e.currentTarget) setAddModal(null); }}>
-          <div style={{
-            background: '#FFFFFF', borderRadius: 10, width: '100%', maxWidth: 500,
-            maxHeight: '85vh', overflowY: 'auto',
-            padding: '24px 28px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-            border: '1px solid #E0E0E0',
-          }}>
-            <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#111111' }}>
-              {modalPersonId ? 'Edit Allocations' : 'Add Person Allocation'}
-            </h2>
+      {/* ── Add / Edit Person Modal ── */}
+      {addModal !== null && (() => {
+        const saveDisabled = !modalPersonId || modalSaving ||
+          (allocMode === 'equal' ? equalCountries.size === 0 : modalTotal > 1.001);
+        const selPerson = lockedPerson ?? allPeople.find(p => p.id === Number(modalPersonId));
 
-            {/* Person select */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase' as const, letterSpacing: '0.07em', fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                Person {addModal.preDisciplineId ? `(${DISCIPLINES.find(d => hierarchy.find(h => h.disciplineId === addModal.preDisciplineId)?.discipline === d) ?? 'filtered'})` : ''}
-              </label>
-              <select
-                value={modalPersonId}
-                onChange={e => {
-                  const pid = Number(e.target.value);
-                  setModalPersonId(pid || '');
-                  if (pid) {
-                    const existing: Record<number, string> = {};
-                    for (const a of countryAllocs.filter(a => a.person_id === pid)) {
-                      existing[a.country_id] = String(a.fte_value);
-                    }
-                    setModalAllocs(existing);
-                  } else {
-                    setModalAllocs({});
-                  }
-                }}
-                style={{ width: '100%', padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13, color: '#111111', background: '#FFFFFF', outline: 'none' }}
-              >
-                <option value="">— Select a person —</option>
-                {modalPeople.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} {p.level_code ? `(${p.level_code})` : ''} {p.discipline_name ? `· ${p.discipline_name}` : ''}
-                  </option>
-                ))}
-              </select>
-              {/* Quick-access to full person details */}
-              {modalPersonId && (() => {
-                const selPerson = allPeople.find(p => p.id === Number(modalPersonId));
-                return selPerson ? (
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+            zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }} onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
+            <div style={{
+              background: '#FFFFFF', borderRadius: 10, width: '100%', maxWidth: 500,
+              maxHeight: '88vh', overflowY: 'auto',
+              padding: '24px 28px', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+              border: '1px solid #E0E0E0',
+            }}>
+              <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#111111' }}>
+                Add / Edit Person
+              </h2>
+
+              {/* Person selector — dropdown when new, locked display when editing */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase' as const, letterSpacing: '0.07em', fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                  Person
+                </label>
+                {lockedPerson ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#F5F7FA', border: '1px solid #E0E0E0', borderRadius: 4 }}>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#111111' }}>{lockedPerson.name}</span>
+                    {lockedPerson.level_code && <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: '#E8EAF6', color: '#3949AB', fontWeight: 700 }}>{lockedPerson.level_code}</span>}
+                    {lockedPerson.discipline_name && <span style={{ fontSize: 10, color: '#5A657B' }}>{lockedPerson.discipline_name}</span>}
+                  </div>
+                ) : (
+                  <select
+                    value={modalPersonId}
+                    onChange={e => {
+                      const pid = Number(e.target.value);
+                      setModalPersonId(pid || '');
+                      if (pid) {
+                        const existing: Record<number, string> = {};
+                        for (const a of countryAllocs.filter(a => a.person_id === pid)) {
+                          existing[a.country_id] = String(a.fte_value);
+                        }
+                        setModalAllocs(existing);
+                        setAllocMode(Object.keys(existing).length > 0 ? 'custom' : 'equal');
+                        setEqualCountries(new Set());
+                      } else {
+                        setModalAllocs({});
+                        setAllocMode('equal');
+                        setEqualCountries(new Set());
+                      }
+                    }}
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13, color: '#111111', background: '#FFFFFF', outline: 'none' }}
+                  >
+                    <option value="">— Select a person —</option>
+                    {modalPeople.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.level_code ? `(${p.level_code})` : ''} {p.discipline_name ? `· ${p.discipline_name}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {/* Quick link to full person details */}
+                {selPerson && (
                   <button
                     type="button"
-                    onClick={() => { setAddModal(null); setEditPerson(selPerson); }}
-                    style={{ marginTop: 6, width: '100%', padding: '6px 0', background: '#F0F4FF', border: '1px solid #BFD0FF', borderRadius: 4, fontSize: 12, fontWeight: 600, color: '#086AE3', cursor: 'pointer', textAlign: 'center' }}
+                    onClick={() => { closeModal(); setEditPerson(selPerson); }}
+                    style={{ marginTop: 6, width: '100%', padding: '6px 0', background: '#F0F4FF', border: '1px solid #BFD0FF', borderRadius: 4, fontSize: 12, fontWeight: 600, color: '#086AE3', cursor: 'pointer', textAlign: 'center' as const }}
                   >
-                    ✏ Edit {selPerson.name}'s Full Details (Type, TBH Code, etc.)
+                    ✏ Edit Full Details (Role type, TBH Code, Notes…)
                   </button>
-                ) : null;
-              })()}
-            </div>
-
-            {/* Country FTE inputs */}
-            {countryGroups.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase' as const, letterSpacing: '0.07em', fontWeight: 600, marginBottom: 8 }}>
-                  Country Allocations (total must be ≤ 1.0)
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {countryGroups.map(g => {
-                    const flag = flagUrl(g.country);
-                    const val = modalAllocs[g.countryId] ?? '';
-                    return (
-                      <div key={g.country} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1, minWidth: 0 }}>
-                          {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />}
-                          <span style={{ fontSize: 13, color: '#111111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{g.country}</span>
-                          <span style={{ fontSize: 10, color: '#888', marginLeft: 4, flexShrink: 0 }}>Wt {g.totalWeight.toFixed(1)}</span>
-                        </div>
-                        <input
-                          type="number" min="0" max="1" step="0.1"
-                          value={val}
-                          onChange={e => setModalAllocs(prev => ({ ...prev, [g.countryId]: e.target.value }))}
-                          placeholder="0.0"
-                          style={{ width: 70, padding: '5px 8px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13, textAlign: 'center', outline: 'none' }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{
-                  marginTop: 10, padding: '6px 10px', borderRadius: 5,
-                  background: modalTotal > 1.001 ? '#FFF0F0' : modalTotal > 0 ? '#F0FFF4' : '#F5F5F5',
-                  border: `1px solid ${modalTotal > 1.001 ? '#E91C24' : modalTotal > 0 ? '#33A85C' : '#E0E0E0'}`,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#444444' }}>Total FTE</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: modalTotal > 1.001 ? '#AD050C' : modalTotal > 0 ? '#1A7A40' : '#888888' }}>
-                    {modalTotal.toFixed(2)}
-                  </span>
-                </div>
+                )}
               </div>
-            )}
 
-            {/* Footer */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button onClick={() => setAddModal(null)} style={{ flex: 1, padding: '9px 0', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, fontSize: 13, color: '#555555', cursor: 'pointer' }}>
-                Cancel
-              </button>
-              <button
-                onClick={saveModalAllocs}
-                disabled={!modalPersonId || modalSaving || modalTotal > 1.001}
-                style={{
-                  flex: 2, padding: '9px 0', background: '#E91C24', border: 'none', borderRadius: 5,
-                  fontSize: 13, fontWeight: 600, color: '#FFFFFF',
-                  cursor: (!modalPersonId || modalSaving || modalTotal > 1.001) ? 'default' : 'pointer',
-                  opacity: (!modalPersonId || modalTotal > 1.001) ? 0.5 : 1,
-                }}
-              >
-                {modalSaving ? 'Saving…' : 'Save Allocations'}
-              </button>
+              {/* Allocation mode toggle */}
+              {countryGroups.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 10, color: '#666', textTransform: 'uppercase' as const, letterSpacing: '0.07em', fontWeight: 600, display: 'block', marginBottom: 8 }}>
+                    Allocation mode
+                  </label>
+                  <div style={{ display: 'flex', gap: 0, borderRadius: 6, border: '1px solid #D5D5D5', overflow: 'hidden', width: 'fit-content' }}>
+                    {(['equal', 'custom'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        onClick={() => setAllocMode(mode)}
+                        style={{
+                          padding: '6px 18px', border: 'none', cursor: 'pointer',
+                          fontSize: 12, fontWeight: 600,
+                          background: allocMode === mode ? '#E91C24' : '#FFFFFF',
+                          color: allocMode === mode ? '#FFFFFF' : '#555555',
+                          borderRight: mode === 'equal' ? '1px solid #D5D5D5' : 'none',
+                          transition: 'background 0.1s, color 0.1s',
+                        }}
+                      >
+                        {mode === 'equal' ? 'Equal' : 'Custom'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Equal mode — country checkboxes */}
+              {countryGroups.length > 0 && allocMode === 'equal' && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase' as const, letterSpacing: '0.07em', fontWeight: 600, marginBottom: 8 }}>
+                    Select countries (1.0 FTE split equally)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {countryGroups.map(g => {
+                      const flag = flagUrl(g.country);
+                      const checked = equalCountries.has(g.countryId);
+                      const perFte = equalCountries.size > 0 ? 1.0 / equalCountries.size : 0;
+                      return (
+                        <label key={g.country} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '5px 8px', borderRadius: 4, background: checked ? '#FEF2F2' : '#F9F9F9', border: `1px solid ${checked ? '#E91C24' : '#E8E8E8'}` }}>
+                          <input
+                            type="checkbox" checked={checked}
+                            onChange={() => setEqualCountries(prev => { const n = new Set(prev); n.has(g.countryId) ? n.delete(g.countryId) : n.add(g.countryId); return n; })}
+                            style={{ accentColor: '#E91C24', width: 14, height: 14, flexShrink: 0 }}
+                          />
+                          {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />}
+                          <span style={{ fontSize: 13, color: '#111111', flex: 1 }}>{g.country}</span>
+                          {checked && <span style={{ fontSize: 11, fontWeight: 700, color: '#E91C24', flexShrink: 0 }}>{perFte.toFixed(2)} FTE</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {equalCountries.size > 0 && (
+                    <div style={{ marginTop: 10, padding: '6px 10px', borderRadius: 5, background: '#F0FFF4', border: '1px solid #33A85C', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#444444' }}>{equalCountries.size} countr{equalCountries.size !== 1 ? 'ies' : 'y'} · Total FTE</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#1A7A40' }}>1.00</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Custom mode — per-country number inputs */}
+              {countryGroups.length > 0 && allocMode === 'custom' && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase' as const, letterSpacing: '0.07em', fontWeight: 600, marginBottom: 8 }}>
+                    Country allocations (total must be ≤ 1.0)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {countryGroups.map(g => {
+                      const flag = flagUrl(g.country);
+                      const val = modalAllocs[g.countryId] ?? '';
+                      return (
+                        <div key={g.country} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1, minWidth: 0 }}>
+                            {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, objectFit: 'cover', flexShrink: 0 }} />}
+                            <span style={{ fontSize: 13, color: '#111111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{g.country}</span>
+                            <span style={{ fontSize: 10, color: '#888', marginLeft: 4, flexShrink: 0 }}>Wt {g.totalWeight.toFixed(1)}</span>
+                          </div>
+                          <input
+                            type="number" min="0" max="1" step="0.1"
+                            value={val}
+                            onChange={e => setModalAllocs(prev => ({ ...prev, [g.countryId]: e.target.value }))}
+                            placeholder="0.0"
+                            style={{ width: 70, padding: '5px 8px', border: '1px solid #D5D5D5', borderRadius: 4, fontSize: 13, textAlign: 'center' as const, outline: 'none' }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{
+                    marginTop: 10, padding: '6px 10px', borderRadius: 5,
+                    background: modalTotal > 1.001 ? '#FFF0F0' : modalTotal > 0 ? '#F0FFF4' : '#F5F5F5',
+                    border: `1px solid ${modalTotal > 1.001 ? '#E91C24' : modalTotal > 0 ? '#33A85C' : '#E0E0E0'}`,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#444444' }}>Total FTE</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: modalTotal > 1.001 ? '#AD050C' : modalTotal > 0 ? '#1A7A40' : '#888888' }}>
+                      {modalTotal.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer buttons */}
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button onClick={closeModal} style={{ flex: 1, padding: '9px 0', background: '#FFFFFF', border: '1px solid #D5D5D5', borderRadius: 5, fontSize: 13, color: '#555555', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={saveModalAllocs}
+                  disabled={saveDisabled}
+                  style={{
+                    flex: 2, padding: '9px 0', background: '#E91C24', border: 'none', borderRadius: 5,
+                    fontSize: 13, fontWeight: 600, color: '#FFFFFF',
+                    cursor: saveDisabled ? 'default' : 'pointer',
+                    opacity: saveDisabled ? 0.5 : 1,
+                  }}
+                >
+                  {modalSaving ? 'Saving…' : 'Save Allocations'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Person edit panel (with country allocs + comments) ── */}
       {editPerson && (

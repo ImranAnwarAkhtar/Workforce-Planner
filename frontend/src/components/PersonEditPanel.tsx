@@ -362,9 +362,9 @@ export default function PersonEditPanel({ person, onClose, onSaved, countryAlloc
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {/* Contract Type */}
+            {/* Role Type */}
             <div style={FIELD}>
-              <label style={LBL}>Contract Type</label>
+              <label style={LBL}>Role type</label>
               <select style={SEL} value={form.contract_type_id} onChange={e => set('contract_type_id', e.target.value)}>
                 <option value="">— None —</option>
                 {contractTypes.map(ct => <option key={ct.id} value={ct.id}>{ct.code}</option>)}
