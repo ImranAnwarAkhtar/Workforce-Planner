@@ -626,10 +626,10 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0, transform: discCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.15s' }}>
                             <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
                           </svg>
-                          <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700 }}>
                             {h.discipline}
                           </span>
-                          <span style={{ fontSize: 10, opacity: 0.8 }}>
+                          <span style={{ fontSize: 10, opacity: 0.75 }}>
                             {h.allPeople.length} people · {discTotal.toFixed(1)} FTE
                           </span>
                           {canEdit && (
