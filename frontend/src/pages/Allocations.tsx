@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
-  peopleApi, projectsApi, refDataApi, gearingApi, countryAllocationsApi,
+  peopleApi, projectsApi, refDataApi, gearingApi, countryAllocationsApi, personCommentsApi,
   type Person, type Project, type Region, type GearingConstant,
   type CountryAllocation,
 } from '../services/api';
@@ -83,8 +83,8 @@ const GROUP_LABEL: Record<ContractGroup, string> = {
 };
 
 
-const COL_W   = 190;  // wider to fit person name + FTE in pill
-const LABEL_W = 90;   // narrow left column for row labels only
+const COL_W   = 190;
+const LABEL_W = 52;   // just wide enough for Proposed/Min/Max labels
 const TOTAL_W = 70;
 
 export default function Allocations({ tabId }: { tabId?: string } = {}) {
@@ -121,6 +121,8 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
   const [allocMode, setAllocMode]           = useState<'equal' | 'custom'>('equal');
   const [equalCountries, setEqualCountries] = useState<Set<number>>(new Set());
   const [lockedPerson, setLockedPerson]     = useState<Person | null>(null);
+  const [hoveredPill, setHoveredPill]       = useState<{ personId: number; x: number; y: number } | null>(null);
+  const [commentCache, setCommentCache]     = useState<Record<number, string>>({});
 
   useTabDirty(tabId, false);
 
@@ -306,6 +308,19 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
       return { discipline: h.discipline, countries };
     });
   }, [displayedHierarchy, allocMap, countryGroups, gearingConstants]);
+
+  // ── Lazy comment fetch for pill tooltip ──────────────────────────────────
+  const fetchLatestComment = useCallback(async (personId: number) => {
+    if (commentCache[personId] !== undefined) return;
+    setCommentCache(prev => ({ ...prev, [personId]: '…' }));
+    try {
+      const comments = await personCommentsApi.list(personId);
+      const latest = comments[comments.length - 1];
+      setCommentCache(prev => ({ ...prev, [personId]: latest?.body ?? '' }));
+    } catch {
+      setCommentCache(prev => ({ ...prev, [personId]: '' }));
+    }
+  }, [commentCache]);
 
   // ── Add / Edit allocation modal helpers ──────────────────────────────────
   function closeModal() {
@@ -522,12 +537,12 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
             {/* ── Country header ── */}
             <thead>
               <tr>
-                {/* Label column header (narrow, no text) */}
+                {/* Narrow label column header */}
                 <th style={{
                   position: 'sticky', left: 0, top: 0, zIndex: 4,
                   background: '#1A1A2E',
-                  borderRight: '2px solid #333355', borderBottom: '2px solid #333355',
-                  width: LABEL_W,
+                  borderRight: '1px solid #333355', borderBottom: '2px solid #333355',
+                  width: LABEL_W, minWidth: LABEL_W,
                 }} />
 
                 {/* Country columns */}
@@ -544,7 +559,7 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                       style={{
                         position: 'sticky', top: 0, zIndex: 3,
                         background: '#111111', color: '#FFFFFF',
-                        padding: collapsed ? '8px 4px' : '6px 8px',
+                        padding: collapsed ? '8px 4px' : '7px 10px',
                         textAlign: 'center', cursor: 'pointer',
                         borderRight: '1px solid #333333', borderBottom: '2px solid #444444',
                         minWidth: collapsed ? 50 : COL_W, maxWidth: collapsed ? 50 : COL_W,
@@ -556,14 +571,10 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                           {g.country}
                         </span>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, flexShrink: 0, objectFit: 'cover' }} />}
-                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.03em' }}>{g.country}</span>
-                          </div>
-                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
-                            Wt {g.totalWeight.toFixed(1)}
-                          </span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, flexShrink: 0, objectFit: 'cover' }} />}
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.03em' }}>{g.country}</span>
+                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>Wt {g.totalWeight.toFixed(1)}</span>
                         </div>
                       )}
                     </th>
@@ -689,20 +700,14 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
 
                           return (
                             <tr key={p.id} style={{ background: rowBg }}>
-                              {/* Label cell — level badge */}
+                              {/* Narrow label cell — empty, just structural */}
                               <td style={{
                                 position: 'sticky', left: 0, zIndex: 2, background: rowBg,
-                                padding: '5px 6px', textAlign: 'center',
+                                width: LABEL_W, minWidth: LABEL_W,
                                 borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3',
-                              }}>
-                                {p.level_code && (
-                                  <span style={{ fontSize: 9, fontWeight: 700, color: dc.bg, background: dc.light, border: `1px solid ${dc.bg}44`, borderRadius: 3, padding: '1px 4px' }}>
-                                    {p.level_code}
-                                  </span>
-                                )}
-                              </td>
+                              }} />
 
-                              {/* Segmented country cells (spanning pill) */}
+                              {/* Segmented country cells — spanning pill */}
                               {segs.map(seg => {
                                 if (seg.type === 'dot') {
                                   return (
@@ -716,12 +721,15 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                                     <td key={seg.key} style={{ padding: seg.collapsed ? '4px 2px' : '4px 6px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }} />
                                   );
                                 }
-                                // span type — spanning pill
+                                // Spanning pill — FTE chips visible only on hover
+                                const isHovered = hoveredPill?.personId === p.id;
                                 return (
                                   <td key={seg.key} colSpan={seg.colSpan} style={{ padding: '4px 6px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
                                     <span
                                       onClick={() => openEditModal(p)}
-                                      title={`${p.name} — ${seg.entries.map(e => `${e.country}: ${e.val}`).join(', ')}. Click to edit`}
+                                      onMouseEnter={e => { setHoveredPill({ personId: p.id, x: e.clientX, y: e.clientY }); fetchLatestComment(p.id); }}
+                                      onMouseMove={e => setHoveredPill(prev => prev?.personId === p.id ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
+                                      onMouseLeave={() => setHoveredPill(null)}
                                       style={{
                                         display: 'inline-flex', alignItems: 'center', gap: 0,
                                         borderRadius: 10,
@@ -733,14 +741,14 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                                       }}
                                     >
                                       <span style={{ padding: '3px 8px 3px 10px', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>{p.name}</span>
-                                      {seg.entries.map((e, ei) => {
+                                      {isHovered && seg.entries.map((e, ei) => {
                                         const f = flagUrl(e.country);
                                         return (
                                           <span key={e.countryId} style={{
                                             display: 'inline-flex', alignItems: 'center', gap: 3,
                                             padding: '3px 8px 3px 6px',
                                             borderLeft: `1px solid ${ps.border}`,
-                                            background: ei % 2 === 0 ? 'rgba(0,0,0,0.04)' : 'transparent',
+                                            background: ei % 2 === 0 ? 'rgba(0,0,0,0.06)' : 'transparent',
                                             flexShrink: 0,
                                           }}>
                                             {f && <img src={f} alt="" width={12} height={9} style={{ borderRadius: 1, objectFit: 'cover' }} />}
@@ -762,27 +770,6 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                         })}
                       </React.Fragment>
                     ))}
-
-                    {/* ── Discipline totals row ── */}
-                    {!discCollapsed && (
-                      <tr style={{ background: '#F5F7FA' }}>
-                        <td style={{ position: 'sticky', left: 0, zIndex: 2, background: '#F5F7FA', padding: '5px 8px', borderTop: '1px solid #DEE2E8', borderRight: '1px solid #DEE2E8', borderBottom: '1px solid #DEE2E8' }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B' }}>{h.discipline} total</span>
-                        </td>
-                        {countryGroups.map(g => {
-                          const colTotal = h.allPeople.reduce((s, p) => s + (allocMap[p.id]?.[g.countryId] ?? 0), 0);
-                          const collapsed = collapsedCountries.has(g.country);
-                          return (
-                            <td key={g.country} style={{ padding: collapsed ? '5px 2px' : '5px 8px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #DEE2E8', borderRight: '1px solid #DEE2E8', borderBottom: '1px solid #DEE2E8' }}>
-                              {!collapsed && colTotal > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: '#444444' }}>{colTotal.toFixed(colTotal % 1 === 0 ? 0 : 2)}</span>}
-                            </td>
-                          );
-                        })}
-                        <td style={{ padding: '5px 6px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #DEE2E8', borderBottom: '1px solid #DEE2E8' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#444444' }}>{discTotal > 0 ? discTotal.toFixed(discTotal % 1 === 0 ? 0 : 2) : '—'}</span>
-                        </td>
-                      </tr>
-                    )}
 
                     {/* ── Per-discipline Proposed / Min / Max rows ── */}
                     {!discCollapsed && dft && (
@@ -870,6 +857,49 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                 <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', flexShrink: 0 }}>Wt {proj.weight}</span>
               </div>
             ))}
+          </div>
+        );
+      })()}
+
+      {/* ── Person pill hover tooltip ── */}
+      {hoveredPill && (() => {
+        const hovP = allPeople.find(p => p.id === hoveredPill.personId);
+        if (!hovP) return null;
+        const cachedComment = commentCache[hoveredPill.personId];
+        return (
+          <div style={{
+            position: 'fixed', zIndex: 1000,
+            left: Math.min(hoveredPill.x + 14, window.innerWidth - 270),
+            top: hoveredPill.y + 14,
+            background: '#1A1A2E', color: '#FFFFFF',
+            border: '1px solid #333355', borderRadius: 8,
+            padding: '10px 14px', minWidth: 200, maxWidth: 280,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            pointerEvents: 'none' as const,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700 }}>{hovP.name}</span>
+              {hovP.level_code && (
+                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.15)', fontWeight: 700 }}>{hovP.level_code}</span>
+              )}
+            </div>
+            {hovP.discipline_name && (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginBottom: cachedComment !== undefined ? 6 : 0 }}>{hovP.discipline_name}{hovP.contract_type_code ? ` · ${hovP.contract_type_code}` : ''}</div>
+            )}
+            {cachedComment === undefined && (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', borderTop: '1px solid #2E2E50', paddingTop: 6 }}>Loading…</div>
+            )}
+            {cachedComment === '…' && (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', borderTop: '1px solid #2E2E50', paddingTop: 6 }}>Loading…</div>
+            )}
+            {cachedComment !== undefined && cachedComment !== '…' && cachedComment.length > 0 && (
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', borderTop: '1px solid #2E2E50', paddingTop: 6, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const }}>
+                {cachedComment}
+              </div>
+            )}
+            {cachedComment !== undefined && cachedComment !== '…' && cachedComment.length === 0 && (
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', borderTop: '1px solid #2E2E50', paddingTop: 6 }}>No comments</div>
+            )}
           </div>
         );
       })()}
