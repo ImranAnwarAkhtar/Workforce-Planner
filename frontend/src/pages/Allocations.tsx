@@ -571,10 +571,12 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                           {g.country}
                         </span>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                          {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, flexShrink: 0, objectFit: 'cover' }} />}
-                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.03em' }}>{g.country}</span>
-                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>Wt {g.totalWeight.toFixed(1)}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                            {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, flexShrink: 0, objectFit: 'cover' }} />}
+                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.country}</span>
+                          </div>
+                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: 500, flexShrink: 0 }}>Wt {g.totalWeight.toFixed(1)}</span>
                         </div>
                       )}
                     </th>
@@ -666,36 +668,24 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                           const rowBg = pi % 2 === 0 ? '#FFFFFF' : '#FAFBFC';
                           const ps = CONTRACT_PILL[p.contract_type_code ?? ''] ?? CONTRACT_PILL['FTE'];
 
-                          // Compute spanning segments
+                          // Build one span from first→last allocated country (inclusive)
+                          // so the pill stretches across ALL countries this person is in,
+                          // even when there are unallocated countries in between.
                           type Seg =
                             | { type: 'empty'; key: string; collapsed: boolean }
-                            | { type: 'dot'; key: string }
-                            | { type: 'span'; colSpan: number; entries: { country: string; countryId: number; val: number }[]; key: string };
+                            | { type: 'span'; colSpan: number; key: string };
                           const segs: Seg[] = [];
-                          let si = 0;
-                          while (si < countryGroups.length) {
-                            const cg = countryGroups[si];
-                            const val = allocMap[p.id]?.[cg.countryId] ?? 0;
-                            const collapsed = collapsedCountries.has(cg.country);
-                            if (val > 0 && collapsed) {
-                              segs.push({ type: 'dot', key: cg.country });
-                              si++;
-                            } else if (val > 0 && !collapsed) {
-                              const entries = [{ country: cg.country, countryId: cg.countryId, val }];
-                              let sj = si + 1;
-                              while (sj < countryGroups.length) {
-                                const ng = countryGroups[sj];
-                                const nval = allocMap[p.id]?.[ng.countryId] ?? 0;
-                                const nc = collapsedCountries.has(ng.country);
-                                if (nval > 0 && !nc) { entries.push({ country: ng.country, countryId: ng.countryId, val: nval }); sj++; }
-                                else break;
-                              }
-                              segs.push({ type: 'span', colSpan: sj - si, entries, key: cg.country });
-                              si = sj;
-                            } else {
-                              segs.push({ type: 'empty', key: cg.country, collapsed });
-                              si++;
-                            }
+                          const allocIdx = countryGroups.reduce<number[]>((acc, cg, idx) => {
+                            if ((allocMap[p.id]?.[cg.countryId] ?? 0) > 0) acc.push(idx);
+                            return acc;
+                          }, []);
+                          if (allocIdx.length === 0) {
+                            countryGroups.forEach(cg => segs.push({ type: 'empty', key: cg.country, collapsed: collapsedCountries.has(cg.country) }));
+                          } else {
+                            const first = allocIdx[0], last = allocIdx[allocIdx.length - 1];
+                            for (let i = 0; i < first; i++) segs.push({ type: 'empty', key: countryGroups[i].country, collapsed: collapsedCountries.has(countryGroups[i].country) });
+                            segs.push({ type: 'span', colSpan: last - first + 1, key: countryGroups[first].country });
+                            for (let i = last + 1; i < countryGroups.length; i++) segs.push({ type: 'empty', key: countryGroups[i].country, collapsed: collapsedCountries.has(countryGroups[i].country) });
                           }
 
                           return (
@@ -707,56 +697,33 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                                 borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3',
                               }} />
 
-                              {/* Segmented country cells — spanning pill */}
+                              {/* Segmented cells — one pill spanning first→last allocated country */}
                               {segs.map(seg => {
-                                if (seg.type === 'dot') {
-                                  return (
-                                    <td key={seg.key} style={{ padding: '4px 2px', textAlign: 'center', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
-                                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: dc.bg, display: 'inline-block' }} />
-                                    </td>
-                                  );
-                                }
                                 if (seg.type === 'empty') {
                                   return (
                                     <td key={seg.key} style={{ padding: seg.collapsed ? '4px 2px' : '4px 6px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }} />
                                   );
                                 }
-                                // Spanning pill — FTE chips visible only on hover
-                                const isHovered = hoveredPill?.personId === p.id;
+                                // Full-width spanning pill — name only, no FTE chips
                                 return (
-                                  <td key={seg.key} colSpan={seg.colSpan} style={{ padding: '4px 6px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
-                                    <span
+                                  <td key={seg.key} colSpan={seg.colSpan} style={{ padding: '3px 4px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
+                                    <div
                                       onClick={() => openEditModal(p)}
                                       onMouseEnter={e => { setHoveredPill({ personId: p.id, x: e.clientX, y: e.clientY }); fetchLatestComment(p.id); }}
                                       onMouseMove={e => setHoveredPill(prev => prev?.personId === p.id ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
                                       onMouseLeave={() => setHoveredPill(null)}
                                       style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: 0,
-                                        borderRadius: 10,
+                                        display: 'flex', alignItems: 'center',
+                                        padding: '4px 10px', borderRadius: 6,
                                         background: ps.bg, color: ps.color,
                                         border: `1px solid ${ps.border}`,
                                         fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                                        maxWidth: '100%', overflow: 'hidden',
-                                        whiteSpace: 'nowrap' as const,
+                                        overflow: 'hidden', whiteSpace: 'nowrap' as const,
+                                        width: '100%', boxSizing: 'border-box' as const,
                                       }}
                                     >
-                                      <span style={{ padding: '3px 8px 3px 10px', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>{p.name}</span>
-                                      {isHovered && seg.entries.map((e, ei) => {
-                                        const f = flagUrl(e.country);
-                                        return (
-                                          <span key={e.countryId} style={{
-                                            display: 'inline-flex', alignItems: 'center', gap: 3,
-                                            padding: '3px 8px 3px 6px',
-                                            borderLeft: `1px solid ${ps.border}`,
-                                            background: ei % 2 === 0 ? 'rgba(0,0,0,0.06)' : 'transparent',
-                                            flexShrink: 0,
-                                          }}>
-                                            {f && <img src={f} alt="" width={12} height={9} style={{ borderRadius: 1, objectFit: 'cover' }} />}
-                                            <span style={{ opacity: 0.85, fontSize: 10 }}>{e.val % 1 === 0 ? e.val.toFixed(0) : e.val.toFixed(2)}</span>
-                                          </span>
-                                        );
-                                      })}
-                                    </span>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                                    </div>
                                   </td>
                                 );
                               })}

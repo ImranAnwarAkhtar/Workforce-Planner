@@ -1,36 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
-  peopleApi, refDataApi, tbhCodesApi, countryAllocationsApi, personCommentsApi,
+  peopleApi, refDataApi, tbhCodesApi, countryAllocationsApi,
   type Person, type Discipline, type Level, type ContractType, type Region, type Country,
-  type CountryAllocation, type PersonComment,
+  type CountryAllocation,
 } from '../services/api';
 
-function fmtDateTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? '?';
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-const AVATAR_GRADIENT = [
-  ['#086AE3', '#3A8FF5'],
-  ['#33A85C', '#5BC87E'],
-  ['#C59000', '#F0B400'],
-  ['#00737A', '#009EA8'],
-  ['#7739D9', '#9A5FF0'],
-];
-
-function avatarGradient(name: string): string {
-  const idx = name.charCodeAt(0) % AVATAR_GRADIENT.length;
-  const [a, b] = AVATAR_GRADIENT[idx];
-  return `linear-gradient(135deg, ${a}, ${b})`;
-}
 
 const COUNTRY_FLAGS: Record<string, string> = {
   'Australia': 'au', 'Austria': 'at', 'Bahrain': 'bh', 'Belgium': 'be',
@@ -101,13 +76,6 @@ export default function PersonEditPanel({ person, onClose, onSaved, countryAlloc
   const [allocEntries, setAllocEntries] = useState<Record<number, string>>({});
   const [allocSaving, setAllocSaving]   = useState(false);
 
-  // Comments state
-  const [comments, setComments]             = useState<PersonComment[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(false);
-  const [commentsError, setCommentsError]   = useState(false);
-  const [newComment, setNewComment]         = useState('');
-  const [postingComment, setPostingComment] = useState(false);
-  const [commentsTick, setCommentsTick]     = useState(0);
 
   const [form, setForm] = useState({
     name:             '',
@@ -177,17 +145,6 @@ export default function PersonEditPanel({ person, onClose, onSaved, countryAlloc
     setAllocEntries(entries);
   }, [countryAllocs]);
 
-  // Load comments whenever the person changes
-  useEffect(() => {
-    if (!person?.id) { setComments([]); return; }
-    setCommentsLoading(true);
-    setCommentsError(false);
-    personCommentsApi.list(person.id)
-      .then(rows => setComments(rows))
-      .catch(() => setCommentsError(true))
-      .finally(() => setCommentsLoading(false));
-  }, [person?.id, commentsTick]);
-
   const allocTotal = countryGroups
     ? countryGroups.reduce((s, g) => s + (parseFloat(allocEntries[g.countryId] ?? '0') || 0), 0)
     : 0;
@@ -211,19 +168,6 @@ export default function PersonEditPanel({ person, onClose, onSaved, countryAlloc
     }
   }
 
-  async function postComment() {
-    if (!person || !newComment.trim()) return;
-    setPostingComment(true);
-    try {
-      await personCommentsApi.create(person.id, newComment.trim());
-      setNewComment('');
-      setCommentsTick(t => t + 1);
-    } catch {
-      toast.error('Failed to post comment');
-    } finally {
-      setPostingComment(false);
-    }
-  }
 
   function set(field: string, value: unknown) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -442,18 +386,6 @@ export default function PersonEditPanel({ person, onClose, onSaved, countryAlloc
             </div>
           </div>
 
-          {/* Notes / Comments */}
-          <div style={FIELD}>
-            <label style={LBL}>Notes / Comments</label>
-            <textarea
-              rows={4}
-              style={{ ...INPUT, resize: 'vertical', fontFamily: 'inherit' }}
-              value={form.notes}
-              onChange={e => set('notes', e.target.value)}
-              placeholder="Add notes, context, or comments about this person or role…"
-            />
-          </div>
-
           {/* ── Country Allocations (only shown when context is passed from Allocations page) ── */}
           {countryGroups && countryGroups.length > 0 && (
             <div style={{ borderTop: '1px solid #EEEEEE', paddingTop: 16 }}>
@@ -505,91 +437,6 @@ export default function PersonEditPanel({ person, onClose, onSaved, countryAlloc
               </button>
             </div>
           )}
-
-          {/* ── Comments ── */}
-          <div style={{ borderTop: '1px solid #EEEEEE', paddingTop: 16 }}>
-            <label style={{ ...LBL, display: 'block', marginBottom: 10 }}>
-              Comments {comments.length > 0 && `(${comments.length})`}
-            </label>
-
-            {commentsLoading && (
-              <div style={{ fontSize: 12, color: '#999999', padding: '8px 0' }}>Loading comments…</div>
-            )}
-            {commentsError && (
-              <div style={{ fontSize: 12, color: '#AD050C', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                Failed to load comments.
-                <button onClick={() => setCommentsTick(t => t + 1)} style={{ fontSize: 11, color: '#086AE3', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Retry</button>
-              </div>
-            )}
-
-            {!commentsLoading && !commentsError && comments.length === 0 && (
-              <div style={{ fontSize: 12, color: '#AAAAAA', fontStyle: 'italic', marginBottom: 10 }}>No comments yet.</div>
-            )}
-
-            {comments.map(c => (
-              <div key={c.id} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  {/* Avatar */}
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    background: avatarGradient(c.user_name),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, color: '#FFFFFF', fontSize: 10, fontWeight: 700,
-                  }}>
-                    {initials(c.user_name)}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#111111' }}>{c.user_name}</span>
-                      {c.user_role && (
-                        <span style={{
-                          fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                          background: '#F0F0F0', color: '#555555', border: '1px solid #DDDDDD',
-                          fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.04em',
-                        }}>{c.user_role}</span>
-                      )}
-                      <span style={{ fontSize: 10, color: '#AAAAAA', marginLeft: 'auto' }}>{fmtDateTime(c.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div style={{
-                  marginLeft: 36, padding: '7px 10px', borderRadius: 6,
-                  background: '#F5F6F8', border: '1px solid #EBEBEB',
-                  fontSize: 12, color: '#333333', lineHeight: 1.5,
-                  whiteSpace: 'pre-wrap',
-                }}>
-                  {c.body}
-                </div>
-              </div>
-            ))}
-
-            {/* Post new comment */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-              <textarea
-                rows={2}
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); postComment(); } }}
-                placeholder="Add a comment… (Ctrl+Enter to post)"
-                style={{
-                  ...INPUT, resize: 'vertical', fontFamily: 'inherit',
-                  fontSize: 12, padding: '7px 10px',
-                }}
-              />
-              <button
-                onClick={postComment}
-                disabled={!newComment.trim() || postingComment}
-                style={{
-                  alignSelf: 'flex-end', padding: '6px 14px',
-                  background: (!newComment.trim() || postingComment) ? '#CCCCCC' : '#E91C24',
-                  border: 'none', borderRadius: 5, fontSize: 12, fontWeight: 600, color: '#FFFFFF',
-                  cursor: (!newComment.trim() || postingComment) ? 'default' : 'pointer',
-                }}
-              >
-                {postingComment ? 'Posting…' : 'Post'}
-              </button>
-            </div>
-          </div>
 
         </div>
 
