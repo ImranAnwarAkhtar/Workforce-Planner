@@ -68,15 +68,15 @@ export default function ChangeRequests() {
   }
 
   const changeTypes = useMemo(
-    () => [...new Set(rows.map(r => r['Change required']).filter(Boolean) as string[])].sort(),
+    () => Array.from(new Set(rows.map(r => r['Change required']).filter(Boolean) as string[])).sort(),
     [rows]
   );
   const regions = useMemo(
-    () => [...new Set(rows.map(r => r._region).filter(Boolean) as string[])].sort(),
+    () => Array.from(new Set(rows.map(r => r._region).filter(Boolean) as string[])).sort(),
     [rows]
   );
   const disciplines = useMemo(
-    () => [...new Set(rows.map(r => r._discipline).filter(Boolean) as string[])].sort(),
+    () => Array.from(new Set(rows.map(r => r._discipline).filter(Boolean) as string[])).sort(),
     [rows]
   );
 
