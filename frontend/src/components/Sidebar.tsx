@@ -35,16 +35,16 @@ const ROUTE_GRADIENTS: Record<string, string> = {
 
 // People moved below Allocations
 const NAV = [
-  { to: '/dashboard',       label: 'Dashboard',      icon: 'dashboard' },
-  { to: '/projects',        label: 'Projects',        icon: 'projects' },
-  { to: '/allocations',     label: 'Resources',       icon: 'allocations' },
-  { to: '/summary',         label: 'Summary',         icon: 'summary'   },
-  { to: '/people',          label: 'People',          icon: 'people' },
-  { to: '/headcount',       label: 'Headcount',       icon: 'headcount' },
-  { to: '/change-requests', label: 'Change Requests', icon: 'changes' },
+  { to: '/dashboard',       label: 'Dashboard',          icon: 'dashboard'   },
+  { to: '/projects',        label: 'Projects',           icon: 'projects'    },
+  { to: '/allocations',     label: 'Resources',          icon: 'allocations' },
+  { to: '/summary',         label: 'Summary',            icon: 'summary'     },
+  { to: '/headcount',       label: 'Headcount',          icon: 'headcount'   },
+  { to: '/change-requests', label: 'Change Requests',    icon: 'changes'     },
   { to: '/recruitment',     label: 'Talent Acquisition', icon: 'recruitment' },
-  { to: '/import',          label: 'Import Data',     icon: 'import' },
-  { to: '/admin',           label: 'Admin',           icon: 'admin' },
+  { to: '/people',          label: 'People',             icon: 'people'      },
+  { to: '/admin',           label: 'Admin',              icon: 'admin'       },
+  { to: '/import',          label: 'Import Data',        icon: 'import'      },
 ];
 
 function initials(name: string): string {
