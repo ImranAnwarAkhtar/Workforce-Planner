@@ -70,17 +70,6 @@ pool.query(`
   UPDATE levels SET level_name = 'Contingent' WHERE short_code = 'Cons' AND level_name = 'Consultant';
 `).catch(err => logger.error('Startup migration failed', { error: err.message }));
 
-// TBH Change-request field additions
-pool.query(`
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS new_metro_location     VARCHAR(100);
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS approval_type          VARCHAR(100);
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS senior_approver        VARCHAR(255);
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS senior_approver_status VARCHAR(20) DEFAULT 'N/A';
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS xscale_vs_retail       VARCHAR(10);
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS requestor_email        VARCHAR(255);
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS comments               TEXT;
-  ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS reviewer_notes         TEXT;
-`).catch(err => logger.error('Change-request migration failed', { error: err.message }));
 
 // Planning cycles migration
 (async () => {
@@ -236,6 +225,23 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+// Await new change_request columns before accepting traffic (prevents race condition)
+(async () => {
+  const crCols = [
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS new_metro_location     VARCHAR(100)`,
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS approval_type          VARCHAR(100)`,
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS senior_approver        VARCHAR(255)`,
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS senior_approver_status VARCHAR(20) DEFAULT 'N/A'`,
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS xscale_vs_retail       VARCHAR(10)`,
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS requestor_email        VARCHAR(255)`,
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS comments               TEXT`,
+    `ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS reviewer_notes         TEXT`,
+  ];
+  for (const sql of crCols) {
+    try { await pool.query(sql); } catch (e) { logger.warn('CR col migration skipped', { sql, err: e.message }); }
+  }
+  logger.info('Change-request schema migration complete');
+  app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+})();
 
 module.exports = app;
