@@ -24,6 +24,15 @@ async function fetchSheet() {
   return res.json();
 }
 
+// GET /api/smartsheet/debug — confirms whether env vars are loaded (no secrets returned)
+router.get('/debug', async (req, res) => {
+  res.json({
+    token_configured: !!process.env.SMARTSHEET_API_TOKEN,
+    sheet_id: process.env.SMARTSHEET_CR_SHEET_ID || '7522591871815556 (default)',
+    node_env: process.env.NODE_ENV || 'not set',
+  });
+});
+
 // GET /api/smartsheet/change-requests
 router.get('/change-requests', requireAuth, async (req, res) => {
   const sheet = await fetchSheet();
