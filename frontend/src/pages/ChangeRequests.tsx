@@ -179,6 +179,9 @@ export default function ChangeRequests() {
                   >
                     {columns.map(col => {
                       const val = row[col];
+                      const isTbhCol    = col === 'TBH Code';
+                      const isNewTbhCol = col === 'New TBH Code';
+                      const inPlan = isTbhCol ? row._tbhInPlan : isNewTbhCol ? row._newTbhInPlan : undefined;
                       return (
                         <td key={col} style={{
                           padding: '8px 14px', color: '#374151',
@@ -189,7 +192,22 @@ export default function ChangeRequests() {
                         }}
                           title={val != null ? String(val) : undefined}
                         >
-                          {val != null && val !== '' ? String(val) : <span style={{ color: '#C9CDD4' }}>—</span>}
+                          {(isTbhCol || isNewTbhCol) && val != null && val !== '' ? (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                              ...(inPlan === true  ? { background: '#DFFBE5', color: '#2A8346', border: '1px solid #6FCF97' } :
+                                  inPlan === false ? { background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5' } :
+                                                    { background: '#F2F3F4', color: '#5A657B', border: '1px solid #D1D5DB' }),
+                            }}>
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                                background: inPlan === true ? '#2A8346' : inPlan === false ? '#B91C1C' : '#9CA3AF' }} />
+                              {String(val)}
+                            </span>
+                          ) : val != null && val !== '' ? String(val) : (
+                            <span style={{ color: '#C9CDD4' }}>—</span>
+                          )}
                         </td>
                       );
                     })}

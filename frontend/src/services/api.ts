@@ -603,7 +603,9 @@ export interface SmartsheetRow {
   _planNotes: string | null;
   _updatedByName: string | null;
   _statusUpdatedAt: string | null;
-  [key: string]: string | number | null | undefined;
+  _tbhInPlan: boolean | null;
+  _newTbhInPlan: boolean | null;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface SmartsheetSheet {

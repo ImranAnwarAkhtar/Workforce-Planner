@@ -50,12 +50,18 @@ router.get('/change-requests', requireAuth, async (req, res) => {
     return obj;
   });
 
-  const { rows: statuses } = await pool.query(
-    `SELECT smartsheet_row_id::text AS rid, plan_status, notes, updated_by_name, updated_at
-     FROM cr_smartsheet_status`
-  );
+  const [{ rows: statuses }, { rows: tbhRows }] = await Promise.all([
+    pool.query(
+      `SELECT smartsheet_row_id::text AS rid, plan_status, notes, updated_by_name, updated_at
+       FROM cr_smartsheet_status`
+    ),
+    pool.query(`SELECT LOWER(tbh_id) AS tbh_id FROM tbh_codes WHERE tbh_id IS NOT NULL`),
+  ]);
+
   const statusMap = {};
   statuses.forEach(s => { statusMap[s.rid] = s; });
+
+  const tbhSet = new Set(tbhRows.map(r => r.tbh_id));
 
   rows.forEach(row => {
     const s = statusMap[row._rowId] || {};
@@ -63,6 +69,11 @@ router.get('/change-requests', requireAuth, async (req, res) => {
     row._planNotes       = s.notes          || null;
     row._updatedByName   = s.updated_by_name || null;
     row._statusUpdatedAt = s.updated_at     || null;
+
+    const tbhCode    = row['TBH Code']    ? String(row['TBH Code']).toLowerCase().trim()    : null;
+    const newTbhCode = row['New TBH Code'] ? String(row['New TBH Code']).toLowerCase().trim() : null;
+    row._tbhInPlan    = tbhCode    ? tbhSet.has(tbhCode)    : null;
+    row._newTbhInPlan = newTbhCode ? tbhSet.has(newTbhCode) : null;
   });
 
   res.json({ columns: colTitles, rows });
