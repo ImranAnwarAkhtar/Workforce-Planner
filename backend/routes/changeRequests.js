@@ -5,7 +5,8 @@ const { requireRole, ALL_ROLES, ROLES } = require('../middleware/rbac');
 
 const router = Router();
 
-const SELECT_COLS = `
+// Full SELECT — includes the 8 columns added by startup migration
+const SELECT_FULL = `
   cr.id, cr.change_type, cr.status, cr.auto_approved,
   cr.current_manager, cr.new_manager, cr.new_metro_location,
   cr.justification, cr.approval_type, cr.senior_approver, cr.senior_approver_status,
@@ -27,6 +28,57 @@ LEFT JOIN levels    l  ON cr.new_level_id  = l.id
 LEFT JOIN users     u  ON cr.submitted_by  = u.id
 LEFT JOIN users     au ON cr.approved_by   = au.id`;
 
+// Fallback SELECT — only columns that exist in the original schema
+const SELECT_CORE = `
+  cr.id, cr.change_type, cr.status, cr.auto_approved,
+  cr.current_manager, cr.new_manager,
+  cr.justification,
+  cr.is_borrowed_or_repurposed, cr.rejection_reason,
+  cr.new_tbh_code_assigned, cr.finance_notified_at, cr.created_at, cr.approved_at,
+  t.tbh_id,
+  r.name  AS new_region_name,
+  c.name  AS new_country_name,
+  l.level_name AS new_level_name,
+  u.name  AS submitted_by_name,
+  u.email AS submitted_by_email,
+  au.name AS approved_by_name
+FROM change_requests cr
+LEFT JOIN tbh_codes t  ON cr.tbh_code_id  = t.id
+LEFT JOIN regions   r  ON cr.new_region_id = r.id
+LEFT JOIN countries c  ON cr.new_country_id = c.id
+LEFT JOIN levels    l  ON cr.new_level_id  = l.id
+LEFT JOIN users     u  ON cr.submitted_by  = u.id
+LEFT JOIN users     au ON cr.approved_by   = au.id`;
+
+async function selectRows(selectCols, suffix, params) {
+  try {
+    const { rows } = await pool.query(`SELECT ${selectCols} ${suffix}`, params);
+    return rows;
+  } catch (err) {
+    if (err.code === '42703') {
+      // "column does not exist" — migration hasn't run yet, fall back to core columns
+      console.warn('[change-requests] falling back to core columns:', err.message);
+      const { rows } = await pool.query(`SELECT ${SELECT_CORE} ${suffix}`, params);
+      return rows;
+    }
+    throw err;
+  }
+}
+
+// Quick diagnostic: returns row count + column presence without needing a full SELECT
+router.get('/debug', requireAuth, async (req, res) => {
+  const { rows: countRows } = await pool.query('SELECT COUNT(*) AS total FROM change_requests');
+  const { rows: colRows } = await pool.query(`
+    SELECT column_name FROM information_schema.columns
+    WHERE table_name = 'change_requests'
+    ORDER BY ordinal_position
+  `);
+  res.json({
+    row_count: parseInt(countRows[0].total, 10),
+    columns: colRows.map(r => r.column_name),
+  });
+});
+
 router.get('/', requireAuth, async (req, res) => {
   const { status, change_type, submitted_by, limit = 100, offset = 0 } = req.query;
   const conditions = [];
@@ -40,18 +92,16 @@ router.get('/', requireAuth, async (req, res) => {
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   params.push(parseInt(limit, 10), parseInt(offset, 10));
 
-  const { rows } = await pool.query(
-    `SELECT ${SELECT_COLS} ${where} ORDER BY cr.created_at DESC LIMIT $${i} OFFSET $${i + 1}`,
+  const rows = await selectRows(
+    SELECT_FULL,
+    `${where} ORDER BY cr.created_at DESC LIMIT $${i} OFFSET $${i + 1}`,
     params
   );
   res.json({ data: rows });
 });
 
 router.get('/:id', requireAuth, async (req, res) => {
-  const { rows } = await pool.query(
-    `SELECT ${SELECT_COLS} WHERE cr.id = $1`,
-    [req.params.id]
-  );
+  const rows = await selectRows(SELECT_FULL, `WHERE cr.id = $1`, [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Change request not found' });
   res.json({ data: rows[0] });
 });
