@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+﻿import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import {
   peopleApi, projectsApi, refDataApi, gearingApi, countryAllocationsApi, personCommentsApi,
@@ -77,15 +77,19 @@ function contractGroup(p: Person): ContractGroup {
   return 'employee';
 }
 
-const GROUP_LABEL: Record<ContractGroup, string> = {
-  employee: 'Staff', contingent: 'Contingent',
-  approved: 'Approved Requests', request: 'Requests',
-};
 
 
-const COL_W   = 190;
-const LABEL_W = 52;   // just wide enough for Proposed/Min/Max labels
-const TOTAL_W = 70;
+const COL_W   = 100;
+const LABEL_W = 90;
+const COUNTRY_ORDER = ['Japan','Australia','Singapore','Indonesia','Malaysia','China','South Korea','India','Philippines','Thailand'];
+
+function DeltaBadge({ a, b, size = 10, isFloat = false }: { a: number; b: number; size?: number; isFloat?: boolean }) {
+  const d = b - a;
+  if (Math.abs(d) < 0.05) return <span style={{ fontSize: size, color: '#BDC1CA' }}>● 0</span>;
+  const up = d > 0;
+  const dStr = isFloat ? Math.abs(d).toFixed(1) : String(Math.round(Math.abs(d)));
+  return <span style={{ fontSize: size, fontWeight: 700, color: up ? '#33A85C' : '#E91C24' }}>{up ? '▲' : '▼'} {dStr}</span>;
+}
 
 export default function Allocations({ tabId }: { tabId?: string } = {}) {
   const { cycles, selectedCycleId, setSelectedCycleId, selectedCycle, selectedRegionId, setSelectedRegionId } = usePlanningCycle();
@@ -106,7 +110,7 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
   const [disciplineFilter, setDisciplineFilter] = useState('');
 
   // ── Collapse ──────────────────────────────────────────────────────────────
-  const [collapsedDisciplines, setCollapsedDisciplines] = useState<Set<string>>(new Set());
+  const [collapsedDisciplines, setCollapsedDisciplines] = useState<Set<string>>(new Set(DISCIPLINES));
   const [collapsedCountries, setCollapsedCountries]     = useState<Set<string>>(new Set());
 
   // ── UI state ──────────────────────────────────────────────────────────────
@@ -123,6 +127,9 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
   const [lockedPerson, setLockedPerson]     = useState<Person | null>(null);
   const [hoveredPill, setHoveredPill]       = useState<{ personId: number; x: number; y: number } | null>(null);
   const [commentCache, setCommentCache]     = useState<Record<number, string>>({});
+
+  const [compCycleId,       setCompCycleId]       = useState<number | null>(null);
+  const [compCountryAllocs, setCompCountryAllocs] = useState<CountryAllocation[]>([]);
 
   useTabDirty(tabId, false);
 
@@ -157,6 +164,14 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+useEffect(() => {
+    if (!compCycleId) { setCompCountryAllocs([]); return; }
+    countryAllocationsApi.list({
+      planning_cycle_id: compCycleId,
+      ...(selectedRegionId ? { region_id: selectedRegionId } : {}),
+    }).then(setCompCountryAllocs).catch(() => setCompCountryAllocs([]));
+  }, [compCycleId, selectedRegionId]);
+
   // ── Derived: countries from projects ──────────────────────────────────────
   const countryGroups = useMemo(() => {
     let filtered = projects.filter(p => p.region_id === selectedRegionId);
@@ -172,7 +187,13 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
       if (!map[a.country_name]) map[a.country_name] = { id: a.country_id, projects: [] };
     }
     const groups = Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => {
+        const ia = COUNTRY_ORDER.indexOf(a), ib = COUNTRY_ORDER.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      })
       .map(([country, { id, projects: projs }]) => ({
         country,
         countryId: id,
@@ -277,6 +298,22 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
     })).filter(d => d.allocated > 0);
     return { totalAvailable, totalAllocated, byDisc };
   }, [allPeople, countryAllocs]);
+
+  const compAllocatedPersonIds = useMemo(
+    () => new Set(compCountryAllocs.map(a => a.person_id)),
+    [compCountryAllocs]
+  );
+
+  const compBannerMetrics = useMemo(() => {
+    const totalAllocated = compCountryAllocs.reduce((s, a) => s + Number(a.fte_value), 0);
+    const byDisc = DISCIPLINES.map(d => ({
+      discipline: d,
+      allocated: compCountryAllocs
+        .filter(a => allPeople.find(p => p.id === a.person_id)?.discipline_name === d)
+        .reduce((s, a) => s + Number(a.fte_value), 0),
+    }));
+    return { totalAllocated, byDisc };
+  }, [allPeople, compCountryAllocs]);
 
   // ── Footer totals: Proposed/Min/Max per discipline per country ───────────
   const disciplineFooterTotals = useMemo(() => {
@@ -396,60 +433,114 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
   return (
     <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-      {/* ── Banner (single row like Projects page) ── */}
-      <div style={{ flexShrink: 0, background: '#FFFFFF', borderBottom: '3px solid #E91C24' }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', gap: 0, flexWrap: 'wrap' as const }}>
-          {/* Title */}
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, paddingRight: 16, marginRight: 16, borderRight: '1px solid #E0E3E8', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            Allocations Planning
-          </div>
-          {/* Metrics */}
-          {!loading && (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 14, marginRight: 14, borderRight: '1px solid #E0E3E8' }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
-                <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Available</span>
+      {/* ── Banner ── */}
+      <div style={{ flexShrink: 0, background: '#FFFFFF', borderBottom: '3px solid #086AE3', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+        {/* Title */}
+        <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, whiteSpace: 'nowrap' }}>Resources</div>
+        </div>
+        {!loading && (
+          <>
+            {/* People allocated */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{allocatedPeople.length}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>People</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 14, marginRight: 14, borderRight: '1px solid #E0E3E8' }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#33A85C', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
-                <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Allocated</span>
-              </div>
-              {bannerMetrics.totalAvailable > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: 20, marginRight: 20, borderRight: '1px solid #E0E3E8' }}>
-                  {(() => {
-                    const u = bannerMetrics.totalAllocated / bannerMetrics.totalAvailable;
-                    const c = u > 1.05 ? '#E91C24' : u >= 0.85 ? '#33A85C' : '#FDB90D';
-                    return <>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: c, lineHeight: 1 }}>{Math.round(u * 100)}%</span>
-                      <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginTop: 2 }}>Utilisation</span>
-                    </>;
-                  })()}
+              {compCycleId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, color: '#8B93A3' }}>{compAllocatedPersonIds.size}</span>
+                  <DeltaBadge a={compAllocatedPersonIds.size} b={allocatedPeople.length} />
                 </div>
               )}
-              {bannerMetrics.byDisc.map(d => {
-                const dc = DISCIPLINE_COLOURS[d.discipline] ?? DISCIPLINE_COLOURS['Other'];
-                return (
-                  <div key={d.discipline} style={{ display: 'flex', alignItems: 'center', gap: 5, marginRight: 18 }}>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: dc.bg, lineHeight: 1 }}>{d.allocated.toFixed(1)}</span>
-                    <span style={{ fontSize: 9, fontWeight: 600, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>{d.discipline}</span>
+            </div>
+            {/* Available FTE */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Available FTE</span>
+              </div>
+            </div>
+            {/* Allocated FTE */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: '#33A85C', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Allocated FTE</span>
+              </div>
+              {compCycleId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, color: '#8B93A3' }}>{compBannerMetrics.totalAllocated.toFixed(1)}</span>
+                  <DeltaBadge a={compBannerMetrics.totalAllocated} b={bannerMetrics.totalAllocated} isFloat />
+                </div>
+              )}
+            </div>
+            {/* Utilisation */}
+            {bannerMetrics.totalAvailable > 0 && (() => {
+              const u  = bannerMetrics.totalAllocated  / bannerMetrics.totalAvailable;
+              const cu = compBannerMetrics.totalAllocated / bannerMetrics.totalAvailable;
+              const c  = u > 1.05 ? '#E91C24' : u >= 0.85 ? '#33A85C' : '#FDB90D';
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: c, lineHeight: 1 }}>{Math.round(u * 100)}%</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Utilisation</span>
                   </div>
-                );
-              })}
-            </>
-          )}
-          {/* Region + Cycle selectors on the right */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, color: '#5A657B', fontWeight: 500 }}>Region</span>
+                  {compCycleId && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <span style={{ fontSize: 10, color: '#8B93A3' }}>{Math.round(cu * 100)}%</span>
+                      <DeltaBadge a={Math.round(cu * 100)} b={Math.round(u * 100)} />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {/* Per discipline */}
+            {DISCIPLINES.map(disc => {
+              const curr = bannerMetrics.byDisc.find(d => d.discipline === disc)?.allocated ?? 0;
+              const comp = compBannerMetrics.byDisc.find(d => d.discipline === disc)?.allocated ?? 0;
+              if (curr === 0 && (!compCycleId || comp === 0)) return null;
+              const dc = DISCIPLINE_COLOURS[disc] ?? DISCIPLINE_COLOURS['Other'];
+              return (
+                <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: dc.bg, lineHeight: 1 }}>{curr.toFixed(1)}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{disc}</span>
+                  </div>
+                  {compCycleId && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <span style={{ fontSize: 10, color: '#8B93A3' }}>{comp.toFixed(1)}</span>
+                      <DeltaBadge a={comp} b={curr} isFloat />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+        {/* Region + Cycle + vs selectors */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
             <select value={selectedRegionId ?? ''} onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
               style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}>
               <option value="">All</option>
               {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
             </select>
-            <span style={{ fontSize: 11, color: '#5A657B', fontWeight: 500 }}>Cycle</span>
+          </div>
+          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
             <select value={selectedCycleId ?? ''} onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
               style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}>
               <option value="">All Cycles</option>
               {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>vs</span>
+            <select value={compCycleId ?? ''} onChange={e => setCompCycleId(e.target.value ? Number(e.target.value) : null)}
+              style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}>
+              <option value="">None</option>
+              {cycles.filter(c => c.is_active && c.id !== selectedCycleId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         </div>
@@ -482,19 +573,14 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
               🔒 Read only
             </span>
           )}
-          <button onClick={() => allCountriesCollapsed ? setCollapsedCountries(new Set()) : setCollapsedCountries(new Set(countryGroups.map(g => g.country)))}
-            style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">{allCountriesCollapsed ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/> : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>}</svg>
-            Countries
-          </button>
           <button onClick={() => allDeptsCollapsed ? setCollapsedDisciplines(new Set()) : setCollapsedDisciplines(new Set(hierarchy.map(h => h.discipline)))}
-            style={{ padding: '4px 10px', background: '#E91C24', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            style={{ padding: '4px 10px', background: '#086AE3', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">{allDeptsCollapsed ? <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/> : <path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>}</svg>
             Discipline
           </button>
           {canEdit && (
             <button onClick={() => openAddModal()}
-              style={{ padding: '4px 12px', background: '#FFFFFF', border: '1px solid #E91C24', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#E91C24', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              style={{ padding: '4px 12px', background: '#FFFFFF', border: '1px solid #086AE3', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#086AE3', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
               + Person
             </button>
           )}
@@ -531,7 +617,6 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                   ? <col key={g.country} style={{ width: 50 }} />
                   : <col key={g.country} style={{ width: COL_W }} />
               )}
-              <col style={{ width: TOTAL_W }} />
             </colgroup>
 
             {/* ── Country header ── */}
@@ -571,28 +656,16 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                           {g.country}
                         </span>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
-                            {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, flexShrink: 0, objectFit: 'cover' }} />}
-                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.country}</span>
-                          </div>
-                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: 500, flexShrink: 0 }}>Wt {g.totalWeight.toFixed(1)}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, width: '100%', overflow: 'hidden' }}>
+                          {flag && <img src={flag} alt="" width={16} height={12} style={{ borderRadius: 2, flexShrink: 0, objectFit: 'cover' }} />}
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.03em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{g.country}</span>
+                          <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 500, flexShrink: 0 }}>Wt {g.totalWeight.toFixed(1)}</span>
                         </div>
                       )}
                     </th>
                   );
                 })}
 
-                {/* Total header */}
-                <th style={{
-                  position: 'sticky', top: 0, zIndex: 3,
-                  background: '#1A1A2E', color: '#FFFFFF',
-                  padding: '8px 6px', textAlign: 'center', fontWeight: 700, fontSize: 10,
-                  borderBottom: '2px solid #333355',
-                  textTransform: 'uppercase', letterSpacing: '0.06em',
-                }}>
-                  Total
-                </th>
               </tr>
             </thead>
 
@@ -608,12 +681,12 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                   <React.Fragment key={h.discipline}>
                     {/* White gap row before each discipline section */}
                     <tr>
-                      <td colSpan={countryGroups.length + 2} style={{ padding: 0, height: 8, background: '#FFFFFF', borderBottom: '1px solid #E8EAED' }} />
+                      <td colSpan={countryGroups.length + 1} style={{ padding: 0, height: 8, background: '#FFFFFF', borderBottom: '1px solid #E8EAED' }} />
                     </tr>
 
                     {/* Discipline header row */}
                     <tr>
-                      <td colSpan={countryGroups.length + 2} style={{ padding: 0 }}>
+                      <td colSpan={countryGroups.length + 1} style={{ padding: 0 }}>
                         <div
                           style={{
                             display: 'flex', alignItems: 'center', gap: 8,
@@ -647,133 +720,206 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
                       </td>
                     </tr>
 
-                    {/* Person rows (within discipline) */}
-                    {!discCollapsed && h.groups.map(grp => (
-                      <React.Fragment key={grp.group}>
-                        {/* Contract group sub-header */}
-                        {h.groups.length > 1 && (
-                          <tr>
-                            <td colSpan={countryGroups.length + 2} style={{
-                              padding: '3px 10px 3px 16px',
-                              background: dc.light, color: dc.bg,
-                              fontSize: 10, fontWeight: 700,
-                              letterSpacing: '0.05em',
-                              borderBottom: `1px solid ${dc.bg}22`,
-                            }}>
-                              {GROUP_LABEL[grp.group]}
-                            </td>
-                          </tr>
-                        )}
+                    {/* People: seniors span consecutive alloc runs; non-seniors fill empty cols; multi-country non-seniors at bottom */}
+                    {!discCollapsed && (() => {
+                      const isSenior = (p: Person) => p.level_code === 'VP' || p.level_code === 'S Dr' || p.level_code === 'Dr';
+                      const DARK_PILL = { bg: '#3A3D42', color: '#FFFFFF', border: '#2A2D32' };
+                      const getPillStyle = (p: Person) => {
+                        const lc = p.level_code ?? '';
+                        return (lc === 'VP' || lc === 'S Dr' || lc === 'Dr')
+                          ? DARK_PILL
+                          : (CONTRACT_PILL[p.contract_type_code ?? ''] ?? CONTRACT_PILL['FTE']);
+                      };
 
-                        {/* Person rows — spanning pills across consecutive allocated countries */}
-                        {grp.people.map((p, pi) => {
-                          const personTotal = countryGroups.reduce((s, g) => s + (allocMap[p.id]?.[g.countryId] ?? 0), 0);
-                          const rowBg = pi % 2 === 0 ? '#FFFFFF' : '#FAFBFC';
-                          const ps = CONTRACT_PILL[p.contract_type_code ?? ''] ?? CONTRACT_PILL['FTE'];
-
-                          // Build one span from first→last allocated country (inclusive)
-                          // so the pill stretches across ALL countries this person is in,
-                          // even when there are unallocated countries in between.
-                          type Seg =
-                            | { type: 'empty'; key: string; collapsed: boolean }
-                            | { type: 'span'; colSpan: number; key: string };
-                          const segs: Seg[] = [];
-                          const allocIdx = countryGroups.reduce<number[]>((acc, cg, idx) => {
-                            if ((allocMap[p.id]?.[cg.countryId] ?? 0) > 0) acc.push(idx);
-                            return acc;
-                          }, []);
-                          if (allocIdx.length === 0) {
-                            countryGroups.forEach(cg => segs.push({ type: 'empty', key: cg.country, collapsed: collapsedCountries.has(cg.country) }));
+                      // Returns runs of consecutive allocated column indices (no first-to-last spanning across gaps)
+                      const getRuns = (p: Person) => {
+                        const idxs = countryGroups.reduce<number[]>((acc, cg, idx) => {
+                          if ((allocMap[p.id]?.[cg.countryId] ?? 0) > 0) acc.push(idx);
+                          return acc;
+                        }, []);
+                        const runs: Array<{ first: number; last: number }> = [];
+                        for (const idx of idxs) {
+                          if (runs.length === 0 || idx !== runs[runs.length - 1].last + 1) {
+                            runs.push({ first: idx, last: idx });
                           } else {
-                            const first = allocIdx[0], last = allocIdx[allocIdx.length - 1];
-                            for (let i = 0; i < first; i++) segs.push({ type: 'empty', key: countryGroups[i].country, collapsed: collapsedCountries.has(countryGroups[i].country) });
-                            segs.push({ type: 'span', colSpan: last - first + 1, key: countryGroups[first].country });
-                            for (let i = last + 1; i < countryGroups.length; i++) segs.push({ type: 'empty', key: countryGroups[i].country, collapsed: collapsedCountries.has(countryGroups[i].country) });
+                            runs[runs.length - 1].last = idx;
                           }
+                        }
+                        return runs;
+                      };
 
-                          return (
-                            <tr key={p.id} style={{ background: rowBg }}>
-                              {/* Narrow label cell — empty, just structural */}
-                              <td style={{
-                                position: 'sticky', left: 0, zIndex: 2, background: rowBg,
-                                width: LABEL_W, minWidth: LABEL_W,
-                                borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3',
-                              }} />
+                      const claimedSet = (runs: Array<{ first: number; last: number }>) => {
+                        const s = new Set<number>();
+                        runs.forEach(r => { for (let i = r.first; i <= r.last; i++) s.add(i); });
+                        return s;
+                      };
 
-                              {/* Segmented cells — one pill spanning first→last allocated country */}
-                              {segs.map(seg => {
-                                if (seg.type === 'empty') {
-                                  return (
-                                    <td key={seg.key} style={{ padding: seg.collapsed ? '4px 2px' : '4px 6px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }} />
-                                  );
-                                }
-                                // Full-width spanning pill — name only, no FTE chips
-                                return (
-                                  <td key={seg.key} colSpan={seg.colSpan} style={{ padding: '3px 4px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
+                      const contractOrder = (p: Person) => {
+                        const code = p.contract_type_code ?? '';
+                        if (code.startsWith('A ')) return 1;
+                        if (code === 'CON')         return 2;
+                        if (code.startsWith('R '))  return 3;
+                        return 0;
+                      };
+
+                      const seniorPeople = h.allPeople
+                        .filter(isSenior)
+                        .sort((a, b) => (LEVEL_ORDER[a.level_code ?? ''] ?? 99) - (LEVEL_ORDER[b.level_code ?? ''] ?? 99));
+
+                      const nonSeniorPeople = h.allPeople
+                        .filter(p => !isSenior(p))
+                        .sort((a, b) => {
+                          const ca = contractOrder(a), cb = contractOrder(b);
+                          if (ca !== cb) return ca - cb;
+                          return (LEVEL_ORDER[a.level_code ?? ''] ?? 99) - (LEVEL_ORDER[b.level_code ?? ''] ?? 99);
+                        });
+
+                      const allocColCount = (p: Person) => countryGroups.filter(g => (allocMap[p.id]?.[g.countryId] ?? 0) > 0).length;
+                      const regularPeople = nonSeniorPeople.filter(p => allocColCount(p) < 3);
+                      const spannerPeople = nonSeniorPeople.filter(p => allocColCount(p) >= 3);
+
+                      type GridRow = {
+                        occupied: Set<number>;
+                        spans: Array<{ person: Person; runs: Array<{ first: number; last: number }> }>;
+                        pills: Map<number, Person>;
+                      };
+                      const mkRow = (): GridRow => ({ occupied: new Set(), spans: [], pills: new Map() });
+                      const fits = (row: GridRow, cols: Set<number>) => !Array.from(cols).some(c => row.occupied.has(c));
+
+                      const rows: GridRow[] = [];
+
+                      // 1. Seniors — first-fit so non-seniors can fill their empty cols
+                      for (const p of seniorPeople) {
+                        const runs = getRuns(p);
+                        if (runs.length === 0) continue;
+                        const claimed = claimedSet(runs);
+                        const found = rows.find(r => fits(r, claimed));
+                        const row = found ?? (() => { const nr = mkRow(); rows.push(nr); return nr; })();
+                        claimed.forEach(c => row.occupied.add(c));
+                        row.spans.push({ person: p, runs });
+                      }
+
+                      // 2. Regular non-senior — first-fit (fills empty cols in senior rows or creates new rows)
+                      for (const p of regularPeople) {
+                        const runs = getRuns(p);
+                        if (runs.length === 0) continue;
+                        const claimed = claimedSet(runs);
+                        const found = rows.find(r => fits(r, claimed));
+                        const row = found ?? (() => { const nr = mkRow(); rows.push(nr); return nr; })();
+                        claimed.forEach(c => row.occupied.add(c));
+                        runs.forEach(run => { for (let i = run.first; i <= run.last; i++) row.pills.set(i, p); });
+                      }
+
+                      // 3. Non-senior spanners (3+ countries) — always at the bottom in their own rows
+                      for (const p of spannerPeople) {
+                        const runs = getRuns(p);
+                        if (runs.length === 0) continue;
+                        const claimed = claimedSet(runs);
+                        const nr = mkRow();
+                        claimed.forEach(c => nr.occupied.add(c));
+                        nr.spans.push({ person: p, runs });
+                        rows.push(nr);
+                      }
+
+                      return rows.map((row, ri) => {
+                        const rowBg = ri % 2 === 0 ? '#FFFFFF' : '#FAFBFC';
+                        const cells: React.ReactElement[] = [];
+                        let ci = 0;
+                        while (ci < countryGroups.length) {
+                          const g = countryGroups[ci];
+                          let handled = false;
+                          for (const se of row.spans) {
+                            const run = se.runs.find(r => r.first === ci);
+                            if (run) {
+                              const ps = getPillStyle(se.person);
+                              const w = run.last - run.first + 1;
+                              cells.push(
+                                <td key={`s${se.person.id}-${ci}`} colSpan={w} style={{ padding: '3px 4px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
+                                  <div
+                                    onClick={() => openEditModal(se.person)}
+                                    onMouseEnter={e => { setHoveredPill({ personId: se.person.id, x: e.clientX, y: e.clientY }); fetchLatestComment(se.person.id); }}
+                                    onMouseMove={e => setHoveredPill(prev => prev?.personId === se.person.id ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
+                                    onMouseLeave={() => setHoveredPill(null)}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 6, background: ps.bg, color: ps.color, border: `1px solid ${ps.border}`, fontSize: 11, fontWeight: 600, cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap' as const, width: '100%', boxSizing: 'border-box' as const }}
+                                  >
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' as const }}>{se.person.name}</span>
+                                  </div>
+                                </td>
+                              );
+                              ci = run.last + 1;
+                              handled = true;
+                              break;
+                            }
+                          }
+                          if (!handled) {
+                            const pill = row.pills.get(ci);
+                            const collapsed = collapsedCountries.has(g.country);
+                            if (pill) {
+                              const ps = getPillStyle(pill);
+                              cells.push(
+                                <td key={`p${g.countryId}`} style={{ padding: collapsed ? '4px 2px' : '3px 4px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }}>
+                                  {!collapsed && (
                                     <div
-                                      onClick={() => openEditModal(p)}
-                                      onMouseEnter={e => { setHoveredPill({ personId: p.id, x: e.clientX, y: e.clientY }); fetchLatestComment(p.id); }}
-                                      onMouseMove={e => setHoveredPill(prev => prev?.personId === p.id ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
+                                      onClick={() => openEditModal(pill)}
+                                      onMouseEnter={e => { setHoveredPill({ personId: pill.id, x: e.clientX, y: e.clientY }); fetchLatestComment(pill.id); }}
+                                      onMouseMove={e => setHoveredPill(prev => prev?.personId === pill.id ? { ...prev, x: e.clientX, y: e.clientY } : prev)}
                                       onMouseLeave={() => setHoveredPill(null)}
-                                      style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        padding: '4px 10px', borderRadius: 6,
-                                        background: ps.bg, color: ps.color,
-                                        border: `1px solid ${ps.border}`,
-                                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                                        overflow: 'hidden', whiteSpace: 'nowrap' as const,
-                                        width: '100%', boxSizing: 'border-box' as const,
-                                      }}
+                                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 8px', borderRadius: 6, background: ps.bg, color: ps.color, border: `1px solid ${ps.border}`, fontSize: 11, fontWeight: 600, cursor: 'pointer', overflow: 'hidden', whiteSpace: 'nowrap' as const, width: '100%', boxSizing: 'border-box' as const }}
                                     >
-                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' as const }}>{p.name}</span>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' as const }}>{pill.name}</span>
                                     </div>
-                                  </td>
-                                );
-                              })}
-
-                              {/* Total cell */}
-                              <td style={{ padding: '5px 6px', textAlign: 'center', fontWeight: 700, fontSize: 12, borderBottom: '1px solid #EEF0F3', color: personTotal > 0 ? '#33A85C' : '#CCCCCC' }}>
-                                {personTotal > 0 ? personTotal.toFixed(personTotal % 1 === 0 ? 0 : 2) : '—'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    ))}
+                                  )}
+                                </td>
+                              );
+                            } else {
+                              cells.push(
+                                <td key={`e${g.countryId}`} style={{ padding: '4px 2px', borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3', background: rowBg }} />
+                              );
+                            }
+                            ci++;
+                          }
+                        }
+                        return (
+                          <tr key={ri} style={{ background: rowBg }}>
+                            <td style={{ position: 'sticky', left: 0, zIndex: 2, background: rowBg, width: LABEL_W, minWidth: LABEL_W, borderRight: '1px solid #E0E3E8', borderBottom: '1px solid #EEF0F3' }} />
+                            {cells}
+                          </tr>
+                        );
+                      });
+                    })()}
 
                     {/* ── Per-discipline Proposed / Min / Max rows ── */}
                     {!discCollapsed && dft && (
                       [
-                        { label: 'Proposed', key: 'proposed' as const, color: '#086AE3' },
-                        { label: 'Min',      key: 'min'      as const, color: '#33A85C' },
-                        { label: 'Max',      key: 'max'      as const, color: '#C59000' },
-                      ].map(({ label, key, color }) => (
-                        <tr key={label} style={{ background: '#F5F7FA' }}>
-                          <td style={{ position: 'sticky', left: 0, zIndex: 2, background: '#F5F7FA', padding: '4px 8px', borderTop: '1px solid #ECEEF2', borderRight: '1px solid #DEE2E8', borderBottom: '1px solid #ECEEF2' }}>
-                            <span style={{ fontSize: 10, fontWeight: 600, color: '#8A939F' }}>{label}</span>
-                          </td>
-                          {countryGroups.map(g => {
-                            const ft = dft.countries.find(c => c.countryId === g.countryId);
-                            const val = ft ? ft[key] : 0;
-                            const collapsed = collapsedCountries.has(g.country);
-                            return (
-                              <td key={g.country} style={{ padding: collapsed ? '4px 2px' : '4px 8px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #ECEEF2', borderRight: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
-                                {!collapsed && (val > 0
-                                  ? <span style={{ fontSize: 11, fontWeight: 700, color }}>{val.toFixed(1)}</span>
-                                  : <span style={{ fontSize: 10, color: '#CCCCCC' }}>—</span>)}
-                              </td>
-                            );
-                          })}
-                          <td style={{ padding: '4px 6px', textAlign: 'center', background: '#F5F7FA', borderTop: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
-                            {(() => {
-                              const total = dft.countries.reduce((s, c) => s + c[key], 0);
-                              return total > 0
-                                ? <span style={{ fontSize: 11, fontWeight: 700, color }}>{total.toFixed(1)}</span>
-                                : <span style={{ fontSize: 10, color: '#CCCCCC' }}>—</span>;
-                            })()}
-                          </td>
-                        </tr>
-                      ))
+                        { label: 'Proposed',   key: 'proposed' as const, isProposed: true  },
+                        { label: 'Min Target', key: 'min'      as const, isProposed: false },
+                        { label: 'Max Target', key: 'max'      as const, isProposed: false },
+                      ].map(({ label, key, isProposed }) => {
+                        const rowTotal = dft.countries.reduce((s, c) => s + c[key], 0);
+                        const rowBg = isProposed ? '#FFFFFF' : '#F8F9FB';
+                        return (
+                          <tr key={label} style={{ background: rowBg }}>
+                            <td style={{ position: 'sticky', left: 0, zIndex: 2, background: rowBg, padding: '4px 8px', borderTop: isProposed ? '2px solid #D0D4DA' : '1px solid #ECEEF2', borderRight: '1px solid #DEE2E8', borderBottom: '1px solid #ECEEF2' }}>
+                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                                <span style={{ fontSize: 10, fontWeight: isProposed ? 700 : 400, color: isProposed ? '#111111' : '#5A6270', whiteSpace: 'nowrap' as const }}>{label}</span>
+                                {rowTotal > 0 && <span style={{ fontSize: 10, fontWeight: isProposed ? 700 : 400, color: isProposed ? '#111111' : '#5A6270' }}>{rowTotal.toFixed(1)}</span>}
+                              </div>
+                            </td>
+                            {countryGroups.map(g => {
+                              const ft = dft.countries.find(c => c.countryId === g.countryId);
+                              const val = ft ? ft[key] : 0;
+                              const collapsed = collapsedCountries.has(g.country);
+                              return (
+                                <td key={g.country} style={{ padding: collapsed ? '4px 2px' : '4px 6px', textAlign: 'center', background: rowBg, borderTop: isProposed ? '2px solid #D0D4DA' : '1px solid #ECEEF2', borderRight: '1px solid #ECEEF2', borderBottom: '1px solid #ECEEF2' }}>
+                                  {!collapsed && (val > 0
+                                    ? <span style={{ fontSize: 10, fontWeight: isProposed ? 700 : 400, color: isProposed ? '#111111' : '#5A6270' }}>{val.toFixed(1)}</span>
+                                    : <span style={{ fontSize: 9, color: '#D0D4DA' }}>—</span>)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })
                     )}
                   </React.Fragment>
                 );
@@ -793,40 +939,76 @@ export default function Allocations({ tabId }: { tabId?: string } = {}) {
       {/* ── Country hover tooltip ── */}
       {hoveredCountry && (() => {
         const group = countryGroups.find(g => g.country === hoveredCountry.name);
-        if (!group || group.projects.length === 0) return null;
+        if (!group) return null;
+
+        const sortedProjects = [...group.projects].sort((a, b) => {
+          const order = ['Approved', 'Seeded', 'Proposed'];
+          return (order.indexOf(a.status) === -1 ? 99 : order.indexOf(a.status)) -
+                 (order.indexOf(b.status) === -1 ? 99 : order.indexOf(b.status));
+        });
+
+        const allocatedPeople = allPeople
+          .filter(p => (allocMap[p.id]?.[group.countryId] ?? 0) > 0)
+          .sort((a, b) => {
+            const lo = (c: string) => LEVEL_ORDER[c] ?? 99;
+            return lo(a.level_code ?? '') - lo(b.level_code ?? '');
+          });
+
+        const totalFte = allocatedPeople.reduce((s, p) => s + (allocMap[p.id]?.[group.countryId] ?? 0), 0);
+
+        if (sortedProjects.length === 0 && allocatedPeople.length === 0) return null;
+
         return (
           <div style={{
             position: 'fixed', zIndex: 999,
-            left: Math.min(hoveredCountry.x + 12, window.innerWidth - 260),
-            top: hoveredCountry.y + 12,
+            left: Math.min(hoveredCountry.x + 12, window.innerWidth - 280),
+            top: Math.min(hoveredCountry.y + 12, window.innerHeight - 300),
             background: '#1A1A2E', color: '#FFFFFF',
             border: '1px solid #333355', borderRadius: 8,
-            padding: '10px 12px', minWidth: 220, maxWidth: 280,
+            padding: '10px 12px', minWidth: 240, maxWidth: 300,
             boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
             pointerEvents: 'none' as const,
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 8 }}>
-              {group.country} — {group.projects.length} project{group.projects.length !== 1 ? 's' : ''}
-            </div>
-            {[...group.projects].sort((a, b) => {
-              const order = ['Approved', 'Seeded', 'Proposed'];
-              return (order.indexOf(a.status) === -1 ? 99 : order.indexOf(a.status)) -
-                     (order.indexOf(b.status) === -1 ? 99 : order.indexOf(b.status));
-            }).map(proj => (
-              <div key={proj.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-                <span style={{
-                  width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                  background: STATUS_COLOURS[proj.status] ?? '#888',
-                }} />
-                <span style={{ fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{proj.name}</span>
-                <span style={{
-                  fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                  background: STATUS_COLOURS[proj.status] ?? '#888', color: '#FFF',
-                  fontWeight: 700, flexShrink: 0,
-                }}>{proj.status}</span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', flexShrink: 0 }}>Wt {proj.weight}</span>
-              </div>
-            ))}
+
+            {/* Projects section */}
+            {sortedProjects.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>
+                  {group.country} — {sortedProjects.length} project{sortedProjects.length !== 1 ? 's' : ''}
+                </div>
+                {sortedProjects.map(proj => (
+                  <div key={proj.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, background: STATUS_COLOURS[proj.status] ?? '#888' }} />
+                    <span style={{ fontSize: 11, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{proj.name}</span>
+                    <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: STATUS_COLOURS[proj.status] ?? '#888', color: '#FFF', fontWeight: 700, flexShrink: 0 }}>{proj.status}</span>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', flexShrink: 0 }}>Wt {proj.weight}</span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* People section */}
+            {allocatedPeople.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginTop: sortedProjects.length > 0 ? 10 : 0, marginBottom: 6, borderTop: sortedProjects.length > 0 ? '1px solid rgba(255,255,255,0.1)' : 'none', paddingTop: sortedProjects.length > 0 ? 8 : 0 }}>
+                  {sortedProjects.length === 0 ? `${group.country} — ` : ''}{allocatedPeople.length} person{allocatedPeople.length !== 1 ? 's' : ''} · {totalFte.toFixed(2)} FTE
+                </div>
+                {allocatedPeople.slice(0, 8).map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 10, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{p.name}</span>
+                    {p.level_code && (
+                      <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', fontWeight: 600, flexShrink: 0 }}>{p.level_code}</span>
+                    )}
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', flexShrink: 0, minWidth: 34, textAlign: 'right' }}>
+                      {(allocMap[p.id]?.[group.countryId] ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+                {allocatedPeople.length > 8 && (
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>+{allocatedPeople.length - 8} more</div>
+                )}
+              </>
+            )}
           </div>
         );
       })()}
