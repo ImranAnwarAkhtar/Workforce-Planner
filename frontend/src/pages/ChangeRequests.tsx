@@ -34,7 +34,10 @@ export default function ChangeRequests() {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
   const [savingRow,  setSavingRow]  = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus,     setFilterStatus]     = useState('');
+  const [filterChangeType, setFilterChangeType] = useState('');
+  const [filterRegion,     setFilterRegion]     = useState('');
+  const [filterDiscipline, setFilterDiscipline] = useState('');
   const [expandedRow,  setExpandedRow]  = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -64,10 +67,26 @@ export default function ChangeRequests() {
     }
   }
 
-  const filtered = useMemo(
-    () => filterStatus ? rows.filter(r => r._planStatus === filterStatus) : rows,
-    [rows, filterStatus]
+  const changeTypes = useMemo(
+    () => [...new Set(rows.map(r => r['Change required']).filter(Boolean) as string[])].sort(),
+    [rows]
   );
+  const regions = useMemo(
+    () => [...new Set(rows.map(r => r._region).filter(Boolean) as string[])].sort(),
+    [rows]
+  );
+  const disciplines = useMemo(
+    () => [...new Set(rows.map(r => r._discipline).filter(Boolean) as string[])].sort(),
+    [rows]
+  );
+
+  const filtered = useMemo(() => rows.filter(r => {
+    if (filterStatus     && r._planStatus                    !== filterStatus)     return false;
+    if (filterChangeType && r['Change required']             !== filterChangeType) return false;
+    if (filterRegion     && r._region                        !== filterRegion)     return false;
+    if (filterDiscipline && r._discipline                    !== filterDiscipline) return false;
+    return true;
+  }), [rows, filterStatus, filterChangeType, filterRegion, filterDiscipline]);
 
   const counts = useMemo(() => ({
     total:      rows.length,
@@ -102,15 +121,38 @@ export default function ChangeRequests() {
           ))}
         </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {([
+            { label: 'Change Type', value: filterChangeType, set: setFilterChangeType, options: changeTypes },
+            { label: 'Region',      value: filterRegion,     set: setFilterRegion,     options: regions },
+            { label: 'Discipline',  value: filterDiscipline, set: setFilterDiscipline, options: disciplines },
+          ] as const).map(({ label, value, set, options }) => (
+            <select
+              key={label}
+              value={value}
+              onChange={e => set(e.target.value)}
+              style={{ padding: '5px 10px', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 12, color: value ? '#111827' : '#6B7280', background: '#FFF', cursor: 'pointer', maxWidth: 160 }}
+            >
+              <option value="">All {label}s</option>
+              {options.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+          ))}
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            style={{ padding: '5px 10px', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 12, color: '#374151', background: '#FFF', cursor: 'pointer' }}
+            style={{ padding: '5px 10px', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 12, color: filterStatus ? '#111827' : '#6B7280', background: '#FFF', cursor: 'pointer' }}
           >
-            <option value="">All plan statuses</option>
+            <option value="">All Plan Statuses</option>
             {PLAN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          {(filterChangeType || filterRegion || filterDiscipline || filterStatus) && (
+            <button
+              onClick={() => { setFilterChangeType(''); setFilterRegion(''); setFilterDiscipline(''); setFilterStatus(''); }}
+              style={{ padding: '5px 10px', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 11, color: '#B91C1C', background: '#FEF2F2', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              ✕ Clear
+            </button>
+          )}
           <button
             onClick={loadData}
             disabled={loading}

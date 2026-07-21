@@ -50,30 +50,48 @@ router.get('/change-requests', requireAuth, async (req, res) => {
     return obj;
   });
 
-  const [{ rows: statuses }, { rows: tbhRows }] = await Promise.all([
+  const [{ rows: statuses }, { rows: tbhEnrich }] = await Promise.all([
     pool.query(
       `SELECT smartsheet_row_id::text AS rid, plan_status, notes, updated_by_name, updated_at
        FROM cr_smartsheet_status`
     ),
-    pool.query(`SELECT LOWER(tbh_id) AS tbh_id FROM tbh_codes WHERE tbh_id IS NOT NULL`),
+    pool.query(`
+      SELECT DISTINCT ON (LOWER(t.tbh_id))
+        LOWER(t.tbh_id)  AS tbh_id,
+        r.name           AS region_name,
+        d.name           AS discipline_name
+      FROM tbh_codes t
+      LEFT JOIN regions     r ON t.region_id      = r.id
+      LEFT JOIN people      p ON p.tbh_code_id    = t.id
+      LEFT JOIN disciplines d ON p.discipline_id  = d.id
+      WHERE t.tbh_id IS NOT NULL
+      ORDER BY LOWER(t.tbh_id), p.id
+    `),
   ]);
 
   const statusMap = {};
   statuses.forEach(s => { statusMap[s.rid] = s; });
 
-  const tbhSet = new Set(tbhRows.map(r => r.tbh_id));
+  // tbhId → { inPlan, region_name, discipline_name }
+  const tbhMap = {};
+  tbhEnrich.forEach(r => { tbhMap[r.tbh_id] = r; });
 
   rows.forEach(row => {
     const s = statusMap[row._rowId] || {};
-    row._planStatus      = s.plan_status    || 'Open';
-    row._planNotes       = s.notes          || null;
+    row._planStatus      = s.plan_status     || 'Open';
+    row._planNotes       = s.notes           || null;
     row._updatedByName   = s.updated_by_name || null;
-    row._statusUpdatedAt = s.updated_at     || null;
+    row._statusUpdatedAt = s.updated_at      || null;
 
-    const tbhCode    = row['TBH Code']    ? String(row['TBH Code']).toLowerCase().trim()    : null;
-    const newTbhCode = row['New TBH Code'] ? String(row['New TBH Code']).toLowerCase().trim() : null;
-    row._tbhInPlan    = tbhCode    ? tbhSet.has(tbhCode)    : null;
-    row._newTbhInPlan = newTbhCode ? tbhSet.has(newTbhCode) : null;
+    const tbhKey    = row['TBH Code']     ? String(row['TBH Code']).toLowerCase().trim()     : null;
+    const newTbhKey = row['New TBH Code'] ? String(row['New TBH Code']).toLowerCase().trim() : null;
+    const tbhEntry  = tbhKey    ? tbhMap[tbhKey]    : null;
+    const newEntry  = newTbhKey ? tbhMap[newTbhKey] : null;
+
+    row._tbhInPlan    = tbhKey    ? !!tbhEntry  : null;
+    row._newTbhInPlan = newTbhKey ? !!newEntry  : null;
+    row._region       = tbhEntry?.region_name     || newEntry?.region_name     || null;
+    row._discipline   = tbhEntry?.discipline_name || newEntry?.discipline_name || null;
   });
 
   res.json({ columns: colTitles, rows });

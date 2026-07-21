@@ -605,6 +605,8 @@ export interface SmartsheetRow {
   _statusUpdatedAt: string | null;
   _tbhInPlan: boolean | null;
   _newTbhInPlan: boolean | null;
+  _region: string | null;
+  _discipline: string | null;
   [key: string]: string | number | boolean | null | undefined;
 }
 
