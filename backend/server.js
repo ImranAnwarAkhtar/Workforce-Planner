@@ -24,6 +24,7 @@ const importsRouter       = require('./routes/imports');
 const headcountRouter     = require('./routes/headcount');
 const countryAllocationsRouter = require('./routes/countryAllocations');
 const personCommentsRouter     = require('./routes/personComments');
+const smartsheetRouter         = require('./routes/smartsheet');
 
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
@@ -220,6 +221,7 @@ app.use('/api/admin',           wrapAsync(adminRouter));
 app.use('/api/comments',        wrapAsync(commentsRouter));
 app.use('/api/imports',         wrapAsync(importsRouter));
 app.use('/api/headcount',       wrapAsync(headcountRouter));
+app.use('/api/smartsheet/change-requests', wrapAsync(smartsheetRouter));
 
 app.use(notFound);
 app.use(errorHandler);
@@ -240,6 +242,20 @@ const PORT = process.env.PORT || 3000;
   for (const sql of crCols) {
     try { await pool.query(sql); } catch (e) { logger.warn('CR col migration skipped', { sql, err: e.message }); }
   }
+  // Smartsheet plan-status table
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cr_smartsheet_status (
+        smartsheet_row_id BIGINT PRIMARY KEY,
+        plan_status       VARCHAR(50)  NOT NULL DEFAULT 'Open',
+        notes             TEXT,
+        updated_by_name   VARCHAR(255),
+        updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      )
+    `);
+    logger.info('cr_smartsheet_status table ready');
+  } catch (e) { logger.warn('cr_smartsheet_status migration warning', { err: e.message }); }
+
   logger.info('Change-request schema migration complete');
   app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 })();

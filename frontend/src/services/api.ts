@@ -593,6 +593,33 @@ export const changeRequestsApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Smartsheet — Change Requests (live read from Smartsheet + local plan status)
+// ---------------------------------------------------------------------------
+
+export interface SmartsheetRow {
+  _rowId: string;
+  _rowNumber: number;
+  _planStatus: string;
+  _planNotes: string | null;
+  _updatedByName: string | null;
+  _statusUpdatedAt: string | null;
+  [key: string]: string | number | null | undefined;
+}
+
+export interface SmartsheetSheet {
+  columns: string[];
+  rows: SmartsheetRow[];
+}
+
+export const smartsheetApi = {
+  changeRequests: () =>
+    client.get<SmartsheetSheet>('/smartsheet/change-requests').then(r => r.data),
+
+  setStatus: (rowId: string, plan_status: string, notes?: string | null) =>
+    client.post(`/smartsheet/change-requests/${rowId}/status`, { plan_status, notes }).then(r => r.data),
+};
+
+// ---------------------------------------------------------------------------
 // TBH Codes (Recruitment)
 // ---------------------------------------------------------------------------
 
