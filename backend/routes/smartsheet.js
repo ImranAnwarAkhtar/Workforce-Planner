@@ -25,8 +25,7 @@ async function fetchSheet() {
 }
 
 // GET /api/smartsheet/change-requests
-// Returns all rows from the Smartsheet with locally-stored plan statuses merged in
-router.get('/', requireAuth, async (req, res) => {
+router.get('/change-requests', requireAuth, async (req, res) => {
   const sheet = await fetchSheet();
 
   const colMap = {};
@@ -62,7 +61,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 // POST /api/smartsheet/change-requests/:rowId/status
 // Saves the plan status for a row into the local DB (upsert)
-router.post('/:rowId/status', requireAuth, async (req, res) => {
+router.post('/change-requests/:rowId/status', requireAuth, async (req, res) => {
   const { plan_status, notes } = req.body;
   const rowId = req.params.rowId;
 

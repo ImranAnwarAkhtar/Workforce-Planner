@@ -221,7 +221,7 @@ app.use('/api/admin',           wrapAsync(adminRouter));
 app.use('/api/comments',        wrapAsync(commentsRouter));
 app.use('/api/imports',         wrapAsync(importsRouter));
 app.use('/api/headcount',       wrapAsync(headcountRouter));
-app.use('/api/smartsheet/change-requests', wrapAsync(smartsheetRouter));
+app.use('/api/smartsheet', wrapAsync(smartsheetRouter));
 
 app.use(notFound);
 app.use(errorHandler);
