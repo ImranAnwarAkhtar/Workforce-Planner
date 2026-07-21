@@ -17,6 +17,7 @@ const PROJECT_TYPES    = ['Retail', 'xScale', 'Matrix'] as const;
 const PROJECT_STATUSES = ['Approved', 'Seeded', 'Proposed'] as const;
 const WEIGHT_OPTIONS   = [0.5, 1.0, 1.5, 2.0] as const;
 const STATUS_ORDER     = { Approved: 0, Seeded: 1, Proposed: 2 } as const;
+const COUNTRY_ORDER    = ['Japan','Australia','Singapore','Indonesia','Malaysia','China','South Korea','India','Philippines','Thailand'];
 const COL_W            = 185; // column / card width in px
 
 type ProjectType   = typeof PROJECT_TYPES[number];
@@ -135,6 +136,14 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function DeltaBadge({ a, b, size = 10, isFloat = false }: { a: number; b: number; size?: number; isFloat?: boolean }) {
+  const d = b - a;
+  if (Math.abs(d) < 0.05) return <span style={{ fontSize: size, color: '#BDC1CA' }}>● 0</span>;
+  const up = d > 0;
+  const dStr = isFloat ? Math.abs(d).toFixed(1) : String(Math.round(Math.abs(d)));
+  return <span style={{ fontSize: size, fontWeight: 700, color: up ? '#33A85C' : '#E91C24' }}>{up ? '▲' : '▼'} {dStr}</span>;
+}
+
 function groupByCountry(projects: Project[]): [string, Project[]][] {
   const map = new Map<string, Project[]>();
   for (const p of projects) {
@@ -152,7 +161,11 @@ function groupByCountry(projects: Project[]): [string, Project[]][] {
   return Array.from(map.entries()).sort(([a], [b]) => {
     if (a === 'Unassigned') return 1;
     if (b === 'Unassigned') return -1;
-    return a.localeCompare(b);
+    const ia = COUNTRY_ORDER.indexOf(a), ib = COUNTRY_ORDER.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
   });
 }
 
@@ -194,7 +207,7 @@ export default function Projects() {
   const [countryFilter,  setCountryFilter]  = useState('');
   const [isActiveFilter, setIsActiveFilter] = useState<'true' | 'false' | 'all'>('true');
 
-  const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set());
+  const [collapsedStatuses, setCollapsedStatuses] = useState<Set<string>>(new Set(PROJECT_STATUSES));
 
   const [modalOpen,    setModalOpen]    = useState(false);
   const [editTarget,   setEditTarget]   = useState<Project | null>(null);
@@ -211,6 +224,9 @@ export default function Projects() {
   const [postingComment,  setPostingComment]  = useState(false);
 
   const [hoveredCell, setHoveredCell] = useState<{ country: string; status: string } | null>(null);
+
+  const [compCycleId,  setCompCycleId]  = useState<number | null>(null);
+  const [compProjects, setCompProjects] = useState<Project[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -243,6 +259,12 @@ export default function Projects() {
   }, [isActiveFilter, selectedCycleId]);
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
+
+useEffect(() => {
+    if (!compCycleId) { setCompProjects([]); return; }
+    projectsApi.list({ is_active: isActiveFilter, limit: 500, planning_cycle_id: compCycleId })
+      .then(setCompProjects).catch(() => setCompProjects([]));
+  }, [compCycleId, isActiveFilter]);
 
   const allCountries = useMemo(() => {
     const source = selectedRegionId
@@ -325,6 +347,19 @@ export default function Projects() {
       totalWeight: all.reduce((s, p) => s + (Number(p.weight) || 1), 0),
     };
   }, [projects]);
+
+  const compStats = useMemo(() => {
+    const all = compProjects;
+    return {
+      total:       all.length,
+      approved:    all.filter(p => p.status === 'Approved').length,
+      seeded:      all.filter(p => p.status === 'Seeded').length,
+      proposed:    all.filter(p => p.status === 'Proposed').length,
+      retail:      all.filter(p => p.type === 'Retail').length,
+      xscale:      all.filter(p => p.type === 'xScale').length,
+      totalWeight: all.reduce((s, p) => s + (Number(p.weight) || 1), 0),
+    };
+  }, [compProjects]);
 
   function toggleStatus(status: string) {
     setCollapsedStatuses(prev => {
@@ -435,14 +470,14 @@ export default function Projects() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const statItems = [
-    { label: 'Total',        value: stats.total,                  color: '#2F3541' },
-    { label: 'Approved',     value: stats.approved,               color: '#E91C24' },
-    { label: 'Seeded',       value: stats.seeded,                 color: '#7739D9' },
-    { label: 'Proposed',     value: stats.proposed,               color: '#086AE3' },
-    { label: 'Retail',       value: stats.retail,                 color: '#00408C' },
-    { label: 'xScale',       value: stats.xscale,                 color: '#411980' },
-    { label: 'Total Weight', value: stats.totalWeight.toFixed(1), color: '#E91C24' },
+  const statItems: { label: string; curr: number; comp: number; color: string; isFloat?: boolean }[] = [
+    { label: 'Total',        curr: stats.total,       comp: compStats.total,       color: '#2F3541' },
+    { label: 'Approved',     curr: stats.approved,    comp: compStats.approved,    color: '#E91C24' },
+    { label: 'Seeded',       curr: stats.seeded,      comp: compStats.seeded,      color: '#7739D9' },
+    { label: 'Proposed',     curr: stats.proposed,    comp: compStats.proposed,    color: '#086AE3' },
+    { label: 'Retail',       curr: stats.retail,      comp: compStats.retail,      color: '#00408C' },
+    { label: 'xScale',       curr: stats.xscale,      comp: compStats.xscale,      color: '#411980' },
+    { label: 'Total Weight', curr: stats.totalWeight, comp: compStats.totalWeight, color: '#E91C24', isFloat: true },
   ];
 
   return (
@@ -460,14 +495,22 @@ export default function Projects() {
           <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, whiteSpace: 'nowrap' }}>Projects</div>
           </div>
-          {statItems.map(({ label, value, color }, i) => (
+          {statItems.map(({ label, curr, comp, color, isFloat }) => (
             <div key={label} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 16px', flex: '1 1 auto',
-              borderRight: '1px solid #E0E3E8',
+              display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              padding: '7px 13px', flex: '1 1 auto',
+              borderRight: '1px solid #E0E3E8', minWidth: 0,
             }}>
-              <span style={{ fontSize: 22, fontWeight: 700, color, lineHeight: 1 }}>{value}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', lineHeight: 1.4 }}>{label}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color, lineHeight: 1 }}>{isFloat ? curr.toFixed(1) : curr}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', lineHeight: 1.4, whiteSpace: 'nowrap' }}>{label}</span>
+              </div>
+              {compCycleId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, color: '#8B93A3' }}>{isFloat ? comp.toFixed(1) : comp}</span>
+                  <DeltaBadge a={comp} b={curr} size={10} isFloat={isFloat} />
+                </div>
+              )}
             </div>
           ))}
           {/* Region selector */}
@@ -483,7 +526,7 @@ export default function Projects() {
             </select>
           </div>
           {/* Planning cycle selector */}
-          <div style={{ padding: '0 12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ padding: '0 12px', borderRight: '1px solid #E0E3E8', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
             <select
               value={selectedCycleId ?? ''}
@@ -492,6 +535,18 @@ export default function Projects() {
             >
               <option value="">All cycles</option>
               {cycles.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          {/* Comparison cycle selector */}
+          <div style={{ padding: '0 12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>vs</span>
+            <select
+              value={compCycleId ?? ''}
+              onChange={e => setCompCycleId(e.target.value ? parseInt(e.target.value, 10) : null)}
+              style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+            >
+              <option value="">None</option>
+              {cycles.filter(c => c.is_active && c.id !== selectedCycleId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         </div>
