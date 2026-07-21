@@ -89,11 +89,13 @@ export default function ChangeRequests() {
   }), [rows, filterStatus, filterChangeType, filterRegion, filterDiscipline]);
 
   const counts = useMemo(() => ({
-    total:      rows.length,
-    open:       rows.filter(r => r._planStatus === 'Open').length,
-    inProgress: rows.filter(r => r._planStatus === 'In Progress').length,
-    actioned:   rows.filter(r => r._planStatus === 'Actioned in Plan').length,
-    onHold:     rows.filter(r => r._planStatus === 'On Hold').length,
+    total:         rows.length,
+    open:          rows.filter(r => r._planStatus === 'Open').length,
+    inProgress:    rows.filter(r => r._planStatus === 'In Progress').length,
+    actioned:      rows.filter(r => r._planStatus === 'Actioned in Plan').length,
+    onHold:        rows.filter(r => r._planStatus === 'On Hold').length,
+    tbhInPlan:     rows.filter(r => r._tbhInPlan === true).length,
+    newTbhInPlan:  rows.filter(r => r._newTbhInPlan === true).length,
   }), [rows]);
 
   return (
@@ -106,7 +108,7 @@ export default function ChangeRequests() {
         borderRadius: 8, marginBottom: 8, padding: '9px 16px', gap: 20,
       }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Change Requests</span>
-        <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
           {[
             { label: 'Total',       value: counts.total,      color: '#5A657B' },
             { label: 'Open',        value: counts.open,       color: '#5A657B' },
@@ -116,6 +118,20 @@ export default function ChangeRequests() {
           ].map(({ label, value, color }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
               <span style={{ fontSize: 16, fontWeight: 700, color }}>{value}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
+            </div>
+          ))}
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 28, background: '#E0E3E8', flexShrink: 0 }} />
+
+          {[
+            { label: 'TBH In Plan',     value: counts.tbhInPlan,    total: rows.filter(r => r['TBH Code']).length },
+            { label: 'New TBH In Plan', value: counts.newTbhInPlan, total: rows.filter(r => r['New TBH Code']).length },
+          ].map(({ label, value, total }) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#2A8346' }}>{value}</span>
+              <span style={{ fontSize: 12, fontWeight: 400, color: '#9CA3AF' }}>/{total}</span>
               <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
             </div>
           ))}
