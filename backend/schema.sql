@@ -216,8 +216,16 @@ CREATE TABLE change_requests (
     new_region_id             INTEGER     REFERENCES regions(id),
     new_country_id            INTEGER     REFERENCES countries(id),
     new_level_id              INTEGER     REFERENCES levels(id),
+    new_metro_location        VARCHAR(100),
     is_borrowed_or_repurposed BOOLEAN,
     justification             TEXT,
+    approval_type             VARCHAR(100),
+    senior_approver           VARCHAR(255),
+    senior_approver_status    VARCHAR(20)  DEFAULT 'N/A',
+    xscale_vs_retail          VARCHAR(10),
+    requestor_email           VARCHAR(255),
+    comments                  TEXT,
+    reviewer_notes            TEXT,
     status                    VARCHAR(20) NOT NULL CHECK (status IN (
                                   'Pending', 'Auto-Approved', 'Approved', 'Rejected'
                               )),
@@ -230,6 +238,16 @@ CREATE TABLE change_requests (
     new_tbh_code_assigned     VARCHAR(50),
     created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent ALTER for live DB upgrades (safe to re-run)
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS new_metro_location     VARCHAR(100);
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS approval_type          VARCHAR(100);
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS senior_approver        VARCHAR(255);
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS senior_approver_status VARCHAR(20)  DEFAULT 'N/A';
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS xscale_vs_retail       VARCHAR(10);
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS requestor_email        VARCHAR(255);
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS comments               TEXT;
+ALTER TABLE change_requests ADD COLUMN IF NOT EXISTS reviewer_notes         TEXT;
 
 -- =============================================================================
 -- PLANNING TABLES

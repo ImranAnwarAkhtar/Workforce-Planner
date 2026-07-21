@@ -521,12 +521,25 @@ export interface ChangeRequest {
   justification: string | null;
   current_manager: string | null;
   new_manager: string | null;
+  new_metro_location: string | null;
+  approval_type: string | null;
+  senior_approver: string | null;
+  senior_approver_status: string | null;
+  xscale_vs_retail: string | null;
+  requestor_email: string | null;
+  comments: string | null;
+  reviewer_notes: string | null;
+  rejection_reason: string | null;
+  new_tbh_code_assigned: string | null;
+  is_borrowed_or_repurposed: boolean | null;
   created_at: string;
+  approved_at: string | null;
   tbh_id: string | null;
   new_region_name: string | null;
   new_country_name: string | null;
   new_level_name: string | null;
   submitted_by_name: string | null;
+  submitted_by_email: string | null;
   approved_by_name: string | null;
 }
 
@@ -543,11 +556,23 @@ export interface CreateChangeRequestBody {
   change_type: string;
   current_manager?: string | null;
   new_manager?: string | null;
+  new_metro_location?: string | null;
   new_region_id?: number | null;
   new_country_id?: number | null;
   new_level_id?: number | null;
   is_borrowed_or_repurposed?: boolean | null;
   justification?: string | null;
+  approval_type?: string | null;
+  senior_approver?: string | null;
+  xscale_vs_retail?: string | null;
+  requestor_email?: string | null;
+  comments?: string | null;
+}
+
+export interface ApproveChangeRequestBody {
+  reviewer_notes?: string | null;
+  new_tbh_code_assigned?: string | null;
+  senior_approver_status?: string | null;
 }
 
 export const changeRequestsApi = {
@@ -560,11 +585,11 @@ export const changeRequestsApi = {
   create: (body: CreateChangeRequestBody) =>
     client.post<ItemResponse<ChangeRequest>>('/change-requests', body).then((r) => r.data.data),
 
-  approve: (id: number) =>
-    client.post<ItemResponse<ChangeRequest>>(`/change-requests/${id}/approve`).then((r) => r.data.data),
+  approve: (id: number, body?: ApproveChangeRequestBody) =>
+    client.post<ItemResponse<ChangeRequest>>(`/change-requests/${id}/approve`, body ?? {}).then((r) => r.data.data),
 
-  reject: (id: number, rejection_reason?: string) =>
-    client.post<ItemResponse<ChangeRequest>>(`/change-requests/${id}/reject`, { rejection_reason }).then((r) => r.data.data),
+  reject: (id: number, rejection_reason?: string, reviewer_notes?: string) =>
+    client.post<ItemResponse<ChangeRequest>>(`/change-requests/${id}/reject`, { rejection_reason, reviewer_notes }).then((r) => r.data.data),
 };
 
 // ---------------------------------------------------------------------------
@@ -665,6 +690,7 @@ export interface GearingConstant {
   min_divisor: number;
   max_divisor: number;
   updated_at: string;
+  updated_by_name?: string;
 }
 
 export const gearingApi = {
