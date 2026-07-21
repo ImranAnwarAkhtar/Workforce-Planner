@@ -103,7 +103,7 @@ export default function ChangeRequests() {
       <div style={{
         flexShrink: 0, display: 'flex', alignItems: 'center',
         background: '#FFFFFF', border: '1px solid #E0E3E8', borderBottom: '3px solid #E91C24',
-        borderRadius: 8, marginBottom: 14, padding: '9px 16px', gap: 20,
+        borderRadius: 8, marginBottom: 8, padding: '9px 16px', gap: 20,
       }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Change Requests</span>
         <div style={{ display: 'flex', gap: 16 }}>
@@ -120,39 +120,7 @@ export default function ChangeRequests() {
             </div>
           ))}
         </div>
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          {([
-            { label: 'Change Type', value: filterChangeType, set: setFilterChangeType, options: changeTypes },
-            { label: 'Region',      value: filterRegion,     set: setFilterRegion,     options: regions },
-            { label: 'Discipline',  value: filterDiscipline, set: setFilterDiscipline, options: disciplines },
-          ] as const).map(({ label, value, set, options }) => (
-            <select
-              key={label}
-              value={value}
-              onChange={e => set(e.target.value)}
-              style={{ padding: '5px 10px', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 12, color: value ? '#111827' : '#6B7280', background: '#FFF', cursor: 'pointer', maxWidth: 160 }}
-            >
-              <option value="">All {label}s</option>
-              {options.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
-          ))}
-          <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            style={{ padding: '5px 10px', border: '1px solid #D5D5D5', borderRadius: 6, fontSize: 12, color: filterStatus ? '#111827' : '#6B7280', background: '#FFF', cursor: 'pointer' }}
-          >
-            <option value="">All Plan Statuses</option>
-            {PLAN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          {(filterChangeType || filterRegion || filterDiscipline || filterStatus) && (
-            <button
-              onClick={() => { setFilterChangeType(''); setFilterRegion(''); setFilterDiscipline(''); setFilterStatus(''); }}
-              style={{ padding: '5px 10px', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 11, color: '#B91C1C', background: '#FEF2F2', cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >
-              ✕ Clear
-            </button>
-          )}
+        <div style={{ marginLeft: 'auto' }}>
           <button
             onClick={loadData}
             disabled={loading}
@@ -161,6 +129,45 @@ export default function ChangeRequests() {
             {loading ? 'Loading…' : '↻ Refresh'}
           </button>
         </div>
+      </div>
+
+      {/* ── Filter bar ── */}
+      <div style={{
+        flexShrink: 0, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap',
+        background: '#F8F9FA', border: '1px solid #E0E3E8', borderRadius: 8,
+        padding: '8px 14px', marginBottom: 10,
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4 }}>Filter</span>
+        {([
+          { label: 'Change Type', value: filterChangeType, set: setFilterChangeType, options: changeTypes },
+          { label: 'Region',      value: filterRegion,     set: setFilterRegion,     options: regions },
+          { label: 'Discipline',  value: filterDiscipline, set: setFilterDiscipline, options: disciplines },
+          { label: 'Plan Status', value: filterStatus,     set: setFilterStatus,     options: PLAN_STATUSES as unknown as string[] },
+        ] as const).map(({ label, value, set, options }) => (
+          <select
+            key={label}
+            value={value}
+            onChange={e => set(e.target.value)}
+            style={{
+              padding: '5px 10px', border: `1px solid ${value ? '#3B4ECA' : '#D5D5D5'}`,
+              borderRadius: 6, fontSize: 12,
+              color: value ? '#111827' : '#6B7280',
+              background: value ? '#EEF4FF' : '#FFF',
+              cursor: 'pointer', maxWidth: 180,
+            }}
+          >
+            <option value="">All {label}s</option>
+            {options.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ))}
+        {(filterChangeType || filterRegion || filterDiscipline || filterStatus) && (
+          <button
+            onClick={() => { setFilterChangeType(''); setFilterRegion(''); setFilterDiscipline(''); setFilterStatus(''); }}
+            style={{ padding: '5px 10px', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 11, color: '#B91C1C', background: '#FEF2F2', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            ✕ Clear all
+          </button>
+        )}
       </div>
 
       {/* ── Table / content ── */}
