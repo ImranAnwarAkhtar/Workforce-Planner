@@ -5,6 +5,7 @@ import { useTabContext } from '../context/TabContext';
 import equinixFortressWhite from '../assets/equinix-fortress-white.svg';
 
 const ICONS: Record<string, string> = {
+  summary:     'M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z',
   dashboard:   'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
   projects:    'M3 3h18v2H3zm0 4h18v2H3zm0 4h18v2H3zm0 4h12v2H3zm0 4h12v2H3z',
   people:      'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
@@ -21,7 +22,7 @@ const ICONS: Record<string, string> = {
 const ROUTE_GRADIENTS: Record<string, string> = {
   '/dashboard':       'linear-gradient(160deg, #E91C24 0%, #411980 100%)',
   '/projects':        'linear-gradient(160deg, #E91C24 0%, #00408C 100%)',
-  '/allocations':     'linear-gradient(160deg, #33A85C 0%, #00737A 50%, #086AE3 100%)',
+  '/allocations':     'linear-gradient(160deg, #086AE3 0%, #00737A 50%, #33A85C 100%)',
   '/people':          'linear-gradient(160deg, #7739D9 0%, #411980 100%)',
   '/headcount':       'linear-gradient(160deg, #086AE3 0%, #411980 100%)',
   '/requests':        'linear-gradient(160deg, #FE9234 0%, #E91C24 100%)',
@@ -29,13 +30,15 @@ const ROUTE_GRADIENTS: Record<string, string> = {
   '/recruitment':     'linear-gradient(160deg, #33A85C 0%, #086AE3 100%)',
   '/admin':           'linear-gradient(160deg, #2F3541 0%, #111111 100%)',
   '/import':          'linear-gradient(160deg, #00737A 0%, #086AE3 100%)',
+  '/summary':         'linear-gradient(160deg, #33A85C 0%, #1A4A7A 100%)',
 };
 
 // People moved below Allocations
 const NAV = [
   { to: '/dashboard',       label: 'Dashboard',      icon: 'dashboard' },
   { to: '/projects',        label: 'Projects',        icon: 'projects' },
-  { to: '/allocations',     label: 'Allocations',     icon: 'allocations' },
+  { to: '/allocations',     label: 'Resources',       icon: 'allocations' },
+  { to: '/summary',         label: 'Summary',         icon: 'summary'   },
   { to: '/people',          label: 'People',          icon: 'people' },
   { to: '/headcount',       label: 'Headcount',       icon: 'headcount' },
   { to: '/change-requests', label: 'Change Requests', icon: 'changes' },
@@ -112,7 +115,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           transition: 'opacity 0.15s ease, max-width 0.25s ease',
           whiteSpace: 'nowrap', flex: 1, minWidth: 0,
         }}>
-          <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2, letterSpacing: '0.04em' }}>
+          <div style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 700, marginTop: 2, letterSpacing: '0.02em' }}>
             GDC Planning
           </div>
         </div>
