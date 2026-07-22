@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { peopleApi, projectsApi, gearingApi, refDataApi, Person, Region, Project, GearingConstant } from '../services/api';
+import { usePlanningCycle } from '../context/PlanningCycleContext';
 
 const DISCIPLINES = ['Construction', 'Design', 'Commercial', 'Commissioning', 'Other'] as const;
 type Disc = typeof DISCIPLINES[number];
@@ -52,17 +53,12 @@ function classifyPerson(p: Person): keyof Metrics {
   const lc  = (p.level_code ?? '').trim();
   const isSeniorLevel = ['VP', 'S Dr', 'Dr'].includes(lc);
 
-  // Approved TBH
   if (cc === 'A FTE') return 'aFte';
   if (cc === 'A CON') return 'aCon';
-  // Requested / pipeline TBH
   if (cc === 'R CON') return 'rCon';
-  if (cc.startsWith('R ')) return 'rFte';   // R FTE, R FTE 26, etc.
-  // Contingent contractor
+  if (cc.startsWith('R ')) return 'rFte';
   if (cc === 'CON') return 'con';
-  // Senior (VP / Director level)
   if (isSeniorLevel || cc === 'VP' || cc === 'Dr') return 'snr';
-  // Default: permanent FTE
   return 'fte';
 }
 
@@ -73,32 +69,32 @@ function discKey(disciplineName: string | null): Disc {
 }
 
 const GEARING_STATUS = {
-  under:     { label: 'Under Target', dot: '#D97706', color: '#92530A', bg: '#FFF8E6', border: '#FEDC86' },
-  'on-target': { label: 'On Target',   dot: '#2A8346', color: '#2A8346', bg: '#DFFBE5', border: '#6FCF97' },
-  over:      { label: 'Over Target',  dot: '#B91C1C', color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5' },
-  'no-data': { label: 'No Gearing',   dot: '#9CA3AF', color: '#5A657B', bg: '#F2F3F4', border: '#D1D5DB' },
+  under:       { label: 'Under Target', dot: '#D97706', color: '#92530A', bg: '#FFF8E6', border: '#FEDC86' },
+  'on-target': { label: 'On Target',    dot: '#2A8346', color: '#2A8346', bg: '#DFFBE5', border: '#6FCF97' },
+  over:        { label: 'Over Target',  dot: '#B91C1C', color: '#B91C1C', bg: '#FEE2E2', border: '#FCA5A5' },
+  'no-data':   { label: 'No Gearing',   dot: '#9CA3AF', color: '#5A657B', bg: '#F2F3F4', border: '#D1D5DB' },
 } as const;
 type GearingStatus = keyof typeof GEARING_STATUS;
 
 export default function Summary() {
-  const [people,          setPeople]          = useState<Person[]>([]);
-  const [regions,         setRegions]         = useState<Region[]>([]);
-  const [projects,        setProjects]        = useState<Project[]>([]);
-  const [gearingConstants, setGearingConstants] = useState<GearingConstant[]>([]);
-  const [regionId,        setRegionId]        = useState<number | null>(null);
-  const [regionsLoaded,   setRegionsLoaded]   = useState(false);
-  const [loading,         setLoading]         = useState(true);
-  const [error,           setError]           = useState<string | null>(null);
+  const { cycles, selectedCycleId, setSelectedCycleId, selectedCycle } = usePlanningCycle();
 
-  // ── Load regions + projects + gearing once ───────────────────────────────────
+  const [people,            setPeople]            = useState<Person[]>([]);
+  const [regions,           setRegions]           = useState<Region[]>([]);
+  const [projects,          setProjects]          = useState<Project[]>([]);
+  const [gearingConstants,  setGearingConstants]  = useState<GearingConstant[]>([]);
+  const [regionId,          setRegionId]          = useState<number | null>(null);
+  const [regionsLoaded,     setRegionsLoaded]     = useState(false);
+  const [loading,           setLoading]           = useState(true);
+  const [error,             setError]             = useState<string | null>(null);
+
+  // ── Load regions + gearing constants once ────────────────────────────────────
   useEffect(() => {
     Promise.all([
       refDataApi.regions().catch(() => [] as Region[]),
-      projectsApi.list({ is_active: 'true', limit: 500 }).catch(() => [] as Project[]),
       gearingApi.list().catch(() => [] as GearingConstant[]),
-    ]).then(([regionList, projList, gearList]) => {
+    ]).then(([regionList, gearList]) => {
       setRegions(regionList);
-      setProjects(projList);
       setGearingConstants(gearList);
       const apac = regionList.find(r =>
         r.code?.toUpperCase() === 'APAC' || r.name?.toLowerCase().includes('apac')
@@ -107,9 +103,17 @@ export default function Summary() {
     }).finally(() => setRegionsLoaded(true));
   }, []);
 
-  // ── Load people whenever region changes (but only AFTER regions are resolved) ─
+  // ── Load projects when cycle changes ─────────────────────────────────────────
   useEffect(() => {
-    if (!regionsLoaded) return;   // wait for region default to be set
+    projectsApi.list({
+      is_active: 'true', limit: 500,
+      ...(selectedCycleId ? { planning_cycle_id: selectedCycleId } : {}),
+    }).then(setProjects).catch(() => setProjects([]));
+  }, [selectedCycleId]);
+
+  // ── Load people whenever region changes (after regions resolved) ─────────────
+  useEffect(() => {
+    if (!regionsLoaded) return;
 
     let cancelled = false;
     setLoading(true);
@@ -150,9 +154,8 @@ export default function Summary() {
     [byDisc]
   );
 
-  // ── Gearing target ranges per discipline ──────────────────────────────────────
+  // ── Gearing status per discipline ─────────────────────────────────────────────
   const gearingStatus = useMemo(() => {
-    // Build lookup: discipline_name → project_type → { min, max }
     const gcMap: Record<string, Record<string, { min: number; max: number }>> = {};
     for (const g of gearingConstants) {
       if (!gcMap[g.discipline_name]) gcMap[g.discipline_name] = {};
@@ -174,17 +177,81 @@ export default function Summary() {
         }
       }
       const total = derive(byDisc[disc]).total;
-      const minR  = Math.round(minFte);
-      const maxR  = Math.round(maxFte);
+      const lo    = Math.round(Math.min(minFte, maxFte));
+      const hi    = Math.round(Math.max(minFte, maxFte));
       let status: GearingStatus = 'no-data';
       if (hasGearing) {
-        if (total < minR)      status = 'under';
-        else if (total > maxR) status = 'over';
-        else                   status = 'on-target';
+        if (total < lo)      status = 'under';
+        else if (total > hi) status = 'over';
+        else                 status = 'on-target';
       }
-      return { disc, total, status, min: minR, max: maxR, hasGearing };
+      return { disc, total, status, min: lo, max: hi, hasGearing };
     });
   }, [byDisc, projects, gearingConstants]);
+
+  // ── Gearing ratios breakdown (for table below main summary) ──────────────────
+  const gearingBreakdown = useMemo(() => {
+    const gcMap: Record<string, Record<string, { min: number; max: number }>> = {};
+    for (const g of gearingConstants) {
+      if (!gcMap[g.discipline_name]) gcMap[g.discipline_name] = {};
+      gcMap[g.discipline_name][g.project_type] = {
+        min: Number(g.min_divisor),
+        max: Number(g.max_divisor),
+      };
+    }
+
+    // Group projects by type
+    const typeMap: Record<string, Project[]> = {};
+    for (const proj of projects) {
+      const type = proj.type ?? 'Retail';
+      if (!typeMap[type]) typeMap[type] = [];
+      typeMap[type].push(proj);
+    }
+    const projectTypes = Object.keys(typeMap).sort();
+
+    // Per project type × discipline: computed targets
+    interface TypeRow {
+      type: string;
+      projectCount: number;
+      totalWeight: number;
+      byDisc: Record<string, { lo: number; hi: number; minDiv: number; maxDiv: number } | null>;
+    }
+
+    const rows: TypeRow[] = projectTypes.map(ptype => {
+      const projs = typeMap[ptype];
+      const totalWeight = projs.reduce((s, p) => s + Number(p.weight), 0);
+      const byDiscRow: TypeRow['byDisc'] = {};
+      for (const disc of DISCIPLINES as unknown as string[]) {
+        const g = gcMap[disc]?.[ptype];
+        if (!g) { byDiscRow[disc] = null; continue; }
+        let aFte = 0, bFte = 0;
+        for (const proj of projs) {
+          if (g.min > 0) aFte += Number(proj.weight) / g.min;
+          if (g.max > 0) bFte += Number(proj.weight) / g.max;
+        }
+        byDiscRow[disc] = {
+          lo: Math.round(Math.min(aFte, bFte)),
+          hi: Math.round(Math.max(aFte, bFte)),
+          minDiv: g.min,
+          maxDiv: g.max,
+        };
+      }
+      return { type: ptype, projectCount: projs.length, totalWeight, byDisc: byDiscRow };
+    });
+
+    // Column totals (sum of lo and hi across all project types)
+    const colTotals: Record<string, { lo: number; hi: number }> = {};
+    for (const disc of DISCIPLINES as unknown as string[]) {
+      let lo = 0, hi = 0;
+      for (const row of rows) {
+        const cell = row.byDisc[disc];
+        if (cell) { lo += cell.lo; hi += cell.hi; }
+      }
+      colTotals[disc] = { lo, hi };
+    }
+
+    return { rows, colTotals };
+  }, [projects, gearingConstants]);
 
   // ── Styles ───────────────────────────────────────────────────────────────────
   const TH: React.CSSProperties = {
@@ -231,6 +298,12 @@ export default function Summary() {
     ? (regions.find(r => r.id === regionId)?.name ?? 'Filtered')
     : 'All Regions';
 
+  const SEL: React.CSSProperties = {
+    background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827',
+    fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px',
+    cursor: 'pointer', outline: 'none',
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#F8F9FB', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
@@ -245,10 +318,21 @@ export default function Summary() {
           <select
             value={regionId ?? ''}
             onChange={e => setRegionId(e.target.value ? Number(e.target.value) : null)}
-            style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}
+            style={SEL}
           >
             <option value="">All Regions</option>
             {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+          <span style={{ fontSize: 11, color: '#5A657B', fontWeight: 500, marginLeft: 8 }}>Cycle</span>
+          <select
+            value={selectedCycleId ?? ''}
+            onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
+            style={SEL}
+          >
+            <option value="">All Cycles</option>
+            {cycles.filter(c => c.is_active).map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -262,6 +346,7 @@ export default function Summary() {
         }}>
           <div style={{ width: '100%', fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
             Gearing Range Status — Total Proposed vs Target
+            {selectedCycle && <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 8 }}>· {selectedCycle.name}</span>}
           </div>
           {gearingStatus.map(({ disc, total, status, min, max, hasGearing }) => {
             const meta = GEARING_STATUS[status];
@@ -271,12 +356,10 @@ export default function Summary() {
                 padding: '10px 14px', borderRadius: 8, minWidth: 148, flex: '1 1 148px', maxWidth: 200,
                 background: meta.bg, border: `1px solid ${meta.border}`,
               }}>
-                {/* Discipline name */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#1F2937', letterSpacing: '0.03em' }}>{disc}</span>
                 </div>
-                {/* Count + range */}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                   <span style={{ fontSize: 26, fontWeight: 800, color: meta.color, lineHeight: 1 }}>{total}</span>
                   {hasGearing && (
@@ -285,7 +368,6 @@ export default function Summary() {
                     </span>
                   )}
                 </div>
-                {/* Status label */}
                 <span style={{
                   display: 'inline-block', padding: '2px 8px', borderRadius: 10,
                   fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
@@ -317,6 +399,7 @@ export default function Summary() {
 
         {!loading && !error && (
           <>
+            {/* ── People summary table ── */}
             <div style={{ background: '#FFFFFF', borderRadius: 8, border: '1px solid #E5E7EB', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'inline-block', minWidth: '100%' }}>
               <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' as const }}>
                 <colgroup>
@@ -326,7 +409,6 @@ export default function Summary() {
                   <col style={{ width: 90 }} />
                 </colgroup>
 
-                {/* ── Headers ── */}
                 <thead>
                   <tr style={{ background: '#1A1A2E' }}>
                     <th style={{ ...TH, textAlign: 'left', color: 'rgba(255,255,255,0.55)' }}>Role Type / Totals</th>
@@ -343,7 +425,6 @@ export default function Summary() {
                 </thead>
 
                 <tbody>
-                  {/* ── Existing Staff ── */}
                   <tr>
                     <td colSpan={2 + cols.length} style={{ ...ROW_SECTION, padding: '5px 12px', borderBottom: '1px solid #E5E7EB' }}>
                       Existing Staff
@@ -386,14 +467,12 @@ export default function Summary() {
                     {cols.map(c => numCell(c.m.aCon, `acon-${c.label}`))}
                   </tr>
 
-                  {/* % Contingent existing */}
                   <tr style={ROW_SUM}>
                     <td style={{ ...TD_LABEL, ...ROW_SUM, color: '#5A6270', fontStyle: 'italic' }}>% Contingent (existing)</td>
                     <td style={{ ...TD, ...ROW_SUM }} />
                     {cols.map(c => pctCell(derive(c.m).pctConExist, `pce-${c.label}`, ROW_SUM))}
                   </tr>
 
-                  {/* Existing Heads */}
                   <tr style={ROW_SUM}>
                     <td style={{ ...TD_LABEL, ...ROW_SUM, fontWeight: 700, fontSize: 13 }}>Existing Heads</td>
                     <td style={{ ...TD, ...ROW_SUM }} />
@@ -405,7 +484,6 @@ export default function Summary() {
                     })}
                   </tr>
 
-                  {/* ── Pipeline / Requested ── */}
                   <tr>
                     <td colSpan={2 + cols.length} style={{ ...ROW_SECTION, padding: '5px 12px', borderBottom: '1px solid #E5E7EB', borderTop: '2px solid #D0D4DA' }}>
                       Pipeline / Requested
@@ -428,14 +506,12 @@ export default function Summary() {
                     {cols.map(c => numCell(c.m.rCon, `rcon-${c.label}`, { rowStyle: ROW_ALT }))}
                   </tr>
 
-                  {/* % Contingent with requested */}
                   <tr style={ROW_SUM}>
                     <td style={{ ...TD_LABEL, ...ROW_SUM, color: '#5A6270', fontStyle: 'italic' }}>% Contingent (w/ Requested)</td>
                     <td style={{ ...TD, ...ROW_SUM }} />
                     {cols.map(c => pctCell(derive(c.m).pctConTotal, `pct-${c.label}`, ROW_SUM))}
                   </tr>
 
-                  {/* Total Requested */}
                   <tr style={ROW_SUM}>
                     <td style={{ ...TD_LABEL, ...ROW_SUM, fontWeight: 600 }}>Total Requested Heads</td>
                     <td style={{ ...TD, ...ROW_SUM }} />
@@ -447,7 +523,6 @@ export default function Summary() {
                     })}
                   </tr>
 
-                  {/* TOTAL HEADS */}
                   <tr style={ROW_TOTAL}>
                     <td style={{ padding: '9px 12px', fontSize: 12, fontWeight: 700, color: '#FFFFFF', borderRight: '1px solid rgba(255,255,255,0.12)', whiteSpace: 'nowrap' as const }}>
                       TOTAL HEADS
@@ -470,8 +545,152 @@ export default function Summary() {
             </div>
 
             <div style={{ marginTop: 10, fontSize: 11, color: '#9AA0AA' }}>
-              {people.length} people · {regionLabel}
+              {people.length} people · {regionLabel}{selectedCycle ? ` · ${selectedCycle.name}` : ''}
             </div>
+
+            {/* ── Gearing Ratios Breakdown ── */}
+            {gearingBreakdown.rows.length > 0 && (
+              <div style={{ marginTop: 24 }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>Gearing Target Calculation</div>
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                    Head targets derived from project portfolio weights and gearing constants per discipline
+                  </div>
+                </div>
+
+                <div style={{ background: '#FFFFFF', borderRadius: 8, border: '1px solid #E5E7EB', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'inline-block', minWidth: '100%' }}>
+                  <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' as const }}>
+                    <colgroup>
+                      <col style={{ width: 200 }} />
+                      {DISCIPLINES.map(d => <col key={d} style={{ width: 110 }} />)}
+                    </colgroup>
+
+                    <thead>
+                      <tr style={{ background: '#2F3541' }}>
+                        <th style={{ ...TH, textAlign: 'left', fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>
+                          Project Type
+                        </th>
+                        {DISCIPLINES.map((d, i) => (
+                          <th key={d} style={{
+                            ...TH,
+                            borderRight: i === DISCIPLINES.length - 1 ? 'none' : TH.borderRight,
+                          }}>
+                            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: DISC_COLOUR[d].bg, marginRight: 5, verticalAlign: 'middle' }} />
+                            {d}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {gearingBreakdown.rows.map((row, ri) => (
+                        <tr key={row.type} style={ri % 2 === 1 ? ROW_ALT : {}}>
+                          {/* Project type label */}
+                          <td style={{ ...TD_LABEL, verticalAlign: 'top', paddingTop: 8, paddingBottom: 8 }}>
+                            <div style={{ fontWeight: 600, fontSize: 12, color: '#111111' }}>{row.type}</div>
+                            <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>
+                              {row.projectCount} project{row.projectCount !== 1 ? 's' : ''} · weight {row.totalWeight.toFixed(1)}
+                            </div>
+                          </td>
+                          {DISCIPLINES.map((disc, di) => {
+                            const cell = row.byDisc[disc];
+                            const isLast = di === DISCIPLINES.length - 1;
+                            if (!cell) {
+                              return (
+                                <td key={disc} style={{ ...TD_ZERO, ...(ri % 2 === 1 ? ROW_ALT : {}), borderRight: isLast ? 'none' : undefined, verticalAlign: 'middle' }}>
+                                  —
+                                </td>
+                              );
+                            }
+                            return (
+                              <td key={disc} style={{
+                                ...TD,
+                                ...(ri % 2 === 1 ? ROW_ALT : {}),
+                                borderRight: isLast ? 'none' : undefined,
+                                verticalAlign: 'top', paddingTop: 8, paddingBottom: 8,
+                              }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>
+                                  {cell.lo === cell.hi ? cell.lo : `${cell.lo}–${cell.hi}`}
+                                </div>
+                                <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>
+                                  ÷{cell.minDiv} – ÷{cell.maxDiv}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+
+                      {/* Total target range row */}
+                      <tr style={{ background: '#EEF2F8', borderTop: '2px solid #D0D4DA' }}>
+                        <td style={{ ...TD_LABEL, background: '#EEF2F8', fontWeight: 700, fontSize: 12, color: '#1A1A2E' }}>
+                          Total Target Range
+                        </td>
+                        {DISCIPLINES.map((disc, di) => {
+                          const tot = gearingBreakdown.colTotals[disc];
+                          const isLast = di === DISCIPLINES.length - 1;
+                          if (!tot || (tot.lo === 0 && tot.hi === 0)) {
+                            return <td key={disc} style={{ ...TD_ZERO, background: '#EEF2F8', borderRight: isLast ? 'none' : undefined }}>—</td>;
+                          }
+                          return (
+                            <td key={disc} style={{ ...TD, background: '#EEF2F8', fontWeight: 700, borderRight: isLast ? 'none' : undefined }}>
+                              {tot.lo === tot.hi ? tot.lo : `${tot.lo}–${tot.hi}`}
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Proposed heads row */}
+                      <tr style={{ background: '#F5F7FA' }}>
+                        <td style={{ ...TD_LABEL, background: '#F5F7FA', fontWeight: 600, color: '#374151' }}>
+                          Proposed Heads
+                        </td>
+                        {DISCIPLINES.map((disc, di) => {
+                          const proposed = derive(byDisc[disc]).total;
+                          const isLast = di === DISCIPLINES.length - 1;
+                          return (
+                            <td key={disc} style={{ ...TD, background: '#F5F7FA', fontWeight: 600, borderRight: isLast ? 'none' : undefined }}>
+                              {proposed > 0 ? proposed : <span style={{ color: '#C8C8C8' }}>—</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Status row */}
+                      <tr style={{ background: '#FFFFFF', borderTop: '1px solid #E5E7EB' }}>
+                        <td style={{ ...TD_LABEL, fontWeight: 600, color: '#374151', borderBottom: 'none' }}>
+                          Status
+                        </td>
+                        {DISCIPLINES.map((disc, di) => {
+                          const gs = gearingStatus.find(g => g.disc === disc);
+                          const isLast = di === DISCIPLINES.length - 1;
+                          if (!gs || !gs.hasGearing) {
+                            return (
+                              <td key={disc} style={{ ...TD, borderRight: isLast ? 'none' : undefined, borderBottom: 'none' }}>
+                                <span style={{ fontSize: 10, color: '#9CA3AF' }}>No data</span>
+                              </td>
+                            );
+                          }
+                          const meta = GEARING_STATUS[gs.status];
+                          return (
+                            <td key={disc} style={{ ...TD, borderRight: isLast ? 'none' : undefined, borderBottom: 'none', textAlign: 'center' }}>
+                              <span style={{
+                                display: 'inline-block', padding: '2px 8px', borderRadius: 10,
+                                fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+                                background: meta.bg, color: meta.color,
+                                border: `1px solid ${meta.border}`,
+                              }}>
+                                {meta.label}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
