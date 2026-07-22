@@ -298,7 +298,7 @@ export default function Summary() {
     ? (regions.find(r => r.id === regionId)?.name ?? 'Filtered')
     : 'All Regions';
 
-  const SEL: React.CSSProperties = {
+  const SEL_SM: React.CSSProperties = {
     background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827',
     fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px',
     cursor: 'pointer', outline: 'none',
@@ -307,82 +307,73 @@ export default function Summary() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#F8F9FB', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
-      {/* ── Header ── */}
-      <div style={{ flexShrink: 0, padding: '14px 20px 10px', background: '#FFFFFF', borderBottom: '1px solid #E5E5E5', display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#111111' }}>People Summary</div>
-          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }}>Headcount by discipline and contract type</div>
+      {/* ── Unified metrics banner ── */}
+      <div style={{ flexShrink: 0, background: '#FFFFFF', borderBottom: '3px solid #33A85C', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+
+        {/* Title */}
+        <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, whiteSpace: 'nowrap' }}>People Summary</div>
+          <div style={{ fontSize: 10, color: '#6B7280', marginTop: 3, whiteSpace: 'nowrap' }}>Headcount vs gearing targets</div>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#5A657B', fontWeight: 500 }}>Region</span>
-          <select
-            value={regionId ?? ''}
-            onChange={e => setRegionId(e.target.value ? Number(e.target.value) : null)}
-            style={SEL}
-          >
-            <option value="">All Regions</option>
-            {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-          <span style={{ fontSize: 11, color: '#5A657B', fontWeight: 500, marginLeft: 8 }}>Cycle</span>
-          <select
-            value={selectedCycleId ?? ''}
-            onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
-            style={SEL}
-          >
-            <option value="">All Cycles</option>
-            {cycles.filter(c => c.is_active).map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+
+        {/* Total heads */}
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>
+              {loading ? '—' : derive(totals).total || '—'}
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Total</span>
+          </div>
+          {!loading && <div style={{ fontSize: 10, color: '#8B93A3', marginTop: 2 }}>{people.length} people</div>}
+        </div>
+
+        {/* Per-discipline stats */}
+        {gearingStatus.map(({ disc, total, status, min, max, hasGearing }) => {
+          const meta     = GEARING_STATUS[status];
+          const numColor = loading ? '#C8C8C8' : hasGearing ? meta.color : (DISC_COLOUR[disc]?.bg ?? '#5A657B');
+          return (
+            <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                <span style={{ fontSize: 18, fontWeight: 700, color: numColor, lineHeight: 1 }}>
+                  {loading ? '—' : (total || '—')}
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{disc}</span>
+              </div>
+              {!loading && hasGearing && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, color: '#8B93A3' }}>{min}–{max}</span>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, padding: '0 5px', borderRadius: 6,
+                    background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`,
+                    letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                  }}>{meta.label}</span>
+                </div>
+              )}
+              {!loading && !hasGearing && (
+                <div style={{ fontSize: 10, color: '#C8C8C8', marginTop: 2 }}>no gearing</div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Selectors pushed to right */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
+            <select value={regionId ?? ''} onChange={e => setRegionId(e.target.value ? Number(e.target.value) : null)} style={{ ...SEL_SM, width: 90 }}>
+              <option value="">All</option>
+              {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
+            <select value={selectedCycleId ?? ''} onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)} style={SEL_SM}>
+              <option value="">All cycles</option>
+              {cycles.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
         </div>
       </div>
-
-      {/* ── Gearing status banner ── */}
-      {!loading && !error && gearingStatus.some(g => g.hasGearing) && (
-        <div style={{
-          flexShrink: 0, display: 'flex', gap: 10, flexWrap: 'wrap',
-          padding: '12px 20px', background: '#F8F9FB',
-          borderBottom: '1px solid #E5E5E5',
-        }}>
-          <div style={{ width: '100%', fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
-            Gearing Range Status — Total Proposed vs Target
-            {selectedCycle && <span style={{ fontWeight: 400, textTransform: 'none', marginLeft: 8 }}>· {selectedCycle.name}</span>}
-          </div>
-          {gearingStatus.map(({ disc, total, status, min, max, hasGearing }) => {
-            const meta = GEARING_STATUS[status];
-            return (
-              <div key={disc} style={{
-                display: 'flex', flexDirection: 'column', gap: 5,
-                padding: '10px 14px', borderRadius: 8, minWidth: 148, flex: '1 1 148px', maxWidth: 200,
-                background: meta.bg, border: `1px solid ${meta.border}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.dot, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#1F2937', letterSpacing: '0.03em' }}>{disc}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                  <span style={{ fontSize: 26, fontWeight: 800, color: meta.color, lineHeight: 1 }}>{total}</span>
-                  {hasGearing && (
-                    <span style={{ fontSize: 10, color: '#6B7280', whiteSpace: 'nowrap' }}>
-                      / {min}–{max}
-                    </span>
-                  )}
-                </div>
-                <span style={{
-                  display: 'inline-block', padding: '2px 8px', borderRadius: 10,
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-                  background: meta.dot, color: '#FFFFFF', alignSelf: 'flex-start',
-                }}>
-                  {meta.label}
-                </span>
-                {hasGearing && (
-                  <div style={{ fontSize: 10, color: '#9CA3AF' }}>Target: {min} – {max} heads</div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* ── Body ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
