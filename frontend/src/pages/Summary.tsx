@@ -189,69 +189,22 @@ export default function Summary() {
     });
   }, [byDisc, projects, gearingConstants]);
 
-  // ── Gearing ratios breakdown (for table below main summary) ──────────────────
-  const gearingBreakdown = useMemo(() => {
-    const gcMap: Record<string, Record<string, { min: number; max: number }>> = {};
+  // ── Gearing ratio constants table (discipline × project type) ────────────────
+  const gearingTable = useMemo(() => {
+    // Project types present in gearing constants (not dependent on current portfolio)
+    const projectTypes = Array.from(new Set(gearingConstants.map(g => g.project_type))).sort();
+
+    // Lookup: discipline → project_type → { minDiv, maxDiv }
+    const lookup: Record<string, Record<string, { minDiv: number; maxDiv: number }>> = {};
     for (const g of gearingConstants) {
-      if (!gcMap[g.discipline_name]) gcMap[g.discipline_name] = {};
-      gcMap[g.discipline_name][g.project_type] = {
-        min: Number(g.min_divisor),
-        max: Number(g.max_divisor),
+      if (!lookup[g.discipline_name]) lookup[g.discipline_name] = {};
+      lookup[g.discipline_name][g.project_type] = {
+        minDiv: Number(g.min_divisor),
+        maxDiv: Number(g.max_divisor),
       };
     }
-
-    // Group projects by type
-    const typeMap: Record<string, Project[]> = {};
-    for (const proj of projects) {
-      const type = proj.type ?? 'Retail';
-      if (!typeMap[type]) typeMap[type] = [];
-      typeMap[type].push(proj);
-    }
-    const projectTypes = Object.keys(typeMap).sort();
-
-    // Per project type × discipline: computed targets
-    interface TypeRow {
-      type: string;
-      projectCount: number;
-      totalWeight: number;
-      byDisc: Record<string, { lo: number; hi: number; minDiv: number; maxDiv: number } | null>;
-    }
-
-    const rows: TypeRow[] = projectTypes.map(ptype => {
-      const projs = typeMap[ptype];
-      const totalWeight = projs.reduce((s, p) => s + Number(p.weight), 0);
-      const byDiscRow: TypeRow['byDisc'] = {};
-      for (const disc of DISCIPLINES as unknown as string[]) {
-        const g = gcMap[disc]?.[ptype];
-        if (!g) { byDiscRow[disc] = null; continue; }
-        let aFte = 0, bFte = 0;
-        for (const proj of projs) {
-          if (g.min > 0) aFte += Number(proj.weight) / g.min;
-          if (g.max > 0) bFte += Number(proj.weight) / g.max;
-        }
-        byDiscRow[disc] = {
-          lo: Math.round(Math.min(aFte, bFte)),
-          hi: Math.round(Math.max(aFte, bFte)),
-          minDiv: g.min,
-          maxDiv: g.max,
-        };
-      }
-      return { type: ptype, projectCount: projs.length, totalWeight, byDisc: byDiscRow };
-    });
-
-    // Column totals (sum of lo and hi across all project types)
-    const colTotals: Record<string, { lo: number; hi: number }> = {};
-    for (const disc of DISCIPLINES as unknown as string[]) {
-      let lo = 0, hi = 0;
-      for (const row of rows) {
-        const cell = row.byDisc[disc];
-        if (cell) { lo += cell.lo; hi += cell.hi; }
-      }
-      colTotals[disc] = { lo, hi };
-    }
-
-    return { rows, colTotals };
-  }, [projects, gearingConstants]);
+    return { projectTypes, lookup };
+  }, [gearingConstants]);
 
   // ── Styles ───────────────────────────────────────────────────────────────────
   const TH: React.CSSProperties = {
@@ -317,7 +270,7 @@ export default function Summary() {
         </div>
 
         {/* Total heads */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0, flex: '1 1 0' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>
               {loading ? '—' : derive(totals).total || '—'}
@@ -332,7 +285,7 @@ export default function Summary() {
           const meta     = GEARING_STATUS[status];
           const numColor = loading ? '#C8C8C8' : hasGearing ? meta.color : (DISC_COLOUR[disc]?.bg ?? '#5A657B');
           return (
-            <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+            <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', borderRight: '1px solid #E0E3E8', minWidth: 0, flex: '1 1 0' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                 <span style={{ fontSize: 18, fontWeight: 700, color: numColor, lineHeight: 1 }}>
                   {loading ? '—' : (total || '—')}
@@ -341,7 +294,9 @@ export default function Summary() {
               </div>
               {!loading && hasGearing && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <span style={{ fontSize: 10, color: '#8B93A3' }}>{min}–{max}</span>
+                  <span style={{ fontSize: 10, color: '#8B93A3' }}>Min {min}</span>
+                  <span style={{ fontSize: 10, color: '#C8C8C8' }}>·</span>
+                  <span style={{ fontSize: 10, color: '#8B93A3' }}>Max {max}</span>
                   <span style={{
                     fontSize: 9, fontWeight: 700, padding: '0 5px', borderRadius: 6,
                     background: meta.bg, color: meta.color, border: `1px solid ${meta.border}`,
@@ -539,144 +494,69 @@ export default function Summary() {
               {people.length} people · {regionLabel}{selectedCycle ? ` · ${selectedCycle.name}` : ''}
             </div>
 
-            {/* ── Gearing Ratios Breakdown ── */}
-            {gearingBreakdown.rows.length > 0 && (
+            {/* ── Gearing Ratios Table ── */}
+            {gearingTable.projectTypes.length > 0 && (
               <div style={{ marginTop: 24 }}>
                 <div style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>Gearing Target Calculation</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>Gearing Ratios</div>
                   <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                    Head targets derived from project portfolio weights and gearing constants per discipline
+                    Min and max ratio (1 : N) per discipline and project type
                   </div>
                 </div>
 
                 <div style={{ background: '#FFFFFF', borderRadius: 8, border: '1px solid #E5E7EB', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'inline-block', minWidth: '100%' }}>
                   <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' as const }}>
                     <colgroup>
-                      <col style={{ width: 200 }} />
+                      <col style={{ width: 180 }} />
                       {DISCIPLINES.map(d => <col key={d} style={{ width: 110 }} />)}
                     </colgroup>
 
                     <thead>
                       <tr style={{ background: '#2F3541' }}>
-                        <th style={{ ...TH, textAlign: 'left', fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>
-                          Project Type
-                        </th>
+                        <th style={{ ...TH, textAlign: 'left', color: 'rgba(255,255,255,0.55)' }}>Project Type</th>
                         {DISCIPLINES.map((d, i) => (
-                          <th key={d} style={{
-                            ...TH,
-                            borderRight: i === DISCIPLINES.length - 1 ? 'none' : TH.borderRight,
-                          }}>
+                          <th key={d} style={{ ...TH, borderRight: i === DISCIPLINES.length - 1 ? 'none' : TH.borderRight }}>
                             <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: DISC_COLOUR[d].bg, marginRight: 5, verticalAlign: 'middle' }} />
                             {d}
                           </th>
                         ))}
                       </tr>
+                      {/* Sub-header: Min / Max labels */}
+                      <tr style={{ background: '#3A3D42', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <td style={{ padding: '4px 12px', fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em' }} />
+                        {DISCIPLINES.map((d, i) => (
+                          <td key={d} style={{
+                            padding: '4px 10px', fontSize: 9, fontWeight: 600, textAlign: 'center',
+                            color: 'rgba(255,255,255,0.45)', letterSpacing: '0.06em',
+                            borderRight: i === DISCIPLINES.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                          }}>
+                            MIN &nbsp;·&nbsp; MAX
+                          </td>
+                        ))}
+                      </tr>
                     </thead>
 
                     <tbody>
-                      {gearingBreakdown.rows.map((row, ri) => (
-                        <tr key={row.type} style={ri % 2 === 1 ? ROW_ALT : {}}>
-                          {/* Project type label */}
-                          <td style={{ ...TD_LABEL, verticalAlign: 'top', paddingTop: 8, paddingBottom: 8 }}>
-                            <div style={{ fontWeight: 600, fontSize: 12, color: '#111111' }}>{row.type}</div>
-                            <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>
-                              {row.projectCount} project{row.projectCount !== 1 ? 's' : ''} · weight {row.totalWeight.toFixed(1)}
-                            </div>
-                          </td>
+                      {gearingTable.projectTypes.map((ptype, ri) => (
+                        <tr key={ptype} style={ri % 2 === 1 ? ROW_ALT : {}}>
+                          <td style={{ ...TD_LABEL, ...(ri % 2 === 1 ? ROW_ALT : {}), fontWeight: 600 }}>{ptype}</td>
                           {DISCIPLINES.map((disc, di) => {
-                            const cell = row.byDisc[disc];
+                            const entry  = gearingTable.lookup[disc]?.[ptype];
                             const isLast = di === DISCIPLINES.length - 1;
-                            if (!cell) {
-                              return (
-                                <td key={disc} style={{ ...TD_ZERO, ...(ri % 2 === 1 ? ROW_ALT : {}), borderRight: isLast ? 'none' : undefined, verticalAlign: 'middle' }}>
-                                  —
-                                </td>
-                              );
+                            const rowBg  = ri % 2 === 1 ? ROW_ALT : {};
+                            if (!entry) {
+                              return <td key={disc} style={{ ...TD_ZERO, ...rowBg, borderRight: isLast ? 'none' : undefined }}>—</td>;
                             }
                             return (
-                              <td key={disc} style={{
-                                ...TD,
-                                ...(ri % 2 === 1 ? ROW_ALT : {}),
-                                borderRight: isLast ? 'none' : undefined,
-                                verticalAlign: 'top', paddingTop: 8, paddingBottom: 8,
-                              }}>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>
-                                  {cell.lo === cell.hi ? cell.lo : `${cell.lo}–${cell.hi}`}
-                                </div>
-                                <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 1 }}>
-                                  ÷{cell.minDiv} – ÷{cell.maxDiv}
-                                </div>
+                              <td key={disc} style={{ ...TD, ...rowBg, borderRight: isLast ? 'none' : undefined, verticalAlign: 'middle' }}>
+                                <span style={{ fontWeight: 700, color: '#111111' }}>1:{entry.minDiv}</span>
+                                <span style={{ color: '#D1D5DB', margin: '0 5px' }}>·</span>
+                                <span style={{ color: '#5A6270' }}>1:{entry.maxDiv}</span>
                               </td>
                             );
                           })}
                         </tr>
                       ))}
-
-                      {/* Total target range row */}
-                      <tr style={{ background: '#EEF2F8', borderTop: '2px solid #D0D4DA' }}>
-                        <td style={{ ...TD_LABEL, background: '#EEF2F8', fontWeight: 700, fontSize: 12, color: '#1A1A2E' }}>
-                          Total Target Range
-                        </td>
-                        {DISCIPLINES.map((disc, di) => {
-                          const tot = gearingBreakdown.colTotals[disc];
-                          const isLast = di === DISCIPLINES.length - 1;
-                          if (!tot || (tot.lo === 0 && tot.hi === 0)) {
-                            return <td key={disc} style={{ ...TD_ZERO, background: '#EEF2F8', borderRight: isLast ? 'none' : undefined }}>—</td>;
-                          }
-                          return (
-                            <td key={disc} style={{ ...TD, background: '#EEF2F8', fontWeight: 700, borderRight: isLast ? 'none' : undefined }}>
-                              {tot.lo === tot.hi ? tot.lo : `${tot.lo}–${tot.hi}`}
-                            </td>
-                          );
-                        })}
-                      </tr>
-
-                      {/* Proposed heads row */}
-                      <tr style={{ background: '#F5F7FA' }}>
-                        <td style={{ ...TD_LABEL, background: '#F5F7FA', fontWeight: 600, color: '#374151' }}>
-                          Proposed Heads
-                        </td>
-                        {DISCIPLINES.map((disc, di) => {
-                          const proposed = derive(byDisc[disc]).total;
-                          const isLast = di === DISCIPLINES.length - 1;
-                          return (
-                            <td key={disc} style={{ ...TD, background: '#F5F7FA', fontWeight: 600, borderRight: isLast ? 'none' : undefined }}>
-                              {proposed > 0 ? proposed : <span style={{ color: '#C8C8C8' }}>—</span>}
-                            </td>
-                          );
-                        })}
-                      </tr>
-
-                      {/* Status row */}
-                      <tr style={{ background: '#FFFFFF', borderTop: '1px solid #E5E7EB' }}>
-                        <td style={{ ...TD_LABEL, fontWeight: 600, color: '#374151', borderBottom: 'none' }}>
-                          Status
-                        </td>
-                        {DISCIPLINES.map((disc, di) => {
-                          const gs = gearingStatus.find(g => g.disc === disc);
-                          const isLast = di === DISCIPLINES.length - 1;
-                          if (!gs || !gs.hasGearing) {
-                            return (
-                              <td key={disc} style={{ ...TD, borderRight: isLast ? 'none' : undefined, borderBottom: 'none' }}>
-                                <span style={{ fontSize: 10, color: '#9CA3AF' }}>No data</span>
-                              </td>
-                            );
-                          }
-                          const meta = GEARING_STATUS[gs.status];
-                          return (
-                            <td key={disc} style={{ ...TD, borderRight: isLast ? 'none' : undefined, borderBottom: 'none', textAlign: 'center' }}>
-                              <span style={{
-                                display: 'inline-block', padding: '2px 8px', borderRadius: 10,
-                                fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
-                                background: meta.bg, color: meta.color,
-                                border: `1px solid ${meta.border}`,
-                              }}>
-                                {meta.label}
-                              </span>
-                            </td>
-                          );
-                        })}
-                      </tr>
                     </tbody>
                   </table>
                 </div>
