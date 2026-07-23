@@ -500,7 +500,7 @@ export default function Summary() {
                 <div style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>Gearing Ratios</div>
                   <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                    Min and max ratio (1 : N) per discipline and project type
+                    Min and max gearing divisor per discipline and project type
                   </div>
                 </div>
 
@@ -549,9 +549,9 @@ export default function Summary() {
                             }
                             return (
                               <td key={disc} style={{ ...TD, ...rowBg, borderRight: isLast ? 'none' : undefined, verticalAlign: 'middle' }}>
-                                <span style={{ fontWeight: 700, color: '#111111' }}>1:{entry.minDiv}</span>
+                                <span style={{ fontWeight: 700, color: '#111111' }}>{entry.minDiv}</span>
                                 <span style={{ color: '#D1D5DB', margin: '0 5px' }}>·</span>
-                                <span style={{ color: '#5A6270' }}>1:{entry.maxDiv}</span>
+                                <span style={{ color: '#5A6270' }}>{entry.maxDiv}</span>
                               </td>
                             );
                           })}
