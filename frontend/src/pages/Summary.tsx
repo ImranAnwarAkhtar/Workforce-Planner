@@ -500,7 +500,7 @@ export default function Summary() {
                 <div style={{ marginBottom: 10 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#111111' }}>Gearing Ratios</div>
                   <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
-                    Min and max gearing divisor per discipline and project type
+                    Required headcount = Total weighted project count ÷ Gearing Ratio
                   </div>
                 </div>
 
@@ -521,19 +521,6 @@ export default function Summary() {
                           </th>
                         ))}
                       </tr>
-                      {/* Sub-header: Min / Max labels */}
-                      <tr style={{ background: '#3A3D42', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                        <td style={{ padding: '4px 12px', fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em' }} />
-                        {DISCIPLINES.map((d, i) => (
-                          <td key={d} style={{
-                            padding: '4px 10px', fontSize: 9, fontWeight: 600, textAlign: 'center',
-                            color: 'rgba(255,255,255,0.45)', letterSpacing: '0.06em',
-                            borderRight: i === DISCIPLINES.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                          }}>
-                            MIN &nbsp;·&nbsp; MAX
-                          </td>
-                        ))}
-                      </tr>
                     </thead>
 
                     <tbody>
@@ -548,10 +535,8 @@ export default function Summary() {
                               return <td key={disc} style={{ ...TD_ZERO, ...rowBg, borderRight: isLast ? 'none' : undefined }}>—</td>;
                             }
                             return (
-                              <td key={disc} style={{ ...TD, ...rowBg, borderRight: isLast ? 'none' : undefined, verticalAlign: 'middle' }}>
-                                <span style={{ fontWeight: 700, color: '#111111' }}>{entry.minDiv}</span>
-                                <span style={{ color: '#D1D5DB', margin: '0 5px' }}>·</span>
-                                <span style={{ color: '#5A6270' }}>{entry.maxDiv}</span>
+                              <td key={disc} style={{ ...TD, ...rowBg, borderRight: isLast ? 'none' : undefined, fontWeight: 700, fontSize: 14 }}>
+                                {entry.minDiv}
                               </td>
                             );
                           })}
