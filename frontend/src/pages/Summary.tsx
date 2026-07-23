@@ -276,7 +276,7 @@ export default function Summary() {
         </div>
 
         {/* Total heads */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0, flex: '1 1 0' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0, flex: '1 1 auto' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>
               {loading ? '—' : derive(totals).total || '—'}
@@ -291,7 +291,7 @@ export default function Summary() {
           const meta     = GEARING_STATUS[status];
           const numColor = loading ? '#C8C8C8' : hasGearing ? meta.color : (DISC_COLOUR[disc]?.bg ?? '#5A657B');
           return (
-            <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', borderRight: '1px solid #E0E3E8', minWidth: 0, flex: '1 1 0' }}>
+            <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0, flex: '1 1 auto' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                 <span style={{ fontSize: 18, fontWeight: 700, color: numColor, lineHeight: 1 }}>
                   {loading ? '—' : (total || '—')}
