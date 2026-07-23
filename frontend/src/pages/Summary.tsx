@@ -192,7 +192,13 @@ export default function Summary() {
   // ── Gearing ratio constants table (discipline × project type) ────────────────
   const gearingTable = useMemo(() => {
     // Project types present in gearing constants (not dependent on current portfolio)
-    const projectTypes = Array.from(new Set(gearingConstants.map(g => g.project_type))).sort();
+    const TYPE_ORDER: Record<string, number> = { Retail: 0, xScale: 1 };
+    const projectTypes = Array.from(new Set(gearingConstants.map(g => g.project_type)))
+      .sort((a, b) => {
+        const oa = TYPE_ORDER[a] ?? 99;
+        const ob = TYPE_ORDER[b] ?? 99;
+        return oa !== ob ? oa - ob : a.localeCompare(b);
+      });
 
     // Lookup: discipline → project_type → { minDiv, maxDiv }
     const lookup: Record<string, Record<string, { minDiv: number; maxDiv: number }>> = {};
