@@ -276,8 +276,7 @@ useEffect(() => {
   // ── Collapse toggles ──────────────────────────────────────────────────────
   const allDeptsCollapsed = displayedHierarchy.length > 0 &&
     displayedHierarchy.every(h => collapsedDisciplines.has(h.discipline));
-  const allCountriesCollapsed = countryGroups.length > 0 &&
-    collapsedCountries.size >= countryGroups.length;
+
 
   function toggleDisc(d: string) {
     setCollapsedDisciplines(prev => { const n = new Set(prev); n.has(d) ? n.delete(d) : n.add(d); return n; });
@@ -434,76 +433,119 @@ useEffect(() => {
     <div style={{ color: '#111111', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Banner ── */}
-      <div style={{ flexShrink: 0, background: '#FFFFFF', borderBottom: '3px solid #086AE3', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
-        {/* Title */}
-        <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, whiteSpace: 'nowrap' }}>Resources</div>
-        </div>
-        {!loading && (
-          <>
-            {/* People allocated */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{allocatedPeople.length}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>People</span>
-              </div>
-              {compCycleId && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <span style={{ fontSize: 10, color: '#8B93A3' }}>{compAllocatedPersonIds.size}</span>
-                  <DeltaBadge a={compAllocatedPersonIds.size} b={allocatedPeople.length} />
+      <div style={{ flexShrink: 0, background: '#FFFFFF', borderBottom: '3px solid #086AE3' }}>
+
+        {/* ── Row 1: title · core metrics · selectors ── */}
+        <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', borderBottom: '1px solid #E0E3E8' }}>
+          {/* Title */}
+          <div style={{ padding: '9px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', lineHeight: 1, whiteSpace: 'nowrap' }}>Resources</div>
+          </div>
+          {!loading && (
+            <>
+              {/* People allocated */}
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{allocatedPeople.length}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>People</span>
                 </div>
-              )}
-            </div>
-            {/* Available FTE */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Available FTE</span>
-              </div>
-            </div>
-            {/* Allocated FTE */}
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: '#33A85C', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Allocated FTE</span>
-              </div>
-              {compCycleId && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <span style={{ fontSize: 10, color: '#8B93A3' }}>{compBannerMetrics.totalAllocated.toFixed(1)}</span>
-                  <DeltaBadge a={compBannerMetrics.totalAllocated} b={bannerMetrics.totalAllocated} isFloat />
-                </div>
-              )}
-            </div>
-            {/* Utilisation */}
-            {bannerMetrics.totalAvailable > 0 && (() => {
-              const u  = bannerMetrics.totalAllocated  / bannerMetrics.totalAvailable;
-              const cu = compBannerMetrics.totalAllocated / bannerMetrics.totalAvailable;
-              const c  = u > 1.05 ? '#E91C24' : u >= 0.85 ? '#33A85C' : '#FDB90D';
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, color: c, lineHeight: 1 }}>{Math.round(u * 100)}%</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Utilisation</span>
+                {compCycleId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <span style={{ fontSize: 10, color: '#8B93A3' }}>{compAllocatedPersonIds.size}</span>
+                    <DeltaBadge a={compAllocatedPersonIds.size} b={allocatedPeople.length} />
                   </div>
-                  {compCycleId && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                      <span style={{ fontSize: 10, color: '#8B93A3' }}>{Math.round(cu * 100)}%</span>
-                      <DeltaBadge a={Math.round(cu * 100)} b={Math.round(u * 100)} />
-                    </div>
-                  )}
+                )}
+              </div>
+              {/* Available FTE */}
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{bannerMetrics.totalAvailable.toFixed(1)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Available FTE</span>
                 </div>
-              );
-            })()}
-            {/* Per discipline */}
+              </div>
+              {/* Allocated FTE */}
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#33A85C', lineHeight: 1 }}>{bannerMetrics.totalAllocated.toFixed(1)}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Allocated FTE</span>
+                </div>
+                {compCycleId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <span style={{ fontSize: 10, color: '#8B93A3' }}>{compBannerMetrics.totalAllocated.toFixed(1)}</span>
+                    <DeltaBadge a={compBannerMetrics.totalAllocated} b={bannerMetrics.totalAllocated} isFloat />
+                  </div>
+                )}
+              </div>
+              {/* Utilisation */}
+              {bannerMetrics.totalAvailable > 0 && (() => {
+                const u  = bannerMetrics.totalAllocated  / bannerMetrics.totalAvailable;
+                const cu = compBannerMetrics.totalAllocated / bannerMetrics.totalAvailable;
+                const c  = u > 1.05 ? '#E91C24' : u >= 0.85 ? '#33A85C' : '#FDB90D';
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: c, lineHeight: 1 }}>{Math.round(u * 100)}%</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Utilisation</span>
+                    </div>
+                    {compCycleId && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <span style={{ fontSize: 10, color: '#8B93A3' }}>{Math.round(cu * 100)}%</span>
+                        <DeltaBadge a={Math.round(cu * 100)} b={Math.round(u * 100)} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
+          )}
+          {/* Region + Cycle + vs selectors */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
+              <select value={selectedRegionId ?? ''} onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
+                style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}>
+                <option value="">All</option>
+                {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
+              </select>
+            </div>
+            <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
+              <select value={selectedCycleId ?? ''} onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
+                style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}>
+                <option value="">All Cycles</option>
+                {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>vs</span>
+              <select value={compCycleId ?? ''} onChange={e => setCompCycleId(e.target.value ? Number(e.target.value) : null)}
+                style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}>
+                <option value="">None</option>
+                {cycles.filter(c => c.is_active && c.id !== selectedCycleId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Row 2: per-discipline metrics ── */}
+        {!loading && DISCIPLINES.some(disc => {
+          const curr = bannerMetrics.byDisc.find(d => d.discipline === disc)?.allocated ?? 0;
+          const comp = compBannerMetrics.byDisc.find(d => d.discipline === disc)?.allocated ?? 0;
+          return curr > 0 || (!!compCycleId && comp > 0);
+        }) && (
+          <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', background: '#FAFBFC' }}>
+            <div style={{ padding: '5px 16px', borderRight: '1px solid #E0E3E8', flexShrink: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>By Discipline</div>
+            </div>
             {DISCIPLINES.map(disc => {
               const curr = bannerMetrics.byDisc.find(d => d.discipline === disc)?.allocated ?? 0;
               const comp = compBannerMetrics.byDisc.find(d => d.discipline === disc)?.allocated ?? 0;
               if (curr === 0 && (!compCycleId || comp === 0)) return null;
               const dc = DISCIPLINE_COLOURS[disc] ?? DISCIPLINE_COLOURS['Other'];
               return (
-                <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
+                <div key={disc} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '5px 13px', borderRight: '1px solid #E0E3E8', minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, color: dc.bg, lineHeight: 1 }}>{curr.toFixed(1)}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: dc.bg, lineHeight: 1 }}>{curr.toFixed(1)}</span>
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{disc}</span>
                   </div>
                   {compCycleId && (
@@ -515,35 +557,8 @@ useEffect(() => {
                 </div>
               );
             })}
-          </>
+          </div>
         )}
-        {/* Region + Cycle + vs selectors */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Region</span>
-            <select value={selectedRegionId ?? ''} onChange={e => setSelectedRegionId(e.target.value ? Number(e.target.value) : null)}
-              style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none', width: 90 }}>
-              <option value="">All</option>
-              {regions.map(r => <option key={r.id} value={r.id}>{r.code}</option>)}
-            </select>
-          </div>
-          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>Cycle</span>
-            <select value={selectedCycleId ?? ''} onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
-              style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}>
-              <option value="">All Cycles</option>
-              {cycles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div style={{ padding: '0 10px', borderLeft: '1px solid #E0E3E8', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#5A657B', textTransform: 'uppercase' as const, letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>vs</span>
-            <select value={compCycleId ?? ''} onChange={e => setCompCycleId(e.target.value ? Number(e.target.value) : null)}
-              style={{ background: '#F2F3F5', border: '1px solid #E0E3E8', color: '#111827', fontSize: 12, fontWeight: 500, borderRadius: 4, padding: '3px 6px', cursor: 'pointer', outline: 'none' }}>
-              <option value="">None</option>
-              {cycles.filter(c => c.is_active && c.id !== selectedCycleId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        </div>
       </div>
 
       {/* ── Filter / action row ── */}
