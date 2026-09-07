@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { refDataApi, planningCyclesApi, cycleApproversApi, type Discipline, type Level, type ContractType, type Region, type PlanningCycle, type CycleApprover } from '../services/api';
+import { refDataApi, planningCyclesApi, cycleApproversApi, gearingApi, type Discipline, type Level, type ContractType, type Region, type PlanningCycle, type CycleApprover, type GearingConstant } from '../services/api';
 import { usePlanningCycle } from '../context/PlanningCycleContext';
 import axios from 'axios';
 
@@ -22,7 +22,6 @@ function errMsg(e: unknown): string {
   return (e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Operation failed';
 }
 
-interface ChangeRule { id: number; change_type: string; auto_approve: boolean }
 interface User { id: number; name: string; email: string; role: string; is_active: boolean }
 
 // ---------------------------------------------------------------------------
@@ -644,67 +643,6 @@ function UsersTab() {
   );
 }
 
-function ChangeRulesTab() {
-  const [rules, setRules] = useState<ChangeRule[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<number | null>(null);
-
-  useEffect(() => {
-    rawClient.get<{ data: ChangeRule[] }>('/admin/change-request-rules')
-      .then(r => setRules(r.data.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function toggle(rule: ChangeRule) {
-    setSaving(rule.id);
-    try {
-      await rawClient.put(`/admin/change-request-rules/${rule.id}`, { auto_approve: !rule.auto_approve });
-      setRules(prev => prev.map(r => r.id === rule.id ? { ...r, auto_approve: !r.auto_approve } : r));
-    } catch {
-      // 403 if not PMO — silently fail
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  return (
-    <div>
-      <p style={{ fontSize: 13, color: '#666', marginBottom: 14 }}>
-        Toggle auto-approve for each change request type. Auto-approved requests skip the manual PMO review step. Requires PMO role.
-      </p>
-      <div style={card}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr><th style={th}>Change Type</th><th style={th}>Auto-Approve</th></tr></thead>
-          <tbody>
-            {loading ? <LoadingRows cols={2} /> : rules.length === 0 ? (
-              <tr><td colSpan={2} style={{ ...td, textAlign: 'center', color: '#555' }}>No rules configured</td></tr>
-            ) : rules.map(r => (
-              <tr key={r.id}>
-                <td style={{ ...td, color: '#111111', fontWeight: 500 }}>{r.change_type}</td>
-                <td style={td}>
-                  <button
-                    onClick={() => toggle(r)}
-                    disabled={saving === r.id}
-                    style={{
-                      padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-                      cursor: saving === r.id ? 'wait' : 'pointer', border: 'none',
-                      background: r.auto_approve ? '#E8F5EE' : '#FEF0F0',
-                      color: r.auto_approve ? '#33A85C' : '#AD050C',
-                      outline: `1px solid ${r.auto_approve ? '#A8D8BF' : '#F5C0BB'}`,
-                    }}
-                  >
-                    {saving === r.id ? '…' : r.auto_approve ? 'ON' : 'OFF'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Planning Cycles tab
@@ -1013,10 +951,115 @@ function PlanningCyclesTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Gearing Ratios tab
+// ---------------------------------------------------------------------------
+
+function GearingRatiosTab() {
+  const [data, setData]           = useState<GearingConstant[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm]   = useState({ min_divisor: '', max_divisor: '' });
+  const [saving, setSaving]       = useState(false);
+
+  function load() {
+    setLoading(true);
+    gearingApi.list().then(setData).catch(() => {}).finally(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleUpdate(id: number) {
+    const minVal = parseFloat(editForm.min_divisor);
+    const maxVal = parseFloat(editForm.max_divisor);
+    if (isNaN(minVal) || isNaN(maxVal) || minVal <= 0 || maxVal <= 0) {
+      toast.error('Min and Max divisors must be positive numbers'); return;
+    }
+    setSaving(true);
+    try {
+      await rawClient.put(`/gearing/${id}`, { min_divisor: minVal, max_divisor: maxVal });
+      load(); setEditingId(null);
+    } catch (e: unknown) { toast.error(errMsg(e)); } finally { setSaving(false); }
+  }
+
+  const saveBtn: React.CSSProperties = { padding: '5px 12px', background: tk.accent, color: '#FFF', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: '#666', marginBottom: 14 }}>
+        Gearing constants control the min/max headcount ratios per discipline and project type. The divisor is the number of staff one lead can oversee (e.g. 4 = 1:4 ratio).
+      </p>
+      <div style={card}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={th}>Discipline</th>
+              <th style={th}>Project Type</th>
+              <th style={{ ...th, width: 130 }}>Min Divisor</th>
+              <th style={{ ...th, width: 130 }}>Max Divisor</th>
+              <th style={{ ...th, width: 160 }}>Last Updated By</th>
+              <th style={{ ...th, width: 100 }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? <LoadingRows cols={6} /> : data.length === 0 ? (
+              <tr><td colSpan={6} style={{ ...td, textAlign: 'center', color: '#555' }}>No gearing constants configured</td></tr>
+            ) : data.map(g => {
+              if (editingId === g.id) return (
+                <tr key={g.id} style={{ background: '#FAFAFA' }}>
+                  <td style={{ ...td, color: '#111', fontWeight: 500 }}>{g.discipline_name}</td>
+                  <td style={td}>{g.project_type}</td>
+                  <td style={td}>
+                    <input type="number" step="0.1" min="0.1"
+                      value={editForm.min_divisor}
+                      onChange={e => setEditForm(f => ({ ...f, min_divisor: e.target.value }))}
+                      style={{ ...inp, width: 90 }} />
+                  </td>
+                  <td style={td}>
+                    <input type="number" step="0.1" min="0.1"
+                      value={editForm.max_divisor}
+                      onChange={e => setEditForm(f => ({ ...f, max_divisor: e.target.value }))}
+                      style={{ ...inp, width: 90 }} />
+                  </td>
+                  <td style={td} />
+                  <td style={td}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => handleUpdate(g.id)} disabled={saving} style={saveBtn}>{saving ? '…' : 'Save'}</button>
+                      <button onClick={() => setEditingId(null)} style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+              const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+              return (
+                <tr key={g.id}>
+                  <td style={{ ...td, color: '#111', fontWeight: 500 }}>{g.discipline_name}</td>
+                  <td style={td}>{g.project_type}</td>
+                  <td style={td}>{g.min_divisor}</td>
+                  <td style={td}>{g.max_divisor}</td>
+                  <td style={{ ...td, fontSize: 12, color: '#888' }}>
+                    {g.updated_by_name
+                      ? `${g.updated_by_name} · ${fmtDate(g.updated_at)}`
+                      : fmtDate(g.updated_at)}
+                  </td>
+                  <td style={td}>
+                    <button
+                      onClick={() => { setEditingId(g.id); setEditForm({ min_divisor: String(g.min_divisor), max_divisor: String(g.max_divisor) }); }}
+                      style={{ ...btnSecondary, padding: '5px 10px', fontSize: 12 }}>Edit</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Admin page
 // ---------------------------------------------------------------------------
 
-const TABS = ['Planning Cycles', 'Disciplines', 'Levels', 'Contract Types', 'Regions', 'Users', 'Change Rules'] as const;
+const TABS = ['Planning Cycles', 'Disciplines', 'Levels', 'Contract Types', 'Regions', 'Users', 'Gearing Ratios'] as const;
 type Tab = typeof TABS[number];
 
 export default function Admin() {
@@ -1048,7 +1091,7 @@ export default function Admin() {
       {activeTab === 'Contract Types' && <ContractTypesTab />}
       {activeTab === 'Regions'        && <RegionsTab />}
       {activeTab === 'Users'          && <UsersTab />}
-      {activeTab === 'Change Rules'   && <ChangeRulesTab />}
+      {activeTab === 'Gearing Ratios' && <GearingRatiosTab />}
     </div>
   );
 }
