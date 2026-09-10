@@ -228,6 +228,7 @@ app.use('/api/smartsheet', wrapAsync(smartsheetRouter));
 app.use(express.static(path.join(__dirname, 'public')));
 const indexHtml = path.join(__dirname, 'public', 'index.html');
 app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) return next();
   require('fs').access(indexHtml, (err) => { err ? next() : res.sendFile(indexHtml); });
 });
 
