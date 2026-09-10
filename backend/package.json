@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "cd ../frontend && npm install && REACT_APP_API_URL=https://workforce-planner-production.up.railway.app npm run build && rm -rf ../backend/public && cp -r build ../backend/public",
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

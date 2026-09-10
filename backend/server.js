@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
+const path    = require('path');
 const helmet  = require('helmet');
 const morgan  = require('morgan');
 const winston = require('winston');
@@ -222,6 +223,13 @@ app.use('/api/comments',        wrapAsync(commentsRouter));
 app.use('/api/imports',         wrapAsync(importsRouter));
 app.use('/api/headcount',       wrapAsync(headcountRouter));
 app.use('/api/smartsheet', wrapAsync(smartsheetRouter));
+
+// Serve React build (production only — public/ is populated by npm run build)
+app.use(express.static(path.join(__dirname, 'public')));
+const indexHtml = path.join(__dirname, 'public', 'index.html');
+app.get('*', (req, res, next) => {
+  require('fs').access(indexHtml, (err) => { err ? next() : res.sendFile(indexHtml); });
+});
 
 app.use(notFound);
 app.use(errorHandler);
