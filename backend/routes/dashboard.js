@@ -146,7 +146,7 @@ function buildSummary(projRow, hcRows) {
 // ---------------------------------------------------------------------------
 
 async function fetchShared() {
-  const [gcRes, hcRes, pdRes, trendRes, tbhRes] = await Promise.all([
+  const [gcRes, hcRes, pdRes, trendRes, tbhRes, regRes] = await Promise.all([
     pool.query(`
       SELECT d.name AS discipline_name, gc.project_type,
              gc.min_divisor::float AS min_divisor,
@@ -191,6 +191,7 @@ async function fetchShared() {
       ORDER BY count DESC
       LIMIT 12
     `),
+    pool.query(`SELECT name FROM regions WHERE name != 'Global' ORDER BY sort_order`),
   ]);
   return {
     gearingConsts:      gcRes.rows,
@@ -198,6 +199,7 @@ async function fetchShared() {
     peopleByDiscRegion: pdRes.rows,
     projectTrend:       trendRes.rows,
     tbhStatus:          tbhRes.rows,
+    allRegionNames:     regRes.rows.map(r => r.name),
   };
 }
 
@@ -320,6 +322,7 @@ router.get('/hub-iq', requireAuth, async (req, res) => {
     available_years: available,
     yearA,
     yearB,
+    region_names:  shared.allRegionNames,
     project_trend: shared.projectTrend,
     tbh_status:    shared.tbhStatus,
     years: {
