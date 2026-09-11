@@ -72,10 +72,13 @@ function buildHeadcountRows(hcRows) {
   .sort((a, b) => a.sort_order - b.sort_order);
 }
 
-function buildGearingRows(projsByRegion, gearingConsts, peopleByDiscRegion) {
+function buildGearingRows(projsByRegion, gearingConsts, peopleByDiscRegion, allRegionNames = []) {
+  const regionNames = allRegionNames.length > 0
+    ? allRegionNames
+    : [...new Set(projsByRegion.map(p => p.region_name))];
+
   return GEARING_DISCIPLINES.map(disc => {
     const consts = gearingConsts.filter(g => g.discipline_name === disc);
-    const regionNames = [...new Set(projsByRegion.map(p => p.region_name))];
 
     const regionRows = regionNames.map(region => {
       let minHC = 0, maxHC = 0;
@@ -90,7 +93,6 @@ function buildGearingRows(projsByRegion, gearingConsts, peopleByDiscRegion) {
       }
       minHC = Math.round(minHC);
       maxHC = Math.round(maxHC);
-      if (minHC === 0 && maxHC === 0) return null;
 
       const optimal  = Math.round((minHC + maxHC) / 2);
       const proposed = peopleByDiscRegion
@@ -100,7 +102,7 @@ function buildGearingRows(projsByRegion, gearingConsts, peopleByDiscRegion) {
       const variance     = proposed - optimal;
       const variance_pct = optimal > 0 ? Math.round((variance / optimal) * 1000) / 10 : 0;
       return { region_name: region, min: minHC, max: maxHC, proposed, optimal, variance, variance_pct };
-    }).filter(Boolean);
+    });
 
     const tot = regionRows.reduce(
       (a, r) => ({ min: a.min + r.min, max: a.max + r.max, proposed: a.proposed + r.proposed }),
@@ -312,7 +314,7 @@ router.get('/hub-iq', requireAuth, async (req, res) => {
       summary:   buildSummary(d.projSum, shared.hcByRegion),
       pipeline:  buildPipelineRows(d.pipelineRows),
       headcount: buildHeadcountRows(shared.hcByRegion),
-      gearing:   buildGearingRows(d.projsByRegion, shared.gearingConsts, shared.peopleByDiscRegion),
+      gearing:   buildGearingRows(d.projsByRegion, shared.gearingConsts, shared.peopleByDiscRegion, shared.allRegionNames),
       requests:  d.requests,
       meta:      d.meta,
     };
