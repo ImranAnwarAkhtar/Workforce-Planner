@@ -379,21 +379,27 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
                   const { x, y, index } = props;
                   const d = trendChartData[index];
                   if (!d?.Proposed) return <g key={`pm-${index}`} />;
-                  return <text key={`pm-${index}`} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Proposed}</text>;
+                  const n = trendChartData.length;
+                  const anchor = index === 0 ? 'start' : index === n - 1 ? 'end' : 'middle';
+                  return <text key={`pm-${index}`} x={x} y={y} textAnchor={anchor} dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Proposed}</text>;
                 }} />
               <Line type="linear" dataKey="_seedMid" stroke="none" dot={false} legendType="none" isAnimationActive={false}
                 label={(props: any) => {
                   const { x, y, index } = props;
                   const d = trendChartData[index];
                   if (!d?.Seeded) return <g key={`sm-${index}`} />;
-                  return <text key={`sm-${index}`} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Seeded}</text>;
+                  const n = trendChartData.length;
+                  const anchor = index === 0 ? 'start' : index === n - 1 ? 'end' : 'middle';
+                  return <text key={`sm-${index}`} x={x} y={y} textAnchor={anchor} dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Seeded}</text>;
                 }} />
               <Line type="linear" dataKey="_apprMid" stroke="none" dot={false} legendType="none" isAnimationActive={false}
                 label={(props: any) => {
                   const { x, y, index } = props;
                   const d = trendChartData[index];
                   if (!d?.Approved) return <g key={`am-${index}`} />;
-                  return <text key={`am-${index}`} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Approved}</text>;
+                  const n = trendChartData.length;
+                  const anchor = index === 0 ? 'start' : index === n - 1 ? 'end' : 'middle';
+                  return <text key={`am-${index}`} x={x} y={y} textAnchor={anchor} dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Approved}</text>;
                 }} />
               {/* Hidden line at _total — total count + YoY variance above stack */}
               <Line type="linear" dataKey="_total" stroke="none" dot={false} legendType="none" isAnimationActive={false}
@@ -402,11 +408,13 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
                   if (value == null) return <g key={`tl-${index}`} />;
                   const prev = trendChartData[index - 1];
                   const variance = prev != null ? value - prev._total : null;
+                  const n = trendChartData.length;
+                  const anchor = index === 0 ? 'start' : index === n - 1 ? 'end' : 'middle';
                   return (
                     <g key={`tl-${index}`}>
-                      <text x={x} y={y - 14} textAnchor="middle" fontSize={18} fontWeight={800} fill="#2F3541">{value}</text>
+                      <text x={x} y={y - 14} textAnchor={anchor} fontSize={18} fontWeight={800} fill="#2F3541">{value}</text>
                       {variance !== null && (
-                        <text x={x} y={y - 34} textAnchor="middle" fontSize={13} fontWeight={700}
+                        <text x={x} y={y - 34} textAnchor={anchor} fontSize={13} fontWeight={700}
                           fill={variance > 0 ? '#33A85C' : variance < 0 ? '#E91C24' : C.muted}>
                           {variance > 0 ? `▲ ${variance}` : variance < 0 ? `▼ ${Math.abs(variance)}` : '● 0'}
                         </text>
