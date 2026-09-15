@@ -799,10 +799,10 @@ function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames, regionCodeMap }
             <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>No data</div>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, hcBarData.length * 38)}>
-              <BarChart data={hcBarData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
+              <BarChart data={hcBarData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 9, fill: C.muted }} />
-                <YAxis type="category" dataKey="region" tick={{ fontSize: 10, fill: '#333' }} width={40} />
+                <YAxis type="category" dataKey="region" tick={{ fontSize: 10, fill: '#333' }} width={46} />
                 <Tooltip contentStyle={{ fontSize: 11 }} />
                 <Bar dataKey="VP/Dir"     stackId="a" fill={C.vpDir}  ><LabelList dataKey="VP/Dir"     position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
                 <Bar dataKey="FTE"        stackId="a" fill={C.fte}    ><LabelList dataKey="FTE"        position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
