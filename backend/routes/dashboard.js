@@ -231,17 +231,19 @@ async function fetchShared() {
       ORDER BY count DESC
       LIMIT 12
     `),
-    pool.query(`SELECT name FROM regions WHERE name != 'Global' ORDER BY sort_order`),
-    pool.query(`SELECT name FROM regions ORDER BY sort_order`),
+    pool.query(`SELECT name, code FROM regions WHERE name != 'Global' ORDER BY sort_order`),
+    pool.query(`SELECT name, code FROM regions ORDER BY sort_order`),
   ]);
+  const codeMap = Object.fromEntries(allRegRes.rows.map(r => [r.name, r.code || r.name]));
   return {
-    gearingConsts:           gcRes.rows,
-    hcByRegion:              hcRes.rows,
-    peopleByDiscRegion:      pdRes.rows,
-    projectTrend:            trendRes.rows,
-    tbhStatus:               tbhRes.rows,
-    allRegionNames:          regRes.rows.map(r => r.name),
+    gearingConsts:            gcRes.rows,
+    hcByRegion:               hcRes.rows,
+    peopleByDiscRegion:       pdRes.rows,
+    projectTrend:             trendRes.rows,
+    tbhStatus:                tbhRes.rows,
+    allRegionNames:           regRes.rows.map(r => r.name),
     allRegionNamesWithGlobal: allRegRes.rows.map(r => r.name),
+    regionCodeMap:            codeMap,
   };
 }
 
@@ -380,6 +382,7 @@ router.get('/hub-iq', requireAuth, async (req, res) => {
     yearB,
     region_names:          shared.allRegionNames,
     all_region_names:      shared.allRegionNamesWithGlobal,
+    region_code_map:       shared.regionCodeMap,
     project_trend: shared.projectTrend,
     tbh_status:    shared.tbhStatus,
     years: {

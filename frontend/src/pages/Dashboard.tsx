@@ -275,11 +275,13 @@ function PipelineLipstickBar(props: any) {
 // PROJECTS TAB
 // ---------------------------------------------------------------------------
 
-function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: {
+function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames, regionCodeMap }: {
   yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData;
   projectTrend: { year: number; status: string; count: number }[];
   regionNames: string[];
+  regionCodeMap: Record<string, string>;
 }) {
+  const rc = (name: string) => regionCodeMap[name] || name;
   const [activeYear, setActiveYear] = useState(yearA);
   const [tableMetric, setTableMetric] = useState<'count' | 'weight'>('count');
   const [pipView, setPipView] = useState<'region' | 'country'>('region');
@@ -324,7 +326,7 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
     const RetailWeight = r ? Number(r.retail.weight.toFixed(2))  : 0;
     const xScaleWeight = r ? Number(r.xscale.weight.toFixed(2))  : 0;
     return {
-      region: regionName,
+      region: rc(regionName),
       RetailCount, xScaleCount, RetailWeight, xScaleWeight,
       _barH: Math.max(RetailCount + xScaleCount, RetailWeight + xScaleWeight),
     };
@@ -336,7 +338,7 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
     const RetailWeight = Number(row.retail.weight.toFixed(2));
     const xScaleWeight = Number(row.xscale.weight.toFixed(2));
     return {
-      region: row.region_name,
+      region: rc(row.region_name),
       RetailCount, xScaleCount, RetailWeight, xScaleWeight,
       _barH: Math.max(RetailCount + xScaleCount, RetailWeight + xScaleWeight),
     };
@@ -695,7 +697,7 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
                   <tr>
                     <th style={{ ...TH, minWidth: 90, textAlign: 'left' }}></th>
                     {displayRegions.map(rn => (
-                      <th key={rn} style={{ ...THR, minWidth: 58 }}>{rn}</th>
+                      <th key={rn} style={{ ...THR, minWidth: 58 }}>{rc(rn)}</th>
                     ))}
                     <th style={{ ...THR, fontWeight: 800, minWidth: 58 }}>Total</th>
                   </tr>
@@ -744,7 +746,8 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
 // PEOPLE TAB
 // ---------------------------------------------------------------------------
 
-function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData; allRegionNames: string[] }) {
+function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames, regionCodeMap }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData; allRegionNames: string[]; regionCodeMap: Record<string, string> }) {
+  const rc = (name: string) => regionCodeMap[name] || name;
   const [activeYear, setActiveYear] = useState(yearA);
   const data = activeYear === yearA ? dataA : dataB;
 
@@ -755,7 +758,7 @@ function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames }: { yearA: numb
   const hcBarData = displayRegions.map(rn => {
     const r = data.headcount.find(h => h.region_name === rn);
     return {
-      region: rn,
+      region: rc(rn),
       'VP/Dir':     r?.exist_vp_dir ?? 0,
       'FTE':        r?.exist_fte    ?? 0,
       'Contingent': r?.exist_con    ?? 0,
@@ -796,10 +799,10 @@ function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames }: { yearA: numb
             <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>No data</div>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, hcBarData.length * 38)}>
-              <BarChart data={hcBarData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 60 }}>
+              <BarChart data={hcBarData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 9, fill: C.muted }} />
-                <YAxis type="category" dataKey="region" tick={{ fontSize: 10, fill: '#333' }} width={58} />
+                <YAxis type="category" dataKey="region" tick={{ fontSize: 10, fill: '#333' }} width={40} />
                 <Tooltip contentStyle={{ fontSize: 11 }} />
                 <Bar dataKey="VP/Dir"     stackId="a" fill={C.vpDir}  ><LabelList dataKey="VP/Dir"     position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
                 <Bar dataKey="FTE"        stackId="a" fill={C.fte}    ><LabelList dataKey="FTE"        position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
@@ -839,7 +842,7 @@ function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames }: { yearA: numb
               <thead>
                 <tr>
                   <th style={{ ...TH, minWidth: 100 }}>Role Type</th>
-                  {displayRegions.map(rn => <th key={rn} style={THR}>{rn.replace('AMER Matrix', 'AMER Mtx')}</th>)}
+                  {displayRegions.map(rn => <th key={rn} style={THR}>{rc(rn)}</th>)}
                   <th style={THR}>Total</th>
                 </tr>
               </thead>
@@ -914,7 +917,8 @@ function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames }: { yearA: numb
 // REQUESTS TAB
 // ---------------------------------------------------------------------------
 
-function RequestsTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData }) {
+function RequestsTab({ yearA, yearB, dataA, dataB, regionCodeMap }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData; regionCodeMap: Record<string, string> }) {
+  const rc = (name: string) => regionCodeMap[name] || name;
   const [activeYear, setActiveYear] = useState(yearA);
   const data = activeYear === yearA ? dataA : dataB;
 
@@ -1058,7 +1062,7 @@ function RequestsTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: num
                   return (
                     <tr key={i} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
                       <td style={{ ...TD, fontSize: 11, color: C.discColors[r.discipline_name] === '#FDB90D' ? '#C59000' : (C.discColors[r.discipline_name] ?? '#333'), fontWeight: 600 }}>{r.discipline_name}</td>
-                      <td style={{ ...TD, fontSize: 11 }}>{r.region_name}</td>
+                      <td style={{ ...TD, fontSize: 11 }}>{rc(r.region_name)}</td>
                       <td style={{ ...TD, fontSize: 11 }}>{r.country_name ?? '—'}</td>
                       <td style={{ ...TD, fontSize: 11 }}>{r.level_code ?? '—'}</td>
                       <td style={{ ...TD, fontSize: 11 }}>
@@ -1129,7 +1133,8 @@ function BulletTooltip({ active, payload, label }: any) {
 // GEARING TAB
 // ---------------------------------------------------------------------------
 
-function GearingTab({ yearA, yearB, dataA, dataB, regionNames }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData; regionNames: string[] }) {
+function GearingTab({ yearA, yearB, dataA, dataB, regionNames, regionCodeMap }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData; regionNames: string[]; regionCodeMap: Record<string, string> }) {
+  const rc = (name: string) => regionCodeMap[name] || name;
   const [activeYear, setActiveYear] = useState(yearA);
   const data = activeYear === yearA ? dataA : dataB;
 
@@ -1190,7 +1195,7 @@ function GearingTab({ yearA, yearB, dataA, dataB, regionNames }: { yearA: number
           const barData = allRegions.map(regionName => {
             const r = disc.regions.find(x => x.region_name === regionName);
             return {
-              region: regionName.replace('AMER Matrix', 'Mtx'),
+              region: rc(regionName),
               Min: r?.min ?? 0, Max: r?.max ?? 0, Proposed: r?.proposed ?? 0,
             };
           });
@@ -1223,7 +1228,7 @@ function GearingTab({ yearA, yearB, dataA, dataB, regionNames }: { yearA: number
                       const isTotal = row._isTotal;
                       return (
                         <tr key={row.region_name} style={{ background: isTotal ? '#F5F5F5' : i % 2 === 0 ? '#FFF' : '#FAFAFA', borderTop: isTotal ? `2px solid ${C.border}` : 'none' }}>
-                          <td style={{ ...TD, fontSize: 11, fontWeight: isTotal ? 700 : 400, color: isTotal ? '#555' : '#333' }}>{row.region_name}</td>
+                          <td style={{ ...TD, fontSize: 11, fontWeight: isTotal ? 700 : 400, color: isTotal ? '#555' : '#333' }}>{rc(row.region_name)}</td>
                           <td style={TDM}>{row.min || '—'}</td>
                           <td style={TDM}>{row.max || '—'}</td>
                           <td style={{ ...TDR, color, fontSize: 11 }}>{row.proposed || '—'}</td>
@@ -1450,10 +1455,10 @@ export default function Dashboard() {
         )}
         {ready && (
           <>
-            {activeTab === 'Projects'    && <ProjectsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} projectTrend={hubData!.project_trend} regionNames={hubData?.region_names ?? []} />}
-            {activeTab === 'People'      && <PeopleTab      yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} allRegionNames={hubData?.all_region_names ?? []} />}
-            {activeTab === 'Requests'    && <RequestsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} />}
-            {activeTab === 'Gearing'     && <GearingTab     yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} regionNames={hubData?.region_names ?? []} />}
+            {activeTab === 'Projects'    && <ProjectsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} projectTrend={hubData!.project_trend} regionNames={hubData?.region_names ?? []} regionCodeMap={hubData?.region_code_map ?? {}} />}
+            {activeTab === 'People'      && <PeopleTab      yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} allRegionNames={hubData?.all_region_names ?? []} regionCodeMap={hubData?.region_code_map ?? {}} />}
+            {activeTab === 'Requests'    && <RequestsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} regionCodeMap={hubData?.region_code_map ?? {}} />}
+            {activeTab === 'Gearing'     && <GearingTab     yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} regionNames={hubData?.region_names ?? []} regionCodeMap={hubData?.region_code_map ?? {}} />}
             {activeTab === 'Hire Status' && <HireStatusTab  tbhStatus={hubData!.tbh_status} />}
           </>
         )}
