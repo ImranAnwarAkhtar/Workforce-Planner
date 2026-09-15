@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import equinixFortressRed from '../assets/equinix-fortress-red.svg';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList,
   ComposedChart, Area, Line,
 } from 'recharts';
 import {
@@ -744,20 +744,26 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
 // PEOPLE TAB
 // ---------------------------------------------------------------------------
 
-function PeopleTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData }) {
+function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData; allRegionNames: string[] }) {
   const [activeYear, setActiveYear] = useState(yearA);
   const data = activeYear === yearA ? dataA : dataB;
 
-  // Stacked horizontal bar data
-  const hcBarData = data.headcount.map(r => ({
-    region: r.region_name,
-    'VP/Dir':  r.exist_vp_dir,
-    'FTE':     r.exist_fte,
-    'Contingent': r.exist_con,
-    'Appr FTE':   r.appr_fte,
-    'Req FTE':    r.req_fte,
-    'Req CON':    r.req_con,
-  }));
+  // Use all regions (incl. Global) as placeholders; regions with no data show zeros
+  const displayRegions = allRegionNames.length > 0 ? allRegionNames : data.headcount.map(r => r.region_name);
+
+  // Stacked horizontal bar data — one entry per region, zeros where no headcount
+  const hcBarData = displayRegions.map(rn => {
+    const r = data.headcount.find(h => h.region_name === rn);
+    return {
+      region: rn,
+      'VP/Dir':     r?.exist_vp_dir ?? 0,
+      'FTE':        r?.exist_fte    ?? 0,
+      'Contingent': r?.exist_con    ?? 0,
+      'Appr FTE':   r?.appr_fte     ?? 0,
+      'Req FTE':    r?.req_fte      ?? 0,
+      'Req CON':    r?.req_con      ?? 0,
+    };
+  });
 
   // Area chart data — same headcount for both years currently (no year tagging yet)
   const areaData = [
@@ -795,12 +801,12 @@ function PeopleTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
                 <XAxis type="number" tick={{ fontSize: 9, fill: C.muted }} />
                 <YAxis type="category" dataKey="region" tick={{ fontSize: 10, fill: '#333' }} width={58} />
                 <Tooltip contentStyle={{ fontSize: 11 }} />
-                <Bar dataKey="VP/Dir"     stackId="a" fill={C.vpDir}   />
-                <Bar dataKey="FTE"        stackId="a" fill={C.fte}     />
-                <Bar dataKey="Contingent" stackId="a" fill={C.con}     />
-                <Bar dataKey="Appr FTE"   stackId="a" fill={C.apprFte} />
-                <Bar dataKey="Req FTE"    stackId="a" fill={C.reqFte}  />
-                <Bar dataKey="Req CON"    stackId="a" fill={C.reqCon}  radius={[0, 2, 2, 0]} />
+                <Bar dataKey="VP/Dir"     stackId="a" fill={C.vpDir}  ><LabelList dataKey="VP/Dir"     position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
+                <Bar dataKey="FTE"        stackId="a" fill={C.fte}    ><LabelList dataKey="FTE"        position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
+                <Bar dataKey="Contingent" stackId="a" fill={C.con}    ><LabelList dataKey="Contingent" position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
+                <Bar dataKey="Appr FTE"   stackId="a" fill={C.apprFte}><LabelList dataKey="Appr FTE"   position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
+                <Bar dataKey="Req FTE"    stackId="a" fill={C.reqFte} ><LabelList dataKey="Req FTE"    position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
+                <Bar dataKey="Req CON"    stackId="a" fill={C.reqCon}  radius={[0, 2, 2, 0]}><LabelList dataKey="Req CON" position="center" style={{ fontSize: 10, fill: '#FFF', fontWeight: 700 }} formatter={(v: any) => v > 0 ? v : ''} /></Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -833,7 +839,7 @@ function PeopleTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
               <thead>
                 <tr>
                   <th style={{ ...TH, minWidth: 100 }}>Role Type</th>
-                  {data.headcount.map(r => <th key={r.region_name} style={THR}>{r.region_name.replace('AMER Matrix', 'AMER Mtx')}</th>)}
+                  {displayRegions.map(rn => <th key={rn} style={THR}>{rn.replace('AMER Matrix', 'AMER Mtx')}</th>)}
                   <th style={THR}>Total</th>
                 </tr>
               </thead>
@@ -858,9 +864,10 @@ function PeopleTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numbe
                         {!isSubtotal && <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, display: 'inline-block', marginRight: 5 }} />}
                         {label}
                       </td>
-                      {data.headcount.map(r => {
-                        const v = (r as any)[key] ?? 0;
-                        return <td key={r.region_name} style={{ ...TDM, fontSize: 11, color: v > 0 ? color : '#DDD', fontWeight: bold ? 700 : 400 }}>{v || '—'}</td>;
+                      {displayRegions.map(rn => {
+                        const r = data.headcount.find(h => h.region_name === rn);
+                        const v = (r as any)?.[key] ?? 0;
+                        return <td key={rn} style={{ ...TDM, fontSize: 11, color: v > 0 ? color : '#DDD', fontWeight: bold ? 700 : 400 }}>{v || '—'}</td>;
                       })}
                       <td style={{ ...TDR, fontSize: 11, color: bold ? '#111' : color, background: isSubtotal ? '#E8EEFB' : 'transparent' }}>{total || '—'}</td>
                     </tr>
@@ -1444,7 +1451,7 @@ export default function Dashboard() {
         {ready && (
           <>
             {activeTab === 'Projects'    && <ProjectsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} projectTrend={hubData!.project_trend} regionNames={hubData?.region_names ?? []} />}
-            {activeTab === 'People'      && <PeopleTab      yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} />}
+            {activeTab === 'People'      && <PeopleTab      yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} allRegionNames={hubData?.all_region_names ?? []} />}
             {activeTab === 'Requests'    && <RequestsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} />}
             {activeTab === 'Gearing'     && <GearingTab     yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} regionNames={hubData?.region_names ?? []} />}
             {activeTab === 'Hire Status' && <HireStatusTab  tbhStatus={hubData!.tbh_status} />}

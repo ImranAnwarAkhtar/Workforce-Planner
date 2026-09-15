@@ -841,11 +841,12 @@ export interface HubIqTrendRow   { year: number; status: string; count: number }
 export interface HubIqTbhStatus  { req_status: string; count: number }
 
 export interface HubIqResponse {
-  available_years: number[];
+  available_years:  number[];
   yearA: number;
   yearB: number;
-  region_names:  string[];
-  project_trend: HubIqTrendRow[];
-  tbh_status:    HubIqTbhStatus[];
+  region_names:     string[];
+  all_region_names: string[];
+  project_trend:    HubIqTrendRow[];
+  tbh_status:       HubIqTbhStatus[];
   years: Record<number, HubIqYearData>;
 }
