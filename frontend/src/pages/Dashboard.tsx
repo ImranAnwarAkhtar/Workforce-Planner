@@ -527,36 +527,50 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
               </tr>
             </thead>
             <tbody>
-              {(tableMetric === 'count' ? [
-                { label: 'Total',    vA: dataA.summary.projects.total,  vB: dataB.summary.projects.total,  color: '#111' },
-                { label: 'Retail',   vA: dataA.summary.projects.retail, vB: dataB.summary.projects.retail, color: C.retail },
-                { label: 'xScale',   vA: dataA.summary.projects.xscale, vB: dataB.summary.projects.xscale, color: C.xscale },
-                { label: 'Approved', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Approved + r.xscale.Approved, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Approved + r.xscale.Approved, 0), color: C.approved },
-                { label: 'Seeded',   vA: dataA.pipeline.reduce((s, r) => s + r.retail.Seeded   + r.xscale.Seeded,   0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Seeded   + r.xscale.Seeded,   0), color: C.seeded },
-                { label: 'Proposed', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Proposed + r.xscale.Proposed, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Proposed + r.xscale.Proposed, 0), color: C.proposed },
-              ] : [
-                { label: 'Total',  vA: dataA.summary.projects.total_weight,  vB: dataB.summary.projects.total_weight,  color: '#111' },
-                { label: 'Retail', vA: dataA.summary.projects.retail_weight, vB: dataB.summary.projects.retail_weight, color: C.retail },
-                { label: 'xScale', vA: dataA.summary.projects.xscale_weight, vB: dataB.summary.projects.xscale_weight, color: C.xscale },
-              ]).map((row, i) => {
+              {(() => {
                 const isWeight = tableMetric === 'weight';
                 const fmt = (v: number) => isWeight ? v.toFixed(1) : String(v);
-                const delta = row.vB - row.vA;
-                const absDelta = isWeight ? Math.abs(delta).toFixed(1) : String(Math.abs(Math.round(delta)));
-                const pct = row.vA > 0 ? Math.round((delta / row.vA) * 100) : delta > 0 ? 100 : 0;
-                const vColor = delta > 0 ? '#33A85C' : delta < 0 ? '#E91C24' : C.muted;
-                const deltaStr = delta > 0 ? `▲ ${absDelta}` : delta < 0 ? `▼ ${absDelta}` : '—';
-                const pctStr   = delta === 0 ? '—' : `${delta > 0 ? '▲' : '▼'} ${Math.abs(pct)}%`;
-                return (
-                  <tr key={row.label} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
-                    <td style={{ padding: '5px 4px', color: row.color, fontWeight: 700 }}>{row.label}</td>
-                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600 }}>{fmt(row.vA)}</td>
-                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600 }}>{fmt(row.vB)}</td>
-                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 700, color: vColor }}>{deltaStr}</td>
-                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 700, color: vColor }}>{pctStr}</td>
-                  </tr>
-                );
-              })}
+
+                type RowDef = { label: string; vA: number; vB: number; color: string; level: 'total' | 'type' | 'status'; borderTop?: boolean };
+
+                const rows: RowDef[] = isWeight ? [
+                  { label: 'Total',  vA: dataA.summary.projects.total_weight,  vB: dataB.summary.projects.total_weight,  color: '#111',    level: 'total' },
+                  { label: 'Retail', vA: dataA.summary.projects.retail_weight, vB: dataB.summary.projects.retail_weight, color: C.retail,  level: 'type', borderTop: true },
+                  { label: 'xScale', vA: dataA.summary.projects.xscale_weight, vB: dataB.summary.projects.xscale_weight, color: C.xscale,  level: 'type', borderTop: true },
+                ] : [
+                  { label: 'Total',    vA: dataA.summary.projects.total,  vB: dataB.summary.projects.total,  color: '#111',    level: 'total' },
+                  { label: 'Retail',   vA: dataA.summary.projects.retail, vB: dataB.summary.projects.retail, color: C.retail,  level: 'type', borderTop: true },
+                  { label: 'Approved', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Approved, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Approved, 0), color: C.approved, level: 'status' },
+                  { label: 'Seeded',   vA: dataA.pipeline.reduce((s, r) => s + r.retail.Seeded,   0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Seeded,   0), color: C.seeded,   level: 'status' },
+                  { label: 'Proposed', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Proposed, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Proposed, 0), color: C.proposed, level: 'status' },
+                  { label: 'xScale',   vA: dataA.summary.projects.xscale, vB: dataB.summary.projects.xscale, color: C.xscale,  level: 'type', borderTop: true },
+                  { label: 'Approved', vA: dataA.pipeline.reduce((s, r) => s + r.xscale.Approved, 0), vB: dataB.pipeline.reduce((s, r) => s + r.xscale.Approved, 0), color: C.approved, level: 'status' },
+                  { label: 'Seeded',   vA: dataA.pipeline.reduce((s, r) => s + r.xscale.Seeded,   0), vB: dataB.pipeline.reduce((s, r) => s + r.xscale.Seeded,   0), color: C.seeded,   level: 'status' },
+                  { label: 'Proposed', vA: dataA.pipeline.reduce((s, r) => s + r.xscale.Proposed, 0), vB: dataB.pipeline.reduce((s, r) => s + r.xscale.Proposed, 0), color: C.proposed, level: 'status' },
+                ];
+
+                return rows.map((row, i) => {
+                  const delta = row.vB - row.vA;
+                  const absDelta = isWeight ? Math.abs(delta).toFixed(1) : String(Math.abs(Math.round(delta)));
+                  const pct = row.vA > 0 ? Math.round((delta / row.vA) * 100) : delta > 0 ? 100 : 0;
+                  const vColor = delta > 0 ? '#33A85C' : delta < 0 ? '#E91C24' : C.muted;
+                  const deltaStr = delta > 0 ? `▲ ${absDelta}` : delta < 0 ? `▼ ${absDelta}` : '—';
+                  const pctStr   = delta === 0 ? '—' : `${delta > 0 ? '▲' : '▼'} ${Math.abs(pct)}%`;
+                  const isStatus = row.level === 'status';
+                  const isTotal  = row.level === 'total';
+                  const bg = isTotal ? '#F5F5F5' : isStatus ? '#FAFAFA' : '#FFF';
+                  const borderTop = row.borderTop ? `1px solid ${C.border}` : undefined;
+                  return (
+                    <tr key={`${row.label}-${i}`} style={{ background: bg, borderTop }}>
+                      <td style={{ padding: isStatus ? '4px 4px 4px 16px' : '5px 4px', color: row.color, fontWeight: isStatus ? 500 : 700, fontSize: isStatus ? 10 : 11 }}>{row.label}</td>
+                      <td style={{ padding: isStatus ? '4px 4px' : '5px 4px', textAlign: 'right', fontWeight: isStatus ? 500 : 700, fontSize: isStatus ? 10 : 11, color: isTotal ? '#111' : undefined }}>{fmt(row.vA)}</td>
+                      <td style={{ padding: isStatus ? '4px 4px' : '5px 4px', textAlign: 'right', fontWeight: isStatus ? 500 : 700, fontSize: isStatus ? 10 : 11, color: isTotal ? '#111' : undefined }}>{fmt(row.vB)}</td>
+                      <td style={{ padding: isStatus ? '4px 4px' : '5px 4px', textAlign: 'right', fontWeight: isStatus ? 600 : 700, fontSize: isStatus ? 10 : 11, color: vColor }}>{deltaStr}</td>
+                      <td style={{ padding: isStatus ? '4px 4px' : '5px 4px', textAlign: 'right', fontWeight: isStatus ? 600 : 700, fontSize: isStatus ? 10 : 11, color: vColor }}>{pctStr}</td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
