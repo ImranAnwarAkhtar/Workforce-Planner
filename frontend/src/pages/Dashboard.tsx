@@ -801,7 +801,7 @@ function PeopleTab({ yearA, yearB, dataA, dataB, allRegionNames, regionCodeMap }
             <ResponsiveContainer width="100%" height={Math.max(160, hcBarData.length * 38)}>
               <BarChart data={hcBarData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 9, fill: C.muted }} />
+                <XAxis type="number" hide />
                 <YAxis type="category" dataKey="region" width={68}
                   tick={(props: any) => {
                     const { x, y, payload } = props;
