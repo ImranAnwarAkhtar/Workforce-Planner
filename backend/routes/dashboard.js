@@ -17,8 +17,8 @@ function buildPipelineRows(projRows) {
       byRegion[row.region_name] = {
         region_name: row.region_name,
         sort_order: Number(row.sort_order),
-        retail: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0 },
-        xscale: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0 },
+        retail: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0, Approved_weight: 0, Seeded_weight: 0, Proposed_weight: 0 },
+        xscale: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0, Approved_weight: 0, Seeded_weight: 0, Proposed_weight: 0 },
         total_weight: 0,
       };
     }
@@ -26,10 +26,16 @@ function buildPipelineRows(projRows) {
     const w = Number(row.total_weight);
     const n = Number(row.proj_count);
     if (row.type === 'xScale') {
-      if (row.status in r.xscale) r.xscale[row.status] += n;
+      if (row.status in r.xscale) {
+        r.xscale[row.status] += n;
+        r.xscale[`${row.status}_weight`] += w;
+      }
       r.xscale.weight += w;
     } else {
-      if (row.status in r.retail) r.retail[row.status] += n;
+      if (row.status in r.retail) {
+        r.retail[row.status] += n;
+        r.retail[`${row.status}_weight`] += w;
+      }
       r.retail.weight += w;
     }
     r.total_weight += w;

@@ -534,9 +534,15 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
                 type RowDef = { label: string; vA: number; vB: number; color: string; level: 'total' | 'type' | 'status'; borderTop?: boolean };
 
                 const rows: RowDef[] = isWeight ? [
-                  { label: 'Total',  vA: dataA.summary.projects.total_weight,  vB: dataB.summary.projects.total_weight,  color: '#111',    level: 'total' },
-                  { label: 'Retail', vA: dataA.summary.projects.retail_weight, vB: dataB.summary.projects.retail_weight, color: C.retail,  level: 'type', borderTop: true },
-                  { label: 'xScale', vA: dataA.summary.projects.xscale_weight, vB: dataB.summary.projects.xscale_weight, color: C.xscale,  level: 'type', borderTop: true },
+                  { label: 'Total',    vA: dataA.summary.projects.total_weight,  vB: dataB.summary.projects.total_weight,  color: '#111',    level: 'total' },
+                  { label: 'Retail',   vA: dataA.summary.projects.retail_weight, vB: dataB.summary.projects.retail_weight, color: C.retail,  level: 'type', borderTop: true },
+                  { label: 'Approved', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Approved_weight, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Approved_weight, 0), color: C.approved, level: 'status' },
+                  { label: 'Seeded',   vA: dataA.pipeline.reduce((s, r) => s + r.retail.Seeded_weight,   0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Seeded_weight,   0), color: C.seeded,   level: 'status' },
+                  { label: 'Proposed', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Proposed_weight, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Proposed_weight, 0), color: C.proposed, level: 'status' },
+                  { label: 'xScale',   vA: dataA.summary.projects.xscale_weight, vB: dataB.summary.projects.xscale_weight, color: C.xscale,  level: 'type', borderTop: true },
+                  { label: 'Approved', vA: dataA.pipeline.reduce((s, r) => s + r.xscale.Approved_weight, 0), vB: dataB.pipeline.reduce((s, r) => s + r.xscale.Approved_weight, 0), color: C.approved, level: 'status' },
+                  { label: 'Seeded',   vA: dataA.pipeline.reduce((s, r) => s + r.xscale.Seeded_weight,   0), vB: dataB.pipeline.reduce((s, r) => s + r.xscale.Seeded_weight,   0), color: C.seeded,   level: 'status' },
+                  { label: 'Proposed', vA: dataA.pipeline.reduce((s, r) => s + r.xscale.Proposed_weight, 0), vB: dataB.pipeline.reduce((s, r) => s + r.xscale.Proposed_weight, 0), color: C.proposed, level: 'status' },
                 ] : [
                   { label: 'Total',    vA: dataA.summary.projects.total,  vB: dataB.summary.projects.total,  color: '#111',    level: 'total' },
                   { label: 'Retail',   vA: dataA.summary.projects.retail, vB: dataB.summary.projects.retail, color: C.retail,  level: 'type', borderTop: true },

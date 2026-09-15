@@ -793,8 +793,8 @@ export interface HubIqSummary   { projects: HubIqProjectSummary; exist_hc: HubIq
 
 export interface HubIqPipelineRow {
   region_name: string; sort_order: number;
-  retail: { Approved: number; Seeded: number; Proposed: number; weight: number };
-  xscale: { Approved: number; Seeded: number; Proposed: number; weight: number };
+  retail: { Approved: number; Seeded: number; Proposed: number; weight: number; Approved_weight: number; Seeded_weight: number; Proposed_weight: number };
+  xscale: { Approved: number; Seeded: number; Proposed: number; weight: number; Approved_weight: number; Seeded_weight: number; Proposed_weight: number };
   total_weight: number;
 }
 
