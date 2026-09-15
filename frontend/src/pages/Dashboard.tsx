@@ -656,41 +656,76 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: 
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr>
-                <th style={{ ...TH, minWidth: 110 }}>Region</th>
-                <th style={{ ...THR, color: C.approved }}>Retail Appr</th>
-                <th style={{ ...THR, color: C.seeded }}>Retail Seed</th>
-                <th style={{ ...THR, color: C.proposed }}>Retail Prop</th>
-                <th style={THR}>Retail Wt</th>
-                <th style={{ ...THR, color: C.approved }}>xScale Appr</th>
-                <th style={{ ...THR, color: C.seeded }}>xScale Seed</th>
-                <th style={{ ...THR, color: C.proposed }}>xScale Prop</th>
-                <th style={THR}>xScale Wt</th>
-                <th style={{ ...THR, fontWeight: 800 }}>Total Wt</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(regionNames.length > 0 ? regionNames : data.pipeline.map(r => r.region_name)).map((regionName, i) => {
-                const row = data.pipeline.find(r => r.region_name === regionName);
-                return (
-                <tr key={regionName} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
-                  <td style={TD}>{regionName}</td>
-                  <td style={{ ...TDM, color: row && row.retail.Approved > 0 ? C.approved : '#DDD' }}>{row?.retail.Approved || '—'}</td>
-                  <td style={{ ...TDM, color: row && row.retail.Seeded   > 0 ? C.seeded   : '#DDD' }}>{row?.retail.Seeded   || '—'}</td>
-                  <td style={{ ...TDM, color: row && row.retail.Proposed > 0 ? C.proposed : '#DDD' }}>{row?.retail.Proposed || '—'}</td>
-                  <td style={TDM}>{row && row.retail.weight > 0 ? row.retail.weight.toFixed(1) : '—'}</td>
-                  <td style={{ ...TDM, color: row && row.xscale.Approved > 0 ? C.approved : '#DDD' }}>{row?.xscale.Approved || '—'}</td>
-                  <td style={{ ...TDM, color: row && row.xscale.Seeded   > 0 ? C.seeded   : '#DDD' }}>{row?.xscale.Seeded   || '—'}</td>
-                  <td style={{ ...TDM, color: row && row.xscale.Proposed > 0 ? C.proposed : '#DDD' }}>{row?.xscale.Proposed || '—'}</td>
-                  <td style={TDM}>{row && row.xscale.weight > 0 ? row.xscale.weight.toFixed(1) : '—'}</td>
-                  <td style={TDR}>{row && row.total_weight > 0 ? row.total_weight.toFixed(1) : '—'}</td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {(() => {
+            const displayRegions = regionNames.length > 0 ? regionNames : data.pipeline.map(r => r.region_name);
+
+            type PipelineRowDef = {
+              label: string;
+              level: 'type' | 'status' | 'total';
+              color: string;
+              getValue: (r: typeof data.pipeline[0] | undefined) => number;
+              borderTop?: boolean;
+            };
+
+            const rowDefs: PipelineRowDef[] = [
+              { label: 'Retail',   level: 'type',   color: C.retail,   getValue: r => r?.retail.weight           ?? 0 },
+              { label: 'Approved', level: 'status', color: C.approved, getValue: r => r?.retail.Approved_weight  ?? 0 },
+              { label: 'Seeded',   level: 'status', color: C.seeded,   getValue: r => r?.retail.Seeded_weight    ?? 0 },
+              { label: 'Proposed', level: 'status', color: C.proposed, getValue: r => r?.retail.Proposed_weight  ?? 0 },
+              { label: 'xScale',   level: 'type',   color: C.xscale,   getValue: r => r?.xscale.weight           ?? 0, borderTop: true },
+              { label: 'Approved', level: 'status', color: C.approved, getValue: r => r?.xscale.Approved_weight  ?? 0 },
+              { label: 'Seeded',   level: 'status', color: C.seeded,   getValue: r => r?.xscale.Seeded_weight    ?? 0 },
+              { label: 'Proposed', level: 'status', color: C.proposed, getValue: r => r?.xscale.Proposed_weight  ?? 0 },
+              { label: 'Total',    level: 'total',  color: '#111',     getValue: r => r?.total_weight            ?? 0, borderTop: true },
+            ];
+
+            const fmtW = (v: number) => v > 0 ? v.toFixed(1) : '—';
+
+            return (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...TH, minWidth: 90, textAlign: 'left' }}></th>
+                    {displayRegions.map(rn => (
+                      <th key={rn} style={{ ...THR, minWidth: 58 }}>{rn}</th>
+                    ))}
+                    <th style={{ ...THR, fontWeight: 800, minWidth: 58 }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rowDefs.map((rowDef, i) => {
+                    const isStatus = rowDef.level === 'status';
+                    const isTotal  = rowDef.level === 'total';
+                    const bg = isTotal ? '#F5F5F5' : isStatus ? '#FAFAFA' : '#FFF';
+                    const rowTotal = data.pipeline.reduce((s, pr) => s + rowDef.getValue(pr), 0);
+                    return (
+                      <tr key={`${rowDef.label}-${i}`} style={{ background: bg, borderTop: rowDef.borderTop ? `1px solid ${C.border}` : undefined }}>
+                        <td style={{
+                          ...TD,
+                          paddingLeft: isStatus ? 20 : 10,
+                          color: rowDef.color,
+                          fontWeight: isStatus ? 500 : 700,
+                          fontSize: isStatus ? 11 : 12,
+                        }}>{rowDef.label}</td>
+                        {displayRegions.map(rn => {
+                          const pr = data.pipeline.find(p => p.region_name === rn);
+                          const val = rowDef.getValue(pr);
+                          return (
+                            <td key={rn} style={{ ...TDM, color: val > 0 ? rowDef.color : '#DDD', fontWeight: isStatus ? 400 : 600, fontSize: isStatus ? 11 : 12 }}>
+                              {fmtW(val)}
+                            </td>
+                          );
+                        })}
+                        <td style={{ ...TDR, color: rowTotal > 0 ? rowDef.color : '#DDD', fontWeight: isTotal ? 800 : isStatus ? 400 : 700, fontSize: isStatus ? 11 : 12 }}>
+                          {fmtW(rowTotal)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       </div>
     </div>
