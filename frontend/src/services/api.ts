@@ -828,9 +828,10 @@ export interface HubIqRequest {
 export interface HubIqMeta { countries_count: number; metros_count: number }
 
 export interface HubIqYearData {
-  summary:   HubIqSummary;
-  pipeline:  HubIqPipelineRow[];
-  headcount: HubIqHeadcountRow[];
+  summary:          HubIqSummary;
+  pipeline:         HubIqPipelineRow[];
+  pipeline_country: HubIqPipelineRow[];
+  headcount:        HubIqHeadcountRow[];
   gearing:   HubIqGearingDisc[];
   requests:  HubIqRequest[];
   meta:      HubIqMeta;
@@ -843,6 +844,7 @@ export interface HubIqResponse {
   available_years: number[];
   yearA: number;
   yearB: number;
+  region_names:  string[];
   project_trend: HubIqTrendRow[];
   tbh_status:    HubIqTbhStatus[];
   years: Record<number, HubIqYearData>;

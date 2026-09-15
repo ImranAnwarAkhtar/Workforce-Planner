@@ -3,7 +3,7 @@ import equinixFortressRed from '../assets/equinix-fortress-red.svg';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  AreaChart, Area,
+  ComposedChart, Area, Line,
 } from 'recharts';
 import {
   dashboardApi,
@@ -201,25 +201,103 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
+// PROJECTS TAB — helpers
+// ---------------------------------------------------------------------------
+
+// Lipstick bar for the pipeline chart.
+// Wide semi-opaque rects = project counts (background).
+// Narrow solid rects     = FTE weight (foreground).
+// Both stacked: Retail (blue) on the bottom, xScale (violet) on top.
+function PipelineLipstickBar(props: any) {
+  const { x, y, width, height, RetailCount, xScaleCount, RetailWeight, xScaleWeight, _barH } = props;
+  const cx      = x + width / 2;
+  const wideW   = Math.max(width * 0.82, 6);
+  const narrowW = Math.max(width * 0.46, 3);
+  const baseline = y + height;
+
+  if (!_barH || height <= 0) {
+    return <rect x={cx - narrowW / 2} y={baseline - 2} width={narrowW} height={2} fill="#E0E3E8" rx={1} />;
+  }
+
+  const ppu  = height / _barH;
+
+  // Count background rectangles
+  const rcH = ppu * RetailCount;
+  const xcH = ppu * xScaleCount;
+  const rcY = baseline - rcH;
+  const xcY = rcY - xcH;
+
+  // Weight foreground rectangles
+  const rwH = ppu * RetailWeight;
+  const xwH = ppu * xScaleWeight;
+  const rwY = baseline - rwH;
+  const xwY = rwY - xwH;
+
+  // Totals for single combined labels
+  const totalWeight    = RetailWeight + xScaleWeight;
+  const totalCount     = RetailCount  + xScaleCount;
+  const totalWeightBarH = rwH + xwH;
+  const totalCountBarH  = rcH + xcH;
+  const weightBarTopY  = xwH > 0.5 ? xwY : rwY;           // top of combined weight bar
+  const countBarTopY   = xcH > 0.5 ? xcY : rcY;           // top of combined count bar
+  const lblX           = cx - wideW / 2 + 6;
+
+  return (
+    <g>
+      {/* Count backgrounds */}
+      {rcH > 0.5 && <rect x={cx - wideW / 2}   y={rcY} width={wideW}   height={rcH} fill={C.retail} fillOpacity={0.20} rx={1} />}
+      {xcH > 0.5 && <rect x={cx - wideW / 2}   y={xcY} width={wideW}   height={xcH} fill={C.xscale} fillOpacity={0.20} rx={1} />}
+      {/* Weight foregrounds */}
+      {rwH > 0.5 && <rect x={cx - narrowW / 2} y={rwY} width={narrowW} height={rwH} fill={C.retail} fillOpacity={1}    rx={1} />}
+      {xwH > 0.5 && <rect x={cx - narrowW / 2} y={xwY} width={narrowW} height={xwH} fill={C.xscale} fillOpacity={1}    rx={1} />}
+
+      {/* Total weight — above the combined narrow bar */}
+      {totalWeight > 0 && (
+        <text x={cx} y={weightBarTopY - 5} textAnchor="middle" dominantBaseline="auto"
+          fontSize={16} fontWeight={700} fill="#2F3541">
+          {totalWeight}
+        </text>
+      )}
+
+      {/* Total count — rotated -90°, top-left of combined wide bar */}
+      {totalCountBarH > 16 && totalCount > 0 && (
+        <text transform={`translate(${lblX}, ${countBarTopY + 4}) rotate(-90)`}
+          textAnchor="end" dominantBaseline="middle"
+          fontSize={14} fontWeight={600} fill={C.muted} fillOpacity={0.85}>
+          {totalCount}
+        </text>
+      )}
+    </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PROJECTS TAB
 // ---------------------------------------------------------------------------
 
-function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend }: {
+function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend, regionNames }: {
   yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData;
   projectTrend: { year: number; status: string; count: number }[];
+  regionNames: string[];
 }) {
   const [activeYear, setActiveYear] = useState(yearA);
+  const [tableMetric, setTableMetric] = useState<'count' | 'weight'>('count');
+  const [pipView, setPipView] = useState<'region' | 'country'>('region');
   const data = activeYear === yearA ? dataA : dataB;
 
-  // Build trend data for area chart
-  const allYears = Array.from(new Set(projectTrend.map(r => r.year))).sort();
-  const trendChartData = allYears.map(y => {
+  // Build trend data — fixed 2026/2027/2028 placeholders always present
+  const TREND_YEARS = [2026, 2027, 2028];
+  const trendChartData = TREND_YEARS.map(y => {
     const rows = projectTrend.filter(r => r.year === y);
+    const Approved = rows.find(r => r.status === 'Approved')?.count ?? 0;
+    const Seeded   = rows.find(r => r.status === 'Seeded')?.count   ?? 0;
+    const Proposed = rows.find(r => r.status === 'Proposed')?.count ?? 0;
+    const total = Approved + Seeded + Proposed;
     return {
-      year: String(y),
-      Approved: rows.find(r => r.status === 'Approved')?.count ?? 0,
-      Seeded:   rows.find(r => r.status === 'Seeded')?.count   ?? 0,
-      Proposed: rows.find(r => r.status === 'Proposed')?.count ?? 0,
+      year: String(y), Approved, Seeded, Proposed, _total: total,
+      _propMid: total > 0 && Proposed > 0 ? Proposed / 2                     : null as number | null,
+      _seedMid: total > 0 && Seeded   > 0 ? Proposed + Seeded / 2            : null as number | null,
+      _apprMid: total > 0 && Approved > 0 ? Proposed + Seeded + Approved / 2 : null as number | null,
     };
   });
 
@@ -229,37 +307,116 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend }: {
     { name: 'xScale',  value: data.summary.projects.xscale_weight  || data.summary.projects.xscale  },
   ].filter(d => d.value > 0);
 
-  // Pipeline bar chart by region (weight)
-  const pipelineBarData = data.pipeline.map(r => ({
-    region: r.region_name.replace(' ', '\n'),
-    Retail:  Number(r.retail.weight.toFixed(1)),
-    xScale:  Number(r.xscale.weight.toFixed(1)),
-  }));
+  const otherYearData = activeYear === yearA ? dataB : dataA;
+  const donutOther = [
+    { name: 'Retail',  value: otherYearData.summary.projects.retail_weight  || otherYearData.summary.projects.retail  },
+    { name: 'xScale',  value: otherYearData.summary.projects.xscale_weight  || otherYearData.summary.projects.xscale  },
+  ];
+
+  // Pipeline lipstick bar data — all non-Global regions as placeholders
+  const allPipelineRegions = regionNames.length > 0
+    ? regionNames
+    : data.pipeline.map(r => r.region_name);
+  const pipelineBarData = allPipelineRegions.map(regionName => {
+    const r = data.pipeline.find(p => p.region_name === regionName);
+    const RetailCount  = r ? r.retail.Approved  + r.retail.Seeded  + r.retail.Proposed  : 0;
+    const xScaleCount  = r ? r.xscale.Approved  + r.xscale.Seeded  + r.xscale.Proposed  : 0;
+    const RetailWeight = r ? Number(r.retail.weight.toFixed(2))  : 0;
+    const xScaleWeight = r ? Number(r.xscale.weight.toFixed(2))  : 0;
+    return {
+      region: regionName,
+      RetailCount, xScaleCount, RetailWeight, xScaleWeight,
+      _barH: Math.max(RetailCount + xScaleCount, RetailWeight + xScaleWeight),
+    };
+  });
+
+  const pipelineCountryBarData = (data.pipeline_country ?? []).map(row => {
+    const RetailCount  = row.retail.Approved + row.retail.Seeded + row.retail.Proposed;
+    const xScaleCount  = row.xscale.Approved + row.xscale.Seeded + row.xscale.Proposed;
+    const RetailWeight = Number(row.retail.weight.toFixed(2));
+    const xScaleWeight = Number(row.xscale.weight.toFixed(2));
+    return {
+      region: row.region_name,
+      RetailCount, xScaleCount, RetailWeight, xScaleWeight,
+      _barH: Math.max(RetailCount + xScaleCount, RetailWeight + xScaleWeight),
+    };
+  });
+
+  const activeBarData = pipView === 'region' ? pipelineBarData : pipelineCountryBarData;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Top row: trend + donut + meta */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 14 }}>
 
         {/* YoY trend */}
         <div style={{ ...cardStyle, padding: '14px 16px' }}>
           <SectionTitle>Project Count YoY by Status</SectionTitle>
-          {trendChartData.length === 0 ? (
-            <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>No multi-year data yet</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={trendChartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" />
-                <XAxis dataKey="year" tick={{ fontSize: 10, fill: C.muted }} />
-                <YAxis tick={{ fontSize: 10, fill: C.muted }} />
-                <Tooltip contentStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="Proposed" stackId="1" stroke={C.proposed} fill={`${C.proposed}30`} strokeWidth={2} />
-                <Area type="monotone" dataKey="Seeded"   stackId="1" stroke={C.seeded}   fill={`${C.seeded}40`}   strokeWidth={2} />
-                <Area type="monotone" dataKey="Approved" stackId="1" stroke={C.approved} fill={`${C.approved}50`} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-          <div style={{ display: 'flex', gap: 14, marginTop: 8, justifyContent: 'center' }}>
+          <ResponsiveContainer width="100%" height={290}>
+            <ComposedChart data={trendChartData} margin={{ top: 58, right: 8, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" />
+              <XAxis dataKey="year" tick={{ fontSize: 10, fill: C.muted }} tickMargin={8} />
+              <YAxis width={0} tick={false} axisLine={false} tickLine={false} />
+              <Tooltip content={({ active, payload, label: lbl }) => {
+                if (!active || !payload?.length) return null;
+                const vis = (payload as any[]).filter(p => ['Approved','Seeded','Proposed'].includes(p.name));
+                if (!vis.length) return null;
+                return (
+                  <div style={{ background: '#FFF', border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 10px', fontSize: 11 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{lbl}</div>
+                    {vis.map((p: any) => (
+                      <div key={p.name} style={{ color: p.fill }}>{p.name}: <b>{p.value}</b></div>
+                    ))}
+                  </div>
+                );
+              }} />
+              <Area type="linear" dataKey="Proposed" stackId="1" stroke={C.proposed} fill={C.proposed} fillOpacity={1} strokeWidth={2} legendType="none" />
+              <Area type="linear" dataKey="Seeded"   stackId="1" stroke={C.seeded}   fill={C.seeded}   fillOpacity={1} strokeWidth={2} legendType="none" />
+              <Area type="linear" dataKey="Approved" stackId="1" stroke={C.approved} fill={C.approved} fillOpacity={1} strokeWidth={2} legendType="none" />
+              {/* Hidden label-only lines at section midpoints */}
+              <Line type="linear" dataKey="_propMid" stroke="none" dot={false} legendType="none" isAnimationActive={false}
+                label={(props: any) => {
+                  const { x, y, index } = props;
+                  const d = trendChartData[index];
+                  if (!d?.Proposed) return <g key={`pm-${index}`} />;
+                  return <text key={`pm-${index}`} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Proposed}</text>;
+                }} />
+              <Line type="linear" dataKey="_seedMid" stroke="none" dot={false} legendType="none" isAnimationActive={false}
+                label={(props: any) => {
+                  const { x, y, index } = props;
+                  const d = trendChartData[index];
+                  if (!d?.Seeded) return <g key={`sm-${index}`} />;
+                  return <text key={`sm-${index}`} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Seeded}</text>;
+                }} />
+              <Line type="linear" dataKey="_apprMid" stroke="none" dot={false} legendType="none" isAnimationActive={false}
+                label={(props: any) => {
+                  const { x, y, index } = props;
+                  const d = trendChartData[index];
+                  if (!d?.Approved) return <g key={`am-${index}`} />;
+                  return <text key={`am-${index}`} x={x} y={y} textAnchor="middle" dominantBaseline="middle" fontSize={14} fontWeight={700} fill="#FFF">{d.Approved}</text>;
+                }} />
+              {/* Hidden line at _total — total count + YoY variance above stack */}
+              <Line type="linear" dataKey="_total" stroke="none" dot={false} legendType="none" isAnimationActive={false}
+                label={(props: any) => {
+                  const { x, y, value, index } = props;
+                  if (value == null) return <g key={`tl-${index}`} />;
+                  const prev = trendChartData[index - 1];
+                  const variance = prev != null ? value - prev._total : null;
+                  return (
+                    <g key={`tl-${index}`}>
+                      <text x={x} y={y - 14} textAnchor="middle" fontSize={18} fontWeight={800} fill="#2F3541">{value}</text>
+                      {variance !== null && (
+                        <text x={x} y={y - 34} textAnchor="middle" fontSize={13} fontWeight={700}
+                          fill={variance > 0 ? '#33A85C' : variance < 0 ? '#E91C24' : C.muted}>
+                          {variance > 0 ? `▲ ${variance}` : variance < 0 ? `▼ ${Math.abs(variance)}` : '● 0'}
+                        </text>
+                      )}
+                    </g>
+                  );
+                }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', gap: 14, marginTop: 6, justifyContent: 'center' }}>
             {[['Proposed', C.proposed], ['Seeded', C.seeded], ['Approved', C.approved]].map(([l, c]) => (
               <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <div style={{ width: 8, height: 8, borderRadius: 1, background: c }} />
@@ -272,94 +429,193 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend }: {
         {/* Donut: project type % */}
         <div style={{ ...cardStyle, padding: '14px 16px' }}>
           <SectionTitle>Project Type %</SectionTitle>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-            <div style={{ background: '#F0F5FF', borderRadius: 6, padding: '6px 14px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 6, justifyContent: 'center' }}>
+            <div style={{ background: '#F0F5FF', borderRadius: 6, padding: '6px 22px', textAlign: 'center', minWidth: 90 }}>
+              <div style={{ fontSize: 9, color: C.muted, fontWeight: 600, letterSpacing: '0.06em' }}>COUNTRIES</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: C.retail }}>{data.meta.countries_count}</div>
-              <div style={{ fontSize: 9, color: C.muted, fontWeight: 600 }}>COUNTRIES</div>
             </div>
-            <div style={{ background: '#F5F5F5', borderRadius: 6, padding: '6px 14px', textAlign: 'center' }}>
+            <div style={{ background: '#F5F5F5', borderRadius: 6, padding: '6px 22px', textAlign: 'center', minWidth: 90 }}>
+              <div style={{ fontSize: 9, color: C.muted, fontWeight: 600, letterSpacing: '0.06em' }}>METROS</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#333' }}>{data.meta.metros_count}</div>
-              <div style={{ fontSize: 9, color: C.muted, fontWeight: 600 }}>METROS</div>
             </div>
           </div>
           {donutData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={110}>
-              <PieChart>
-                <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                  innerRadius={28} outerRadius={48} paddingAngle={2}>
-                  <Cell fill={C.retail} />
-                  <Cell fill={C.xscale} />
-                </Pie>
-                <Tooltip formatter={(v: unknown) => typeof v === 'number' ? v.toFixed(1) : String(v)} contentStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>No data</div>
-          )}
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 4 }}>
-            {donutData.map((d, i) => {
-              const total = donutData.reduce((s, x) => s + x.value, 0);
-              return (
-                <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: i === 0 ? C.retail : C.xscale }} />
-                  <span style={{ fontSize: 10, color: C.muted }}>{d.name} {total > 0 ? Math.round((d.value / total) * 100) : 0}%</span>
+            <div style={{ position: 'relative' }}>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart margin={{ top: 28, right: 64, bottom: 28, left: 64 }}>
+                  <Pie data={donutData} dataKey="value" nameKey="name" cx="50%" cy="50%"
+                    innerRadius={64} outerRadius={96} paddingAngle={2}
+                    label={(props: any) => {
+                      const { cx, cy, midAngle, innerRadius, outerRadius, name, percent } = props;
+                      const RADIAN = Math.PI / 180;
+                      const ringMidR = innerRadius + (outerRadius - innerRadius) / 2;
+                      const ix = cx + ringMidR * Math.cos(-midAngle * RADIAN);
+                      const iy = cy + ringMidR * Math.sin(-midAngle * RADIAN);
+                      const outerLblR = outerRadius + 18;
+                      const ox = cx + outerLblR * Math.cos(-midAngle * RADIAN);
+                      const oy = cy + outerLblR * Math.sin(-midAngle * RADIAN);
+                      const pct = Math.round((percent ?? 0) * 100);
+                      const color = name === 'Retail' ? C.retail : C.xscale;
+                      return (
+                        <g key={name}>
+                          <text x={ix} y={iy} textAnchor="middle" dominantBaseline="middle"
+                            fill="#FFF" fontSize={10} fontWeight={400}>{name}</text>
+                          <text x={ox} y={oy} textAnchor={ox > cx ? 'start' : 'end'}
+                            dominantBaseline="middle" fill={color} fontSize={16} fontWeight={800}>{pct}%</text>
+                        </g>
+                      );
+                    }}
+                    labelLine={false}>
+                    <Cell fill={C.retail} />
+                    <Cell fill={C.xscale} />
+                  </Pie>
+                  <Tooltip formatter={(v: unknown) => typeof v === 'number' ? v.toFixed(1) : String(v)} contentStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Centre YoY overlay */}
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 8, color: C.muted, fontWeight: 700, letterSpacing: '0.08em', marginBottom: 6, textTransform: 'uppercase' }}>YoY</div>
+                  {([
+                    { name: 'Retail',  vA: dataA.summary.projects.retail,  vB: dataB.summary.projects.retail,  color: C.retail  },
+                    { name: 'xScale', vA: dataA.summary.projects.xscale, vB: dataB.summary.projects.xscale, color: C.xscale },
+                  ]).map(({ name, vA, vB, color }) => {
+                    const pct = vA > 0 ? ((vB - vA) / vA) * 100 : vB > 0 ? 100 : 0;
+                    const rounded = Math.round(pct);
+                    const deltaStr = rounded > 0 ? `▲ ${rounded}%`
+                                   : rounded < 0 ? `▼ ${Math.abs(rounded)}%`
+                                   : '● 0%';
+                    return (
+                      <div key={name} style={{ fontSize: 13, fontWeight: 800, color, lineHeight: 1.4 }}>{deltaStr}</div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>No data</div>
+          )}
         </div>
 
-        {/* Year selector & summary */}
+        {/* Year comparison table */}
         <div style={{ ...cardStyle, padding: '14px 16px' }}>
-          <SectionTitle>Year Comparison</SectionTitle>
+          <SectionTitle>Year Comparison — Project {tableMetric === 'count' ? 'Count' : 'Weight'}</SectionTitle>
+          {/* Count / Weight toggle */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-            {[yearA, yearB].map(y => (
-              <button key={y} onClick={() => setActiveYear(y)} style={{
-                flex: 1, padding: '6px 0', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                border: `1px solid ${activeYear === y ? C.accent : C.border}`,
-                background: activeYear === y ? C.accent : '#FFF',
-                color: activeYear === y ? '#FFF' : '#555',
-              }}>{y}</button>
+            {(['count', 'weight'] as const).map(m => (
+              <button key={m} onClick={() => setTableMetric(m)} style={{
+                flex: 1, padding: '4px 0', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: `1px solid ${tableMetric === m ? C.accent : C.border}`,
+                background: tableMetric === m ? C.accent : '#FFF',
+                color: tableMetric === m ? '#FFF' : '#555',
+                textTransform: 'capitalize',
+              }}>{m}</button>
             ))}
           </div>
-          {[
-            { label: 'Total',    val: data.summary.projects.total,        color: '#111' },
-            { label: 'Retail',   val: data.summary.projects.retail,       color: C.retail },
-            { label: 'xScale',   val: data.summary.projects.xscale,       color: C.xscale },
-            { label: 'Approved', val: data.pipeline.reduce((s, r) => s + r.retail.Approved + r.xscale.Approved, 0), color: C.approved },
-            { label: 'Seeded',   val: data.pipeline.reduce((s, r) => s + r.retail.Seeded   + r.xscale.Seeded,   0), color: C.seeded },
-            { label: 'Proposed', val: data.pipeline.reduce((s, r) => s + r.retail.Proposed + r.xscale.Proposed, 0), color: C.proposed },
-          ].map(row => (
-            <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottom: `1px solid #F3F3F3`, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: '#555' }}>{row.label}</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: row.color }}>{row.val}</span>
-            </div>
-          ))}
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left',  padding: '4px 4px 6px', color: C.muted, fontWeight: 600, fontSize: 10, borderBottom: `1px solid ${C.border}` }}></th>
+                <th style={{ textAlign: 'right', padding: '4px 4px 6px', color: C.muted, fontWeight: 600, fontSize: 10, borderBottom: `1px solid ${C.border}` }}>{yearA}</th>
+                <th style={{ textAlign: 'right', padding: '4px 4px 6px', color: C.muted, fontWeight: 600, fontSize: 10, borderBottom: `1px solid ${C.border}` }}>{yearB}</th>
+                <th style={{ textAlign: 'right', padding: '4px 4px 6px', color: C.muted, fontWeight: 600, fontSize: 10, borderBottom: `1px solid ${C.border}` }}>Δ</th>
+                <th style={{ textAlign: 'right', padding: '4px 4px 6px', color: C.muted, fontWeight: 600, fontSize: 10, borderBottom: `1px solid ${C.border}` }}>Δ%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(tableMetric === 'count' ? [
+                { label: 'Total',    vA: dataA.summary.projects.total,  vB: dataB.summary.projects.total,  color: '#111' },
+                { label: 'Retail',   vA: dataA.summary.projects.retail, vB: dataB.summary.projects.retail, color: C.retail },
+                { label: 'xScale',   vA: dataA.summary.projects.xscale, vB: dataB.summary.projects.xscale, color: C.xscale },
+                { label: 'Approved', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Approved + r.xscale.Approved, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Approved + r.xscale.Approved, 0), color: C.approved },
+                { label: 'Seeded',   vA: dataA.pipeline.reduce((s, r) => s + r.retail.Seeded   + r.xscale.Seeded,   0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Seeded   + r.xscale.Seeded,   0), color: C.seeded },
+                { label: 'Proposed', vA: dataA.pipeline.reduce((s, r) => s + r.retail.Proposed + r.xscale.Proposed, 0), vB: dataB.pipeline.reduce((s, r) => s + r.retail.Proposed + r.xscale.Proposed, 0), color: C.proposed },
+              ] : [
+                { label: 'Total',  vA: dataA.summary.projects.total_weight,  vB: dataB.summary.projects.total_weight,  color: '#111' },
+                { label: 'Retail', vA: dataA.summary.projects.retail_weight, vB: dataB.summary.projects.retail_weight, color: C.retail },
+                { label: 'xScale', vA: dataA.summary.projects.xscale_weight, vB: dataB.summary.projects.xscale_weight, color: C.xscale },
+              ]).map((row, i) => {
+                const isWeight = tableMetric === 'weight';
+                const fmt = (v: number) => isWeight ? v.toFixed(1) : String(v);
+                const delta = row.vB - row.vA;
+                const absDelta = isWeight ? Math.abs(delta).toFixed(1) : String(Math.abs(Math.round(delta)));
+                const pct = row.vA > 0 ? Math.round((delta / row.vA) * 100) : delta > 0 ? 100 : 0;
+                const vColor = delta > 0 ? '#33A85C' : delta < 0 ? '#E91C24' : C.muted;
+                const deltaStr = delta > 0 ? `▲ ${absDelta}` : delta < 0 ? `▼ ${absDelta}` : '—';
+                const pctStr   = delta === 0 ? '—' : `${delta > 0 ? '▲' : '▼'} ${Math.abs(pct)}%`;
+                return (
+                  <tr key={row.label} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
+                    <td style={{ padding: '5px 4px', color: row.color, fontWeight: 700 }}>{row.label}</td>
+                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600 }}>{fmt(row.vA)}</td>
+                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 600 }}>{fmt(row.vB)}</td>
+                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 700, color: vColor }}>{deltaStr}</td>
+                    <td style={{ padding: '5px 4px', textAlign: 'right', fontWeight: 700, color: vColor }}>{pctStr}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Pipeline bar chart */}
+      {/* Pipeline lipstick bar chart */}
       <div style={{ ...cardStyle, padding: '14px 16px' }}>
-        <SectionTitle>Project Pipeline by Region — Retail vs xScale (Weight) · {activeYear}</SectionTitle>
-        {pipelineBarData.length === 0 ? (
-          <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: 12 }}>No data for {activeYear}</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={pipelineBarData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
-              <XAxis dataKey="region" tick={{ fontSize: 9, fill: C.muted }} />
-              <YAxis tick={{ fontSize: 10, fill: C.muted }} />
-              <Tooltip contentStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Retail"  fill={C.retail}  radius={[2, 2, 0, 0]} />
-              <Bar dataKey="xScale"  fill={C.xscale}  radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-        <div style={{ display: 'flex', gap: 14, marginTop: 6, justifyContent: 'center' }}>
-          {[['Retail', C.retail], ['xScale', C.xscale]].map(([l, c]) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: c }} />
-              <span style={{ fontSize: 10, color: C.muted }}>{l}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ ...sectionLabel, marginBottom: 0 }}>Project Pipeline by {pipView === 'region' ? 'Region' : 'Country'} — Weight (front) · Count (behind) · {activeYear}</div>
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0, marginLeft: 12 }}>
+            {(['region', 'country'] as const).map(v => (
+              <button key={v} onClick={() => setPipView(v)} style={{
+                padding: '4px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: `1px solid ${pipView === v ? C.accent : C.border}`,
+                background: pipView === v ? C.accent : '#FFF',
+                color: pipView === v ? '#FFF' : '#555',
+                textTransform: 'capitalize',
+              }}>{v}</button>
+            ))}
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={pipView === 'country' ? 300 : 240}>
+          <BarChart data={activeBarData} margin={{ top: 22, right: 8, bottom: pipView === 'country' ? 55 : 0, left: -30 }} barCategoryGap={pipView === 'country' ? '18%' : '28%'}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
+            <XAxis dataKey="region" interval={0} tickLine={false}
+              tick={{ fontSize: pipView === 'country' ? 8 : 9, fill: C.muted,
+                      ...(pipView === 'country' ? { angle: -45, textAnchor: 'end' } : {}) }}
+              height={pipView === 'country' ? 52 : 30} />
+            <YAxis tick={false} axisLine={false} tickLine={false} />
+            <Tooltip content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const d = payload[0]?.payload;
+              if (!d) return null;
+              return (
+                <div style={{ background: '#FFF', border: `1px solid ${C.border}`, borderRadius: 6, padding: '8px 12px', fontSize: 11 }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{d.region}</div>
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    <div>
+                      <div style={{ color: C.retail, fontWeight: 700, marginBottom: 2 }}>Retail</div>
+                      <div style={{ color: C.muted }}>Weight: <b style={{ color: C.retail }}>{d.RetailWeight}</b></div>
+                      <div style={{ color: C.muted }}>Count: <b>{d.RetailCount}</b></div>
+                    </div>
+                    <div>
+                      <div style={{ color: C.xscale, fontWeight: 700, marginBottom: 2 }}>xScale</div>
+                      <div style={{ color: C.muted }}>Weight: <b style={{ color: C.xscale }}>{d.xScaleWeight}</b></div>
+                      <div style={{ color: C.muted }}>Count: <b>{d.xScaleCount}</b></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            }} />
+            <Bar dataKey="_barH" shape={<PipelineLipstickBar />} isAnimationActive={false} />
+          </BarChart>
+        </ResponsiveContainer>
+        <div style={{ display: 'flex', gap: 20, marginTop: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {([['Retail Weight', C.retail, 1], ['Retail Count', C.retail, 0.22], ['xScale Weight', C.xscale, 1], ['xScale Count', C.xscale, 0.22]] as [string, string, number][]).map(([label, color, opacity]) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: color, opacity }} />
+              <span style={{ fontSize: 10, color: C.muted }}>{label}</span>
             </div>
           ))}
         </div>
@@ -396,20 +652,23 @@ function ProjectsTab({ yearA, yearB, dataA, dataB, projectTrend }: {
               </tr>
             </thead>
             <tbody>
-              {data.pipeline.map((row, i) => (
-                <tr key={row.region_name} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
-                  <td style={TD}>{row.region_name}</td>
-                  <td style={{ ...TDM, color: row.retail.Approved > 0 ? C.approved : '#DDD' }}>{row.retail.Approved || '—'}</td>
-                  <td style={{ ...TDM, color: row.retail.Seeded   > 0 ? C.seeded   : '#DDD' }}>{row.retail.Seeded   || '—'}</td>
-                  <td style={{ ...TDM, color: row.retail.Proposed > 0 ? C.proposed : '#DDD' }}>{row.retail.Proposed || '—'}</td>
-                  <td style={TDM}>{row.retail.weight > 0 ? row.retail.weight.toFixed(1) : '—'}</td>
-                  <td style={{ ...TDM, color: row.xscale.Approved > 0 ? C.approved : '#DDD' }}>{row.xscale.Approved || '—'}</td>
-                  <td style={{ ...TDM, color: row.xscale.Seeded   > 0 ? C.seeded   : '#DDD' }}>{row.xscale.Seeded   || '—'}</td>
-                  <td style={{ ...TDM, color: row.xscale.Proposed > 0 ? C.proposed : '#DDD' }}>{row.xscale.Proposed || '—'}</td>
-                  <td style={TDM}>{row.xscale.weight > 0 ? row.xscale.weight.toFixed(1) : '—'}</td>
-                  <td style={TDR}>{row.total_weight > 0 ? row.total_weight.toFixed(1) : '—'}</td>
+              {(regionNames.length > 0 ? regionNames : data.pipeline.map(r => r.region_name)).map((regionName, i) => {
+                const row = data.pipeline.find(r => r.region_name === regionName);
+                return (
+                <tr key={regionName} style={{ background: i % 2 === 0 ? '#FFF' : '#FAFAFA' }}>
+                  <td style={TD}>{regionName}</td>
+                  <td style={{ ...TDM, color: row && row.retail.Approved > 0 ? C.approved : '#DDD' }}>{row?.retail.Approved || '—'}</td>
+                  <td style={{ ...TDM, color: row && row.retail.Seeded   > 0 ? C.seeded   : '#DDD' }}>{row?.retail.Seeded   || '—'}</td>
+                  <td style={{ ...TDM, color: row && row.retail.Proposed > 0 ? C.proposed : '#DDD' }}>{row?.retail.Proposed || '—'}</td>
+                  <td style={TDM}>{row && row.retail.weight > 0 ? row.retail.weight.toFixed(1) : '—'}</td>
+                  <td style={{ ...TDM, color: row && row.xscale.Approved > 0 ? C.approved : '#DDD' }}>{row?.xscale.Approved || '—'}</td>
+                  <td style={{ ...TDM, color: row && row.xscale.Seeded   > 0 ? C.seeded   : '#DDD' }}>{row?.xscale.Seeded   || '—'}</td>
+                  <td style={{ ...TDM, color: row && row.xscale.Proposed > 0 ? C.proposed : '#DDD' }}>{row?.xscale.Proposed || '—'}</td>
+                  <td style={TDM}>{row && row.xscale.weight > 0 ? row.xscale.weight.toFixed(1) : '—'}</td>
+                  <td style={TDR}>{row && row.total_weight > 0 ? row.total_weight.toFixed(1) : '—'}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -750,10 +1009,57 @@ function RequestsTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: num
 }
 
 // ---------------------------------------------------------------------------
+// GEARING – lipstick (bullet) bar shape
+// ---------------------------------------------------------------------------
+
+function PlaceholderBackground({ x, y, width, height, payload }: any) {
+  if (!payload || payload.Max > 0) return <g />;
+  const cx = x + width / 2;
+  const bw = Math.max(width - 2, 6);
+  return <rect x={cx - bw * 0.26} y={y} width={bw * 0.52} height={height} fill="#E8E9EB" rx={2} />;
+}
+
+function BulletBar({ x, y, width, height, payload, fill }: any) {
+  if (!payload || payload.Max <= 0 || height <= 0) return <g />;
+  const bottom = y + height;                         // zero baseline in px
+  const ppu    = height / payload.Max;               // pixels per headcount unit
+  const minH   = Math.max((payload.Min ?? 0) * ppu, 0);
+  const propY  = Math.min(bottom, Math.max(y, bottom - (payload.Proposed ?? 0) * ppu));
+  const bw     = Math.max(width - 2, 6);
+  const cx     = x + width / 2;
+  const maxW   = Math.round(bw * 0.52);
+  const markerW = Math.round(bw * 0.62);
+  return (
+    <g>
+      {/* Min — wide, behind */}
+      <rect x={cx - bw / 2}    y={bottom - minH}  width={bw}    height={Math.max(minH, 0)} fill={`${fill}35`} rx={2} />
+      {/* Max — narrower, in front */}
+      <rect x={cx - maxW / 2}  y={y}              width={maxW}  height={height}            fill={`${fill}80`} rx={2} />
+      {/* Proposed — red horizontal marker */}
+      <rect x={cx - markerW / 2} y={propY - 12}  width={markerW} height={24}              fill="#E91C24"     rx={1} />
+    </g>
+  );
+}
+
+function BulletTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div style={{ background: '#FFF', border: `1px solid ${C.border}`, borderRadius: 6, padding: '6px 10px', fontSize: 10 }}>
+      <div style={{ fontWeight: 700, marginBottom: 4, color: '#2F3541' }}>{label}</div>
+      <div style={{ color: C.muted }}>Min: <b style={{ color: '#333' }}>{d.Min}</b></div>
+      <div style={{ color: C.muted }}>Max: <b style={{ color: '#333' }}>{d.Max}</b></div>
+      <div style={{ color: C.accent }}>Proposed: <b>{d.Proposed}</b></div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // GEARING TAB
 // ---------------------------------------------------------------------------
 
-function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData }) {
+function GearingTab({ yearA, yearB, dataA, dataB, regionNames }: { yearA: number; yearB: number; dataA: HubIqYearData; dataB: HubIqYearData; regionNames: string[] }) {
   const [activeYear, setActiveYear] = useState(yearA);
   const data = activeYear === yearA ? dataA : dataB;
 
@@ -798,9 +1104,9 @@ function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numb
           { label: 'Var vs Min (HC)',   value: `${totalVarMin > 0 ? '+' : ''}${totalVarMin}%`, bg: '#DFFBE5', text: gColor(totalVarMin) },
           { label: 'Var vs Max (HC)',   value: `${totalVarMax > 0 ? '+' : ''}${totalVarMax}%`, bg: '#FFF8F0', text: gColor(totalVarMax) },
         ].map(kpi => (
-          <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 8, padding: '12px 16px', textAlign: 'center', border: `1px solid ${C.border}` }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: kpi.bg === '#F0F5FF' || kpi.bg === '#F5FFF5' || kpi.bg === '#FFF8F0' ? C.muted : kpi.text, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{kpi.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: kpi.text, lineHeight: 1 }}>{kpi.value}</div>
+          <div key={kpi.label} style={{ background: kpi.bg, borderRadius: 8, padding: '7px 12px', textAlign: 'center', border: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 8, fontWeight: 700, color: kpi.bg === '#F0F5FF' || kpi.bg === '#F5FFF5' || kpi.bg === '#FFF8F0' ? C.muted : kpi.text, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{kpi.label}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: kpi.text, lineHeight: 1 }}>{kpi.value}</div>
           </div>
         ))}
       </div>
@@ -810,10 +1116,14 @@ function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numb
         {data.gearing.map(disc => {
           const color      = C.discColors[disc.discipline] ?? C.accent;
           const labelColor = color === '#FDB90D' ? '#C59000' : color;
-          const barData = disc.regions.map(r => ({
-            region: r.region_name.replace('AMER Matrix', 'Mtx'),
-            Min: r.min, Max: r.max, Proposed: r.proposed,
-          }));
+          const allRegions = regionNames.length > 0 ? regionNames : disc.regions.map(r => r.region_name);
+          const barData = allRegions.map(regionName => {
+            const r = disc.regions.find(x => x.region_name === regionName);
+            return {
+              region: regionName.replace('AMER Matrix', 'Mtx'),
+              Min: r?.min ?? 0, Max: r?.max ?? 0, Proposed: r?.proposed ?? 0,
+            };
+          });
           return (
             <div key={disc.discipline} style={{ ...cardStyle, overflow: 'hidden' }}>
               {/* Discipline header */}
@@ -857,27 +1167,31 @@ function GearingTab({ yearA, yearB, dataA, dataB }: { yearA: number; yearB: numb
                 </table>
               </div>
 
-              {/* Bar chart */}
-              {barData.length > 0 && (
+              {/* Bar chart — lipstick/bullet style */}
+              {allRegions.length > 0 && (
                 <div style={{ padding: '8px 4px 4px' }}>
-                  <ResponsiveContainer width="100%" height={100}>
-                    <BarChart data={barData} margin={{ top: 4, right: 4, bottom: 12, left: -20 }}>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={barData} margin={{ top: 4, right: 4, bottom: 16, left: -20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
                       <XAxis dataKey="region" tick={{ fontSize: 8, fill: C.muted }} angle={-30} textAnchor="end" />
-                      <YAxis tick={{ fontSize: 8, fill: C.muted }} />
-                      <Tooltip contentStyle={{ fontSize: 10 }} />
-                      <Bar dataKey="Min"      fill={`${color}40`} radius={[2, 2, 0, 0]} />
-                      <Bar dataKey="Max"      fill={`${color}70`} radius={[2, 2, 0, 0]} />
-                      <Bar dataKey="Proposed" fill={C.accent}     radius={[2, 2, 0, 0]} />
+                      <YAxis tick={{ fontSize: 8, fill: C.muted }} domain={[0, 'auto']} />
+                      <Tooltip content={<BulletTooltip />} />
+                      <Bar dataKey="Max" fill={color} shape={BulletBar} background={<PlaceholderBackground />} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 2 }}>
-                    {[['Min', `${color}40`], ['Max', `${color}70`], ['Proposed', C.accent]].map(([l, c]) => (
-                      <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <div style={{ width: 7, height: 7, borderRadius: 1, background: c }} />
-                        <span style={{ fontSize: 9, color: C.muted }}>{l}</span>
-                      </div>
-                    ))}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <div style={{ width: 10, height: 8, borderRadius: 1, background: `${color}35` }} />
+                      <span style={{ fontSize: 9, color: C.muted }}>Min</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <div style={{ width: 7, height: 8, borderRadius: 1, background: `${color}80` }} />
+                      <span style={{ fontSize: 9, color: C.muted }}>Max</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <div style={{ width: 12, height: 3, borderRadius: 1, background: C.accent, marginBottom: 1 }} />
+                      <span style={{ fontSize: 9, color: C.muted }}>Proposed</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1066,10 +1380,10 @@ export default function Dashboard() {
         )}
         {ready && (
           <>
-            {activeTab === 'Projects'    && <ProjectsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} projectTrend={hubData!.project_trend} />}
+            {activeTab === 'Projects'    && <ProjectsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} projectTrend={hubData!.project_trend} regionNames={hubData?.region_names ?? []} />}
             {activeTab === 'People'      && <PeopleTab      yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} />}
             {activeTab === 'Requests'    && <RequestsTab    yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} />}
-            {activeTab === 'Gearing'     && <GearingTab     yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} />}
+            {activeTab === 'Gearing'     && <GearingTab     yearA={yearA!} yearB={yearB!} dataA={dataA!} dataB={dataB!} regionNames={hubData?.region_names ?? []} />}
             {activeTab === 'Hire Status' && <HireStatusTab  tbhStatus={hubData!.tbh_status} />}
           </>
         )}

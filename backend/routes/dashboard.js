@@ -37,6 +37,38 @@ function buildPipelineRows(projRows) {
   return Object.values(byRegion).sort((a, b) => a.sort_order - b.sort_order);
 }
 
+function buildPipelineByCountryRows(rows) {
+  const byCountry = {};
+  for (const row of rows) {
+    const key = row.country_name || 'Unknown';
+    if (!byCountry[key]) {
+      byCountry[key] = {
+        region_name: key,
+        sort_order: Number(row.sort_order),
+        retail: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0 },
+        xscale: { Approved: 0, Seeded: 0, Proposed: 0, weight: 0 },
+        total_weight: 0,
+      };
+    }
+    const r = byCountry[key];
+    const w = Number(row.total_weight);
+    const n = Number(row.proj_count);
+    if (row.type === 'xScale') {
+      if (row.status in r.xscale) r.xscale[row.status] += n;
+      r.xscale.weight += w;
+    } else {
+      if (row.status in r.retail) r.retail[row.status] += n;
+      r.retail.weight += w;
+    }
+    r.total_weight += w;
+  }
+  return Object.values(byCountry).sort((a, b) =>
+    a.sort_order !== b.sort_order
+      ? a.sort_order - b.sort_order
+      : a.region_name.localeCompare(b.region_name)
+  );
+}
+
 function buildHeadcountRows(hcRows) {
   const VP_DIR = new Set(['VP', 'Dr']);
   const byRegion = {};
@@ -211,7 +243,7 @@ async function fetchShared() {
 
 async function fetchForYear(year) {
   const y = parseInt(year, 10);
-  const [projSumRes, pipelineRes, projGearRes, reqRes, metaRes] = await Promise.all([
+  const [projSumRes, pipelineRes, pipelineCountryRes, projGearRes, reqRes, metaRes] = await Promise.all([
     pool.query(`
       SELECT COUNT(*)::int AS total_projects,
              COUNT(*) FILTER (WHERE type = 'Retail')::int AS retail_count,
@@ -232,6 +264,18 @@ async function fetchForYear(year) {
       WHERE p.is_active = TRUE AND p.year = $1
       GROUP BY r.name, r.sort_order, p.type, p.status
       ORDER BY r.sort_order, p.type, p.status
+    `, [y]),
+    pool.query(`
+      SELECT COALESCE(c.name, 'Unknown') AS country_name, r.sort_order,
+             p.type, p.status,
+             COUNT(*)::int AS proj_count,
+             COALESCE(SUM(p.weight), 0)::float AS total_weight
+      FROM projects p
+      JOIN regions r ON p.region_id = r.id
+      LEFT JOIN countries c ON p.country_id = c.id
+      WHERE p.is_active = TRUE AND p.year = $1
+      GROUP BY c.name, r.sort_order, p.type, p.status
+      ORDER BY r.sort_order, COALESCE(c.name, 'zzz'), p.type, p.status
     `, [y]),
     pool.query(`
       SELECT r.name AS region_name, p.type AS project_type,
@@ -270,11 +314,12 @@ async function fetchForYear(year) {
     `, [y]),
   ]);
   return {
-    projSum:        projSumRes.rows[0] || {},
-    pipelineRows:   pipelineRes.rows,
-    projsByRegion:  projGearRes.rows,
-    requests:       reqRes.rows,
-    meta:           metaRes.rows[0] || { countries_count: 0, metros_count: 0 },
+    projSum:             projSumRes.rows[0] || {},
+    pipelineRows:        pipelineRes.rows,
+    pipelineCountryRows: pipelineCountryRes.rows,
+    projsByRegion:       projGearRes.rows,
+    requests:            reqRes.rows,
+    meta:                metaRes.rows[0] || { countries_count: 0, metros_count: 0 },
   };
 }
 
@@ -311,12 +356,13 @@ router.get('/hub-iq', requireAuth, async (req, res) => {
 
   function buildYear(d) {
     return {
-      summary:   buildSummary(d.projSum, shared.hcByRegion),
-      pipeline:  buildPipelineRows(d.pipelineRows),
-      headcount: buildHeadcountRows(shared.hcByRegion),
-      gearing:   buildGearingRows(d.projsByRegion, shared.gearingConsts, shared.peopleByDiscRegion, shared.allRegionNames),
-      requests:  d.requests,
-      meta:      d.meta,
+      summary:          buildSummary(d.projSum, shared.hcByRegion),
+      pipeline:         buildPipelineRows(d.pipelineRows),
+      pipeline_country: buildPipelineByCountryRows(d.pipelineCountryRows),
+      headcount:        buildHeadcountRows(shared.hcByRegion),
+      gearing:          buildGearingRows(d.projsByRegion, shared.gearingConsts, shared.peopleByDiscRegion, shared.allRegionNames),
+      requests:         d.requests,
+      meta:             d.meta,
     };
   }
 
